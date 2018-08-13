@@ -5,6 +5,8 @@
 #include <vector>
 #include <math.h>
 
+#include "Thin_Film_Interference.h"
+
 using namespace std;
 
 // from: http://www.qtcentre.org/threads/55363-QTreeView-and-Column-Row-Gridlines
@@ -46,7 +48,7 @@ FTIR_Analyzer::FTIR_Analyzer( QWidget *parent )
 	srand( 0 );
 	ui.setupUi( this );
 
-	Initialize_SQL();
+	//Initialize_SQL();
 	connect( ui.customPlot, &QCustomPlot::mouseMove, this, &FTIR_Analyzer::showPointToolTip );
 	//ui.customPlot->rescaleAxes();
 
@@ -62,8 +64,26 @@ FTIR_Analyzer::FTIR_Analyzer( QWidget *parent )
 	connect( ui.filter_lineEdit, &QLineEdit::textEdited, this, &FTIR_Analyzer::Reinitialize_Tree_Table );
 
 	Initialize_Graph();
+	//auto x_data = arma::linspace( 1E-6, 10E-6, 91 );
+	//auto x_data = arma::linspace( 1E-9, 10E-6, 10001 );
+	auto x_data = arma::linspace( 1E-9, 10E-6, 2001 );
+	Thin_Film_Interference tfi;
+	auto y_data = tfi.Get_Expected_Transmission( std::vector<Material_Layer>{
+		{ Material::Si, 500E-6 },
+		{ Material::ZnS, 10E-6 },
+		{ Material::ZnSe, 20E-6 } }, x_data );
 
+	//auto y_data = tfi.Get_Expected_Transmission( std::vector<Material_Layer>{
+	//	{ Material::TestA, 1E-6 },
+	//	{ Material::TestB, 2E-6 } }, x_data );
 
+	//auto y_data = tfi.Get_Expected_Transmission( std::vector<Material_Layer>{
+	//	{ Material::Si, 1000E-6 },
+	//	 }, x_data );
+
+	x_data = 1 / (100. * x_data);
+	using stdvec = std::vector<double>;
+	this->Graph( "Test", QVector<double>::fromStdVector( arma::conv_to<stdvec>::from( x_data ) ), QVector<double>::fromStdVector( y_data ) );
 	//setGeometry( QApplication::desktop()->availableGeometry().x(),
 	//			 QApplication::desktop()->availableGeometry().y(),
 	//			 QApplication::desktop()->availableGeometry().width(),
@@ -244,6 +264,13 @@ bool FTIR_Analyzer::Initialize_DB_Connection( const QString & database_type, con
 		sql_db.setUserName( username );
 	if( !password.isEmpty() )
 		sql_db.setPassword( password );
+
+	QMessageBox msgBox( this );
+	msgBox.setWindowTitle( "FTIR Analyzer" );
+	msgBox.setText( "Attempting SQL connection, please wait..." );
+	msgBox.setWindowModality( Qt::NonModal ); // Don't block
+	msgBox.show();
+
 	bool sql_worked = sql_db.open();
 	if( sql_worked )
 		qInfo() << QString( "Connected to %1 Database %2" ).arg( host_location ).arg( database_name );
@@ -252,24 +279,32 @@ bool FTIR_Analyzer::Initialize_DB_Connection( const QString & database_type, con
 		auto problem = sql_db.lastError();
 		qCritical() << "Error with SQL Connection: " << problem;
 	}
+	msgBox.close();
 
 	return sql_worked;
 }
 
 void FTIR_Analyzer::Initialize_SQL()
 {
-	QSettings settings( "configuration.ini", QSettings::IniFormat, this );
+	QString config_filename = "configuration.ini";
+	QSettings settings( config_filename, QSettings::IniFormat, this );
 
-	while( !Initialize_DB_Connection( settings.value( "SQL_Server/database_type" ).toString(),
+	if( !Initialize_DB_Connection( settings.value( "SQL_Server/database_type" ).toString(),
 									  settings.value( "SQL_Server/host_location" ).toString(),
 									  settings.value( "SQL_Server/database_name" ).toString(),
 									  settings.value( "SQL_Server/username" ).toString(),
 									  settings.value( "SQL_Server/password" ).toString() ) )
 	{
-		qCritical() << "Error with SQL Connection";
-		int delay_seconds = 10;
-		qCritical() << QString( "Trying again in %1 seconds" ).arg( delay_seconds );
-		QThread::sleep( delay_seconds );
+		QMessageBox msgBox;
+		msgBox.setText( "Error Opening SQL" );
+		msgBox.setInformativeText( "Do you want to open your config file?\n(Restart program to try SQL again)" );
+		msgBox.setStandardButtons( QMessageBox::Yes | QMessageBox::No );
+		msgBox.setDefaultButton( QMessageBox::Save );
+		int ret = msgBox.exec();
+		if( ret == QMessageBox::Yes )
+		{
+			QDesktopServices::openUrl( QUrl( config_filename ) ); // Open config file in default program
+		}
 	}
 
 	ui.sqlUser_lineEdit->setText( settings.value( "SQL_Server/default_user" ).toString() );
@@ -334,6 +369,9 @@ void FTIR_Analyzer::Recursive_Tree_Table_Build( const QStringList & what_to_coll
 
 void FTIR_Analyzer::Reinitialize_Tree_Table()
 {
+	if( !sql_db.isOpen() )
+		return;
+
 	ui.treeWidget->clear();
 	ui.treeWidget->setSizeAdjustPolicy( QAbstractScrollArea::AdjustToContents );
 
