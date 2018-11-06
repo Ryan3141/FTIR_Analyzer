@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1190</width>
+    <width>1218</width>
     <height>699</height>
    </rect>
   </property>
@@ -526,12 +526,44 @@
              </widget>
             </item>
             <item>
-             <widget class="QListWidget" name="simulated_listWidget">
+             <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+               <widget class="QLabel" name="label_11">
+                <property name="text">
+                 <string>Material</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_12">
+                <property name="text">
+                 <string>Thickness</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_13">
+                <property name="text">
+                 <string>Composition</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="Layer_Builder" name="simulated_listWidget">
               <property name="dragEnabled">
                <bool>true</bool>
               </property>
               <property name="dragDropMode">
                <enum>QAbstractItemView::InternalMove</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="fitGraph_pushButton">
+              <property name="text">
+               <string>Fit To Data</string>
               </property>
              </widget>
             </item>
@@ -550,7 +582,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1190</width>
+     <width>1218</width>
      <height>26</height>
     </rect>
    </property>
@@ -572,6 +604,11 @@
    <extends>QWidget</extends>
    <header>Interactive_Graph.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>Layer_Builder</class>
+   <extends>QListWidget</extends>
+   <header>Layer_Builder.h</header>
   </customwidget>
  </customwidgets>
  <resources>

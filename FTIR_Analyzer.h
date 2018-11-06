@@ -33,15 +33,18 @@ private:
 	void Initialize_Graph();
 
 	void Graph_Tree_Node( const QTreeWidgetItem* tree_item );
+	void Graph_Simulation( const std::vector<Material_Layer> & layers );
 
 	std::vector<const QTreeWidgetItem*> Get_Bottom_Children_Elements_Under( const QTreeWidgetItem * tree_item ) const;
 
 	void Grab_SQL_Data_From_Measurement_ID( QString measurement_id, QVector<double>& x_data, QVector<double>& y_data );
-	void Graph( QString measurement_id, QVector<double> x_data, QVector<double> y_data );
+	std::map<QString, QString> Grab_SQL_Metadata_From_Measurement( const QString & measurement_id );
+	void Graph( QString measurement_id, const QVector<double> & x_data, const QVector<double> & y_data, QString data_title = QString(), bool allow_y_scaling = true );
+	void Run_Fit();
+
+	void Save_To_CSV( const std::vector<const QTreeWidgetItem*> & things_to_save );
+
 
 	QSqlDatabase sql_db;
 	QLabel* statusLabel;
-
-	std::function<double( double )> x_display_method{ []( double x ) { return 10000 / x; } };
-	std::function<double( double, double )> y_display_method{ []( double x, double y ) { return y; } };
 };

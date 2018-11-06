@@ -6,6 +6,9 @@
 #include <map>
 #include <armadillo>
 //#include <boost/units/systems/si.hpp>
+#include <qmetatype.h>
+
+#include "Units.h"
 
 enum class Material
 {
@@ -23,15 +26,17 @@ enum class Material
 	Air
 };
 
-extern std::map<const char*, Material> name_to_material;
+extern std::map<std::string, Material> name_to_material;
 
 //using Length = boost::units::quantity<boost::units::si::length, double>;
 
 struct Material_Layer
 {
 	Material material;
+	double composition;
 	double thickness;
 };
+Q_DECLARE_METATYPE( Material_Layer );
 
 using X_And_Y_Data = std::tuple< std::vector<double>, std::vector<double> >;
 using Material_To_Refraction_Component = std::map< Material, X_And_Y_Data >;
@@ -59,19 +64,23 @@ public:
 	Thin_Film_Interference();
 	~Thin_Film_Interference();
 
-	std::vector<double> Get_Expected_Transmission( std::vector<Material_Layer> & layers, const arma::vec & wavelengths ) const;
+	std::vector<double> Get_Expected_Transmission( double temperature_k, const std::vector<Material_Layer> & layers, const arma::vec & wavelengths ) const;
+	//std::map< Material, std::function<arma::cx_double( Material, double, double )> > Get_Refraction_Index;
 
-	inline arma::cx_double Get_Refraction_Index( Material mat, double wavelength ) const
+	std::vector<Material_Layer> Get_Best_Fit( double temperature_k, const std::vector<Material_Layer> & layers, const Wavelength_Array & wavelengths, const Transmission_Array & transmissions );
+
+	inline arma::cx_double Get_Refraction_Index( Material mat, double wavelength, double temperature, double composition ) const
 	{
-		const X_And_Y_Data & n_vs_lambda = Refraction_Coefficient[ mat ];
-		const X_And_Y_Data & k_vs_lambda = Attenuation_Coefficient[ mat ];
-
-		double n = Find_Closest_Datapoint( wavelength, std::get<0>( n_vs_lambda ), std::get<1>( n_vs_lambda ) );
-		double k = Find_Closest_Datapoint( wavelength, std::get<0>( k_vs_lambda ), std::get<1>( k_vs_lambda ) );
-		return arma::cx_double{ n, k };
+		auto refraction_index_function = all_material_indices.find( mat );
+		if( refraction_index_function != all_material_indices.end() )
+			return refraction_index_function->second( wavelength, temperature, composition );
+		else
+			throw "Material unavailable";
 	}
 
 private:
+	using IndexFunction = std::function< arma::cx_double( double wavelength, double temperature, double composition ) >;
+	std::map< Material, IndexFunction > all_material_indices;
 
 	static Material_To_Refraction_Component Attenuation_Coefficient;
 	static Material_To_Refraction_Component Refraction_Coefficient;

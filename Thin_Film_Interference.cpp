@@ -17,7 +17,9 @@ using namespace boost;
 using namespace arma;
 
 
-std::map<const char*, Material> name_to_material
+arma::cx_double MCT_Index( double wavelength, double temperature_k, double composition );
+
+std::map<std::string, Material> name_to_material
 {
 	{ "Si"          ,  Material::Si },
 	{ "HgCdTe"      ,  Material::HgCdTe },
@@ -38,6 +40,23 @@ std::tuple< std::vector<double>, std::vector<double> > Load_XY_CSV_Data( const f
 
 Thin_Film_Interference::Thin_Film_Interference()
 {
+	for( const auto &[ material, x_y_data ] : Refraction_Coefficient )
+	{
+		const X_And_Y_Data & n_vs_lambda = Refraction_Coefficient[ material ];
+		const X_And_Y_Data & k_vs_lambda = Attenuation_Coefficient[ material ];
+
+		all_material_indices[ material ] = [&n_vs_lambda, &k_vs_lambda]( double wavelength, double temperature, double composition )
+		{
+			double n = Find_Closest_Datapoint( wavelength, std::get<0>( n_vs_lambda ), std::get<1>( n_vs_lambda ) );
+			double k = Find_Closest_Datapoint( wavelength, std::get<0>( k_vs_lambda ), std::get<1>( k_vs_lambda ) );
+			return arma::cx_double{ n, k };
+		};
+	}
+
+	all_material_indices[ Material::HgCdTe ] = MCT_Index;
+	all_material_indices[ Material::CdTe ] = []( double wavelength, double temperature, double composition ) { return MCT_Index( wavelength, temperature, 1.0 ); };
+
+	all_material_indices[ Material::Air ] = []( double wavelength, double temperature, double composition ) { return arma::cx_double{ 1, 0 }; };
 }
 
 
@@ -45,9 +64,9 @@ Thin_Film_Interference::~Thin_Film_Interference()
 {
 }
 
-std::vector<double> Thin_Film_Interference::Get_Expected_Transmission( std::vector<Material_Layer> & layers, const arma::vec & wavelengths ) const
+std::vector<double> Thin_Film_Interference::Get_Expected_Transmission( double temperature_k, const std::vector<Material_Layer> & layers, const arma::vec & wavelengths ) const
 {
-	ofstream out_file( "Log.txt" );
+	//ofstream out_file( "Log.txt" );
 	vector<double> output;
 
 	for( double wavelength : wavelengths )
@@ -63,7 +82,7 @@ std::vector<double> Thin_Film_Interference::Get_Expected_Transmission( std::vect
 		//}
 		for( const auto & layer : layers )
 		{
-			cx_double current_n{ Get_Refraction_Index( layer.material, wavelength ) };
+			cx_double current_n{ Get_Refraction_Index( layer.material, wavelength, temperature_k, layer.composition ) };
 			double k = 2 * datum::pi / wavelength;
 			//cx_double sum = current_n + std::conj(previous_n);
 			//cx_double difference = current_n - previous_n;
@@ -83,12 +102,12 @@ std::vector<double> Thin_Film_Interference::Get_Expected_Transmission( std::vect
 			cx_double exponent_conj_neg = -1i * std::conj( k_current ) * layer.thickness;
 			cx_double test_exponent_conj_neg = -1.*( 1i * std::conj( k_current ) * layer.thickness );
 			cx_double test_exponent_conj_neg2 = cx_double{ 0,-1 } * std::conj( k_current ) * layer.thickness;
-			out_file << "exponent:" << exponent << std::endl;
-			out_file << "exponent_conj:" << exponent_conj << std::endl;
-			out_file << "exponent_conj_neg:" << exponent_conj_neg << std::endl;
-			out_file << "e^:" << std::exp( exponent ) << std::endl;
-			out_file << "e^conj:" << std::exp( exponent_conj_neg ) << std::endl;
-			out_file << "--" << wavelength << " " << current_n.imag() << std::endl;
+			//out_file << "exponent:" << exponent << std::endl;
+			//out_file << "exponent_conj:" << exponent_conj << std::endl;
+			//out_file << "exponent_conj_neg:" << exponent_conj_neg << std::endl;
+			//out_file << "e^:" << std::exp( exponent ) << std::endl;
+			//out_file << "e^conj:" << std::exp( exponent_conj_neg ) << std::endl;
+			//out_file << "--" << wavelength << " " << current_n.imag() << std::endl;
 
 			//cx_double sin_value = std::sin( k_current * layer.thickness );
 			//cx_double cos_value = std::cos( k_current * layer.thickness );
@@ -97,28 +116,28 @@ std::vector<double> Thin_Film_Interference::Get_Expected_Transmission( std::vect
 			cx_mat M_matrix = { { std::exp( -1i * std::conj( k_current ) * layer.thickness ), 0 },
 								{ 0, std::exp( 1i * k_current * layer.thickness ) } };
 
-			out_file << "A:" << A_matrix << std::endl;
-			out_file << "M:" << M_matrix << std::endl;
+			//out_file << "A:" << A_matrix << std::endl;
+			//out_file << "M:" << M_matrix << std::endl;
 			cx_mat One_Interface_matrix = M_matrix * A_matrix;
 			cx_mat partial_matrix = A_matrix * Overall_Matrix;
 			Overall_Matrix = One_Interface_matrix * Overall_Matrix;
-			out_file << "Overall:" << Overall_Matrix << std::endl;
+			//out_file << "Overall:" << Overall_Matrix << std::endl;
 			{
 				double transmission = 0;
 				if( partial_matrix( 1, 1 ) != 0. )
 					transmission = current_n.real() / previous_n.real() * std::norm( (partial_matrix( 0, 0 ) - partial_matrix( 0, 1 ) * partial_matrix( 1, 0 ) / partial_matrix( 1, 1 )) );
-				out_file << "Partial Transmission:" << transmission << std::endl;
+				//out_file << "Partial Transmission:" << transmission << std::endl;
 				double reflection = 0;
 				if( partial_matrix( 1, 1 ) != 0. )
 					reflection = std::norm( partial_matrix( 1, 0 ) / partial_matrix( 1, 1 ) );
-				out_file << "Reflection:" << reflection << std::endl;
-				out_file << "Absorption:" << 1. - reflection - transmission << std::endl;
+				//out_file << "Reflection:" << reflection << std::endl;
+				//out_file << "Absorption:" << 1. - reflection - transmission << std::endl;
 			}
 			{
 				double transmission = 0;
 				if( Overall_Matrix( 1, 1 ) != 0. )
 					transmission = current_n.real() / previous_n.real() * std::norm( (Overall_Matrix( 0, 0 ) - Overall_Matrix( 0, 1 ) * Overall_Matrix( 1, 0 ) / Overall_Matrix( 1, 1 )) );
-				out_file << "After M Transmission:" << transmission << std::endl;
+				//out_file << "After M Transmission:" << transmission << std::endl;
 			}
 			previous_n = current_n;
 			//cx_double last_exponent = { k_current.real() * thickness, k_current.imag() * thickness };
@@ -136,16 +155,16 @@ std::vector<double> Thin_Film_Interference::Get_Expected_Transmission( std::vect
 			A_matrix /= 2.;
 
 			Overall_Matrix = A_matrix * Overall_Matrix;
-			out_file << "A:" << A_matrix << std::endl;
+			//out_file << "A:" << A_matrix << std::endl;
 		}
-		auto debug00 = Overall_Matrix( 0, 0 );
-		auto debug01 = Overall_Matrix( 0, 1 );
-		auto debug10 = Overall_Matrix( 1, 0 );
-		auto debug11 = Overall_Matrix( 1, 1 );
-		auto debug_numerator = Overall_Matrix( 0, 1 ) * Overall_Matrix( 1, 0 );
-		auto debug_right_side = Overall_Matrix( 0, 1 ) * Overall_Matrix( 1, 0 ) / Overall_Matrix( 1, 1 );
-		auto debug_t = Overall_Matrix( 0, 0 ) - Overall_Matrix( 0, 1 ) * Overall_Matrix( 1, 0 ) / Overall_Matrix( 1, 1 );
-		auto debug_r = Overall_Matrix( 1, 0 ) / Overall_Matrix( 1, 1 );
+		//auto debug00 = Overall_Matrix( 0, 0 );
+		//auto debug01 = Overall_Matrix( 0, 1 );
+		//auto debug10 = Overall_Matrix( 1, 0 );
+		//auto debug11 = Overall_Matrix( 1, 1 );
+		//auto debug_numerator = Overall_Matrix( 0, 1 ) * Overall_Matrix( 1, 0 );
+		//auto debug_right_side = Overall_Matrix( 0, 1 ) * Overall_Matrix( 1, 0 ) / Overall_Matrix( 1, 1 );
+		//auto debug_t = Overall_Matrix( 0, 0 ) - Overall_Matrix( 0, 1 ) * Overall_Matrix( 1, 0 ) / Overall_Matrix( 1, 1 );
+		//auto debug_r = Overall_Matrix( 1, 0 ) / Overall_Matrix( 1, 1 );
 
 		double transmission = 0;
 		if( Overall_Matrix( 1, 1 ) != 0. )
@@ -154,31 +173,42 @@ std::vector<double> Thin_Film_Interference::Get_Expected_Transmission( std::vect
 		if( Overall_Matrix( 1, 1 ) != 0. )
 			reflection = std::norm( Overall_Matrix( 1, 0 ) / Overall_Matrix( 1, 1 ) );
 		output.push_back( transmission );
-		out_file << Overall_Matrix << std::endl;
-		out_file << "Wavelength:" << wavelength << std::endl;
-		out_file << "Final Transmission:" << transmission << std::endl;
-		out_file << "Final Reflection:" << reflection << std::endl;
-		out_file << "Final Absorption:" << 1. - reflection - transmission << std::endl;
-		out_file.flush();
+		//out_file << Overall_Matrix << std::endl;
+		//out_file << "Wavelength:" << wavelength << std::endl;
+		//out_file << "Final Transmission:" << transmission << std::endl;
+		//out_file << "Final Reflection:" << reflection << std::endl;
+		//out_file << "Final Absorption:" << 1. - reflection - transmission << std::endl;
+		//out_file.flush();
 	}
 
 	return output;
 }
 
+std::vector<Material_Layer> Thin_Film_Interference::Get_Best_Fit( double temperature_k,
+																  const std::vector<Material_Layer> & layers,
+																  const Wavelength_Array & wavelengths,
+																  const Transmission_Array & transmissions )
+{
+	return std::vector<Material_Layer>();
+}
+
 Material_To_Refraction_Component Thin_Film_Interference::Attenuation_Coefficient{ Load_Index_Of_Refraction_Files( "./Refractive_Index", "_k" ) };
 Material_To_Refraction_Component Thin_Film_Interference::Refraction_Coefficient{ Load_Index_Of_Refraction_Files( "./Refractive_Index", "_n" ) };
 
-void Add_MCT_Index( Material_To_Refraction_Component & full_list, const char* indicator, double temperature_k, double composition )
+arma::cx_double MCT_Index( double wavelength, double temperature_k, double composition )
 {
+	double n;
 	double x = composition;
-	if( indicator == "_n" )
 	{
 		double A1 = 13.173 - 9.852 * x + 2.909 * x * x + 0.0001 * (300 - temperature_k);
 		double B1 = 0.83 - 0.246 * x - 0.0961 * x * x + 8 * 0.00001 * (300 - temperature_k);
 		double C1 = 6.706 - 14.437 * x + 8.531 * x * x + 7 * 0.00001 * (300 - temperature_k);
 		double D1 = 1.953 * 0.00001 - 0.00128 * x + 1.853 * 0.00001 * x * x;
+
+		n = std::sqrt( A1 + B1 / (1 - (C1 / wavelength) * (C1 / wavelength)) + D1 * wavelength * wavelength );
 	}
-	else if( indicator == "_k" )
+
+	double k;
 	{
 		double T0 = 61.9;  // Initial parameter is 81.9.Adjusted.
 		double W = T0 + temperature_k;
@@ -187,7 +217,26 @@ void Add_MCT_Index( Material_To_Refraction_Component & full_list, const char* in
 		double alpha0 = std::exp( 53.61 * x - 18.88 );
 		double beta = 3.109E5 * std::sqrt( (1 + x) / W );  // Initial parameter is 2.109E5.Adjusted.
 		double Eg = E0 + (6.29E-2 + 7.68E-4 * temperature_k) * ((1 - 2.14 * x) / (1 + x));
+
+		double E = 4.13566743 * 3 / 10 / wavelength;
+		double ab1 = alpha0 * std::exp( sigma * (E - E0) / W );
+		double ab2 = 0;
+		if( E >= Eg )
+			ab2 = beta * std::sqrt( E - Eg );
+
+		//if( ab1 < crossover_a && ab2 < crossover_a )
+		//	return ab1 / 4 / datum::pi * wavelength / 10000;
+		//else
+		//{
+		//	if( ab2 != 0 )
+		//		return ab2 / 4 / datum::pi * wavelength / 10000;
+		//	else
+		//		return ab1 / 4 / datum::pi * wavelength / 10000;
+		//}
+		k = ab2 / 4 / datum::pi * wavelength / 10000;
 	}
+
+	return arma::cx_double{ n, k };
 }
 
 Material_To_Refraction_Component Load_Index_Of_Refraction_Files( const fs::path & directory, const char* indicator )
@@ -210,8 +259,6 @@ Material_To_Refraction_Component Load_Index_Of_Refraction_Files( const fs::path 
 				full_list[ material.second ] = Load_XY_CSV_Data( file.path() );
 		}
 	}
-
-	//Add_MCT_Index( full_list, indicator );
 
 	return full_list;
 }

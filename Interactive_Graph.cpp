@@ -1,4 +1,4 @@
-#include "Interactive_Graph.h"
+﻿#include "Interactive_Graph.h"
 
 #include <algorithm>
 
@@ -47,12 +47,38 @@ void Interactive_Graph::Initialize_Graph()
 	connect( this, &QCustomPlot::legendDoubleClick, this, &Interactive_Graph::legendDoubleClick );
 	connect( title, &QCPTextElement::doubleClicked, this, &Interactive_Graph::titleDoubleClick );
 
-	// connect slot that shows a message in the status bar when a graph is clicked:
-	connect( this, SIGNAL( plottableClick( QCPAbstractPlottable*, int, QMouseEvent* ) ), this, SLOT( graphClicked( QCPAbstractPlottable*, int ) ) );
+	//// connect slot that shows a message in the status bar when a graph is clicked:
+	//connect( this, SIGNAL( plottableClick( QCPAbstractPlottable*, int, QMouseEvent* ) ), this, SLOT( graphClicked( QCPAbstractPlottable*, int ) ) );
 
 	// setup policy and connect slot for context menu popup:
 	this->setContextMenuPolicy( Qt::CustomContextMenu );
 	//connect( this, &QWidget::customContextMenuRequested, this, &Interactive_Graph::graphContextMenuRequest );
+
+	this->menu_functions.push_back( [this]( Interactive_Graph* graph, QMenu* menu, QPoint pos )
+	{
+		if( graph->xAxis->selectTest( pos, false ) >= 0 ) // general context menu on graphs requested
+		{
+			//menu->addAction( "Add random graph", this, SLOT( addRandomGraph() ) );
+			menu->addAction( "Change to Wavelength", [this, graph]
+			{
+				this->x_display_method = []( double x ) { return 10000.0 / x; };
+				graph->xAxis->setLabel( "Wavelength (" + QString( QChar( 0x03BC ) ) + "m)" ); // 0x03BC is μ
+				this->RegraphAll();
+			} );
+			menu->addAction( "Change to Wave Number", [this, graph]
+			{
+				this->x_display_method = []( double x ) { return x; };
+				graph->xAxis->setLabel( "Wave Number (cm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + ")" ); // cm⁻¹
+				this->RegraphAll();
+			} );
+			menu->addAction( "Change to Energy", [this, graph]
+			{
+				this->x_display_method = []( double x ) { return x * 1.239842e-4; };
+				graph->xAxis->setLabel( "Photon Energy (eV)" );
+				this->RegraphAll();
+			} );
+		}
+	} );
 }
 
 void Interactive_Graph::titleDoubleClick( QMouseEvent* event )
@@ -183,17 +209,27 @@ void Interactive_Graph::refitGraphs()
 
 void Interactive_Graph::removeSelectedGraph()
 {
-	if( this->selectedGraphs().size() > 0 )
+	if( this->selectedGraphs().size() == 0 )
+		return;
+
+	QCPGraph* selected_graph = this->selectedGraphs().first();
+	for( std::map< QString, Single_Graph >::iterator element = remembered_graphs.begin();
+			element != remembered_graphs.end(); ++element )
 	{
-		QCPGraph* selected_graph = this->selectedGraphs().first();
-		this->removeGraph( selected_graph );
-		this->replot();
+		if( element->second.graph_pointer == selected_graph )
+		{
+			remembered_graphs.erase( element );
+			break;
+		}
 	}
+	this->removeGraph( selected_graph );
+	this->replot();
 }
 
 void Interactive_Graph::removeAllGraphs()
 {
 	this->clearGraphs();
+	this->remembered_graphs.clear();
 	this->replot();
 }
 
@@ -315,20 +351,52 @@ void Interactive_Graph::graphClicked( QCPAbstractPlottable *plottable, int dataI
 	//ui.statusBar->showMessage( message, 2500 );
 }
 
-QCPGraph* Interactive_Graph::Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name )
+QCPGraph* Interactive_Graph::Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title, bool allow_y_scaling )
 {
 	if( x_data.size() != y_data.size() )
 		throw "Trying to graph different x and y size arrays";
 
+	auto existing_graph = remembered_graphs.find( measurement_name );
+	if( existing_graph != remembered_graphs.end() )
+	{
+		Single_Graph & current_info = existing_graph->second;
+		if( current_info.x_data.size() == x_data.size() &&
+			current_info.y_data.size() == y_data.size() )
+		{
+			current_info.x_data = x_data;
+			current_info.y_data = y_data;
+			if( allow_y_scaling )
+			{
+				for( int i = 0; i < y_data.size(); i++ )
+					y_data[ i ] = y_display_method( x_data[ i ], y_data[ i ] ); // Do the y stuff first to not screw up x data for y_display_method
+			}
+			for( double & x : x_data )
+				x = x_display_method( x );
+			current_info.graph_pointer->setData( x_data, y_data );
+		}
+
+		this->replot();
+		return current_info.graph_pointer;
+	}
+
 	// Add graph
 	{
-		double previous_upper_limit = this->yAxis->range().upper;
+		//double previous_upper_limit = this->yAxis->range().upper;
 		static int color_index = 0;
 		bool this_is_the_first_graph = this->graphCount() == 0;
 		QCPGraph* current_graph = this->addGraph();
 		current_graph->setName( measurement_name );
 
 		//this->graph()->setName( meta_data.graph_title );
+		// Remember data before changing it at all
+		remembered_graphs[ measurement_name ] = Single_Graph{ x_data, y_data, nullptr, allow_y_scaling };
+		if( allow_y_scaling )
+		{
+			for( int i = 0; i < y_data.size(); i++ )
+				y_data[ i ] = y_display_method( x_data[ i ], y_data[ i ] ); // Do the y stuff first to not screw up x data for y_display_method
+		}
+		for( double & x : x_data )
+			x = x_display_method( x );
 		this->graph()->setData( x_data, y_data );
 		this->graph()->setLineStyle( QCPGraph::lsLine );// (QCPGraph::LineStyle)(rand() % 5 + 1) );
 																 //if( rand() % 100 > 50 )
@@ -353,7 +421,36 @@ QCPGraph* Interactive_Graph::Graph( QVector<double> x_data, QVector<double> y_da
 		//this->yAxis->setRange( -10, 110 );
 		this->replot();
 
+		remembered_graphs[ measurement_name ].graph_pointer = current_graph;
 		return current_graph;
+	}
+}
+
+void Interactive_Graph::RegraphAll()
+{
+	//for( int i = 0; i < ui.customPlot->graphCount(); i++ )
+	for( const auto &[ name, graph ] : remembered_graphs )
+	{
+		//QCPGraph* graph = ui.customPlot->graph( i );
+		//QString measurement_id = graph->name();
+
+		//QVector<double> x_data, y_data;
+		//Grab_SQL_Data_From_Measurement_ID( measurement_id, x_data, y_data );
+
+		QVector<double> x_data{ graph.x_data };
+		QVector<double> y_data{ graph.y_data };
+		if( graph.allow_y_scaling )
+		{
+			for( int i = 0; i < y_data.size(); i++ )
+				y_data[ i ] = y_display_method( x_data[ i ], y_data[ i ] ); // Do the y stuff first to not screw up x data for y_display_method
+		}
+		for( double & x : x_data )
+			x = x_display_method( x );
+
+		if( x_data.size() != y_data.size() )
+			throw "Trying to graph different x and y size arrays";
+
+		this->UpdateGraph( graph.graph_pointer, x_data, y_data );
 	}
 }
 
