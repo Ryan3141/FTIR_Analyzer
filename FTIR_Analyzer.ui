@@ -99,7 +99,7 @@
          </layout>
         </item>
         <item>
-         <widget class="QTreeWidget" name="treeWidget">
+         <widget class="SQL_Tree_Widget" name="treeWidget">
           <property name="sizePolicy">
            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
             <horstretch>0</horstretch>
@@ -609,6 +609,11 @@
    <class>Layer_Builder</class>
    <extends>QListWidget</extends>
    <header>Layer_Builder.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SQL_Tree_Widget</class>
+   <extends>QTreeWidget</extends>
+   <header>SQL_Tree_Widget.h</header>
   </customwidget>
  </customwidgets>
  <resources>

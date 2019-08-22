@@ -5,6 +5,7 @@
 #include <vector>
 #include <math.h>
 
+#include "SQL_Tree_Widget.h"
 #include "Thin_Film_Interference.h"
 
 using namespace std;
@@ -58,11 +59,16 @@ FTIR_Analyzer::FTIR_Analyzer( QWidget *parent )
 
 	//ui.treeWidget->setItemDelegate( new GridDelegate( ui.treeWidget ) );
 	Initialize_Tree_Table();
-
-	connect( ui.refresh_commandLinkButton, &QCommandLinkButton::clicked, this, &FTIR_Analyzer::Reinitialize_Tree_Table );
-	connect( ui.sqlUser_lineEdit, &QLineEdit::returnPressed, this, &FTIR_Analyzer::Reinitialize_Tree_Table );
-	connect( ui.filter_lineEdit, &QLineEdit::textEdited, this, &FTIR_Analyzer::Reinitialize_Tree_Table );
-	connect( ui.fitGraph_pushButton, &QPushButton::clicked, this, &FTIR_Analyzer::Run_Fit );
+	// QMetaObject::invokeMethod( obj, [] { ... } );
+	connect( ui.refresh_commandLinkButton, &QCommandLinkButton::clicked,
+			[this]{	ui.treeWidget->Repoll_SQL( this->sql_db, this->ui.sqlUser_lineEdit->text() );
+					ui.treeWidget->Refilter( this->ui.filter_lineEdit->text() ); } );
+	connect( ui.sqlUser_lineEdit, &QLineEdit::returnPressed,
+			[this]{	ui.treeWidget->Repoll_SQL( this->sql_db, this->ui.sqlUser_lineEdit->text() );
+					ui.treeWidget->Refilter( this->ui.filter_lineEdit->text() ); } );
+	connect( ui.filter_lineEdit, &QLineEdit::textEdited, ui.treeWidget, [this] { ui.treeWidget->Refilter( this->ui.filter_lineEdit->text() ); } );
+	//connect( ui.fitGraph_pushButton, &QPushButton::clicked, this, &FTIR_Analyzer::Run_Fit );
+	connect( ui.fitGraph_pushButton, &QPushButton::clicked, this, &FTIR_Analyzer::Load_From_SPA );
 
 	Initialize_Graph();
 	
@@ -109,7 +115,9 @@ void FTIR_Analyzer::Graph_Simulation( const std::vector<Material_Layer> & layers
 
 	x_data = 1 / (100. * x_data);
 	using stdvec = std::vector<double>;
-	this->Graph( "Test", QVector<double>::fromStdVector( arma::conv_to<stdvec>::from( x_data ) ), QVector<double>::fromStdVector( y_data ), "Simulation", false );
+	//this->Graph( "Test", QVector<double>::fromStdVector( arma::conv_to<stdvec>::from( x_data ) ), QVector<double>::fromStdVector( y_data ), "Simulation", false );
+	QCPGraph* current_graph = ui.customPlot->Graph( QVector<double>::fromStdVector( arma::conv_to<stdvec>::from( x_data ) ), QVector<double>::fromStdVector( y_data ), "Test", "Simulation", false );
+	ui.customPlot->replot();
 }
 
 void FTIR_Analyzer::Run_Fit()
@@ -131,7 +139,7 @@ static QVector<double> Find_Zero_Crossings( QVector<double> x_data, QVector<doub
 	return output;
 }
 
-std::map<QString, QString> FTIR_Analyzer::Grab_SQL_Metadata_From_Measurement( const QString & measurement_id )
+std::map<QString, QString> FTIR_Analyzer::Grab_SQL_Metadata_From_Measurement( const QString & measurement_id ) const
 {
 	QSqlQuery query( this->sql_db );
 	QStringList what_to_collect{ "sample_name", "time", "temperature_in_k", "bias_in_v" };
@@ -212,13 +220,16 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 	menu->setAttribute( Qt::WA_DeleteOnClose );
 	auto selected = ui.treeWidget->selectedItems();
 	auto actually_clicked = ui.treeWidget->itemAt( pos );
-	if( selected.size() == 1 && this->Get_Bottom_Children_Elements_Under( selected[0] ).size() == 1 ) // context menu on legend requested
+	if( selected.size() == 1 && ui.treeWidget->Get_Bottom_Children_Elements_Under( selected[0] ).size() == 1 ) // context menu on legend requested
 	{
 		menu->addAction( "Set As Background", [this, selected]
 		{
 			QString measurement_for_background = selected[ 0 ]->text( selected[ 0 ]->columnCount() - 1 );
-			QVector<double> x_data, y_data;
-			Grab_SQL_Data_From_Measurement_ID( measurement_for_background, x_data, y_data );
+			ID_To_XY_Data data_per_id;
+			Grab_SQL_Data_From_Measurement_IDs( QStringList{ measurement_for_background }, data_per_id );
+			QVector<double> & x_data = std::get<0>( data_per_id[ measurement_for_background ] );
+			QVector<double> & y_data = std::get<1>( data_per_id[ measurement_for_background ] );
+
 			ui.customPlot->y_display_method = [x_data, y_data]( double x, double y )
 			{
 				//return Divide_Data_Sets( x, y, x_data, y_data );
@@ -241,7 +252,7 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 	{
 		for( const auto & tree_item : selected )
 		{
-			vector<const QTreeWidgetItem*> things_to_graph = this->Get_Bottom_Children_Elements_Under( tree_item );
+			vector<const QTreeWidgetItem*> things_to_graph = ui.treeWidget->Get_Bottom_Children_Elements_Under( tree_item );
 
 			for( const QTreeWidgetItem* x : things_to_graph )
 			{
@@ -255,7 +266,7 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 		vector<const QTreeWidgetItem*> all_things_to_save;
 		for( const auto & tree_item : selected )
 		{
-			vector<const QTreeWidgetItem*> things_to_save = this->Get_Bottom_Children_Elements_Under( tree_item );
+			vector<const QTreeWidgetItem*> things_to_save = ui.treeWidget->Get_Bottom_Children_Elements_Under( tree_item );
 
 			all_things_to_save.insert( all_things_to_save.end(), things_to_save.begin(), things_to_save.end() );
 		}
@@ -266,27 +277,63 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 	menu->popup( ui.treeWidget->mapToGlobal( pos ) );
 }
 
+void FTIR_Analyzer::Load_From_SPA()
+{
+	QString file_name = QFileDialog::getOpenFileName( this, tr( "Load Data" ), QString(), tr( "CSV File (*.spa)" ) );
+
+	if( file_name.isNull() )
+	{
+		qDebug() << "Error reading " + file_name + "\n";
+		return;
+	}
+	std::ifstream in_file( file_name.toStdString(), ios::binary | ios::in );
+
+	std::uint32_t data_location_in_file;
+	in_file.seekg( 0x172, ios::beg );
+	in_file.read( (char*)&data_location_in_file, sizeof( data_location_in_file ) );
+
+	std::uint32_t amount_of_data;
+	in_file.seekg( 0x176, ios::beg );
+	in_file.read( (char*)&amount_of_data, sizeof( amount_of_data ) );
+	const QVector<double> x_data;
+	const QVector<double> y_data;
+
+	std::vector<float> all_data( amount_of_data / 4 );
+	in_file.seekg( data_location_in_file, ios::beg );
+	in_file.read( (char*)&all_data[0], amount_of_data );
+	std::ofstream test( "test.txt" );
+	for( float data : all_data )
+	{
+		test << data << "\n";
+	}
+
+	//this->Graph( "", x_data, y_data, file_name, false );
+}
+
 void FTIR_Analyzer::Save_To_CSV( const std::vector<const QTreeWidgetItem*> & things_to_save )
 {
-	QFileInfo file_name = QFileDialog::getSaveFileName( this,
-														tr( "Save Data" ), QString(), tr( "CSV File (*.csv)" ) );//;; JPG File (*.jpg);; BMP File (*.bmp);; PDF File (*.pdf)" ) );
+	QFileInfo file_name = QFileDialog::getSaveFileName( this, tr( "Save Data" ), QString(), tr( "CSV File (*.csv)" ) );//;; JPG File (*.jpg);; BMP File (*.bmp);; PDF File (*.pdf)" ) );
 
-	if( file_name.suffix().toLower() == "csv" )
+	//if( file_name.suffix().toLower() == "csv" )
 	{
-		std::ofstream out_file( file_name.absoluteFilePath().toStdString() );
 		int measurment_id_column = ui.treeWidget->columnCount() - 1;
 
 		QVector<double> repeating_x_data;
+		std::vector< std::vector<std::string> > data_before_transpose;
+		int longest_y_data = 0;
+		QStringList measurements_to_graph;
 		for( const QTreeWidgetItem* tree_item : things_to_save )
 		{
 			QString measurement_to_graph = tree_item->text( measurment_id_column );
+			measurements_to_graph.push_back( measurement_to_graph );
 
 			std::map<QString, QString> meta_data = Grab_SQL_Metadata_From_Measurement( measurement_to_graph );
 			QString info = meta_data[ "sample_name" ] + " " + meta_data[ "temperature_in_k" ] + "K";
 
-
-			QVector<double> x_data, y_data;
-			Grab_SQL_Data_From_Measurement_ID( measurement_to_graph, x_data, y_data );
+			ID_To_XY_Data data_per_id;
+			Grab_SQL_Data_From_Measurement_IDs( measurements_to_graph, data_per_id );
+			QVector<double> & x_data = std::get<0>( data_per_id[ measurement_to_graph ] );
+			QVector<double> & y_data = std::get<1>( data_per_id[ measurement_to_graph ] );
 
 			bool x_data_is_repeating = repeating_x_data.size() == x_data.size();
 			if( x_data_is_repeating )
@@ -306,15 +353,33 @@ void FTIR_Analyzer::Save_To_CSV( const std::vector<const QTreeWidgetItem*> & thi
 
 			if( !x_data_is_repeating )
 			{
-				out_file << "Wavenumber";
+				data_before_transpose.resize( data_before_transpose.size() + 1 );
+				vector<string> & current_line = data_before_transpose.back();
+				current_line.push_back( "Wavenumber" );
 				for( double x : x_data )
-					out_file << "," << x;
-				out_file << "\n";
+					current_line.push_back( std::to_string( x ) );
 			}
 
-			out_file << info.toStdString();
-			for( int i = 0; i < y_data.size(); i++ )
-				out_file << "," << ui.customPlot->y_display_method( x_data[ i ], y_data[ i ] );
+			{
+				data_before_transpose.resize( data_before_transpose.size() + 1 );
+				vector<string> & current_line = data_before_transpose.back();
+				current_line.push_back( info.toStdString() );
+				longest_y_data = std::max( longest_y_data, y_data.size() );
+				for( int i = 0; i < y_data.size(); i++ )
+					current_line.push_back( std::to_string( ui.customPlot->y_display_method( x_data[ i ], y_data[ i ] ) ) );
+			}
+		}
+
+
+		std::ofstream out_file( file_name.absoluteFilePath().toStdString() );
+		for( int j = 0; j < longest_y_data; j++ )
+		{
+			for( const auto & data_group : data_before_transpose )
+			{
+				if( data_group.size() > j )
+					out_file << data_group[ j ];
+				out_file << ",";
+			}
 			out_file << "\n";
 		}
 	}
@@ -386,89 +451,17 @@ void FTIR_Analyzer::Initialize_SQL()
 
 }
 
-void FTIR_Analyzer::Recursive_Tree_Table_Build( const QStringList & what_to_collect, QTreeWidgetItem* parent_tree, int current_collectable_i, QStringList filters )
-{
-	if( current_collectable_i == what_to_collect.size() )
-		return;
-
-	QSqlQuery query( sql_db );
-	QString querey_string = QString( "SELECT DISTINCT %1 FROM ftir_measurements" ).arg( what_to_collect[ current_collectable_i ] );
-	if( !filters.empty() )
-	{
-		QString requirements = filters.join( " AND " );
-		querey_string += QString( " WHERE %1" ).arg( requirements );
-	}
-	query.prepare( querey_string );
-
-	if( !query.exec() )
-	{
-		qDebug() << "Error pulling data from ftir_measurments: "
-			<< query.lastError();
-		return;
-	}
-
-	int numberOfRows = 0;
-	if( query.last() )
-	{
-		numberOfRows = query.at() + 1;
-		query.first();
-		query.previous();
-	}
-
-	while( query.next() )
-	{
-		QString current_value = query.value( 0 ).toString();
-		QStringList new_filters( filters );
-		if( query.value( 0 ).isNull() )
-			new_filters.append( QString( "%1 IS NULL" ).arg( what_to_collect[ current_collectable_i ] ) );
-		else
-			new_filters.append( QString( "%1 = \"%2\"" ).arg( what_to_collect[ current_collectable_i ], current_value ) );
-		QTreeWidgetItem* new_tree_branch = parent_tree; // Only add a new breakout for the first one, and if more than 1 child
-		if( numberOfRows > 1 || current_collectable_i == 0 )
-		{
-			new_tree_branch = new QTreeWidgetItem( parent_tree );
-			if( !(current_value.size() > 1) )
-				int i = 0;
-		}
-		new_tree_branch->setText( current_collectable_i, current_value );
-		Recursive_Tree_Table_Build( what_to_collect, new_tree_branch, current_collectable_i + 1, new_filters );
-	}
-
-}
-
-void FTIR_Analyzer::Reinitialize_Tree_Table()
-{
-	if( !sql_db.isOpen() )
-		return;
-
-	ui.treeWidget->clear();
-	ui.treeWidget->setSizeAdjustPolicy( QAbstractScrollArea::AdjustToContents );
-
-	QString user = ui.sqlUser_lineEdit->text();
-
-	QSqlQuery query( sql_db );
-	QStringList header_titles{ "Sample Name", "Date", "Temperature (K)", "Bias (V)", "Time of Day", "measurement_id" };
-	ui.treeWidget->setHeaderLabels( header_titles );
-	ui.treeWidget->hideColumn( header_titles.size() - 1 );
-	QStringList what_to_collect{ "sample_name", "date(time)", "temperature_in_k", "bias_in_v", "time(time)", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
-																																 //QStringList sql_queries{ "SELECT DISTINCT sample_name FROM ftir_measurements",
-																																 //						 "SELECT DISTINCT date(time) FROM ftir_measurements WHERE sample_name is " };
-
-	QString first_filter = "sample_name LIKE \"%" + ui.filter_lineEdit->text() + "%\"";
-	QString user_filter = "user = \"" + user + "\"";
-	//QTreeWidgetItem* tree_item = new QTreeWidgetItem( ui.treeWidget );
-	Recursive_Tree_Table_Build( what_to_collect, ui.treeWidget->invisibleRootItem(), 0, { first_filter, user_filter } );
-	for( int i = 0; i < header_titles.size(); i++ )
-		ui.treeWidget->resizeColumnToContents( i );
-}
-
 void FTIR_Analyzer::Initialize_Tree_Table()
 {
-	Reinitialize_Tree_Table();
+	QString user = ui.sqlUser_lineEdit->text();
+	ui.treeWidget->Repoll_SQL( this->sql_db, user );
 
-	connect( ui.treeWidget, &QTreeWidget::itemDoubleClicked, [this]( QTreeWidgetItem* tree_item, int column )
+	QString filter = ui.filter_lineEdit->text();
+	ui.treeWidget->Refilter( filter );
+
+	connect( ui.treeWidget, &SQL_Tree_Widget::itemDoubleClicked, [this]( QTreeWidgetItem* tree_item, int column )
 	{
-		vector<const QTreeWidgetItem*> things_to_graph = this->Get_Bottom_Children_Elements_Under( tree_item );
+		vector<const QTreeWidgetItem*> things_to_graph = ui.treeWidget->Get_Bottom_Children_Elements_Under( tree_item );
 
 		for( const QTreeWidgetItem* x : things_to_graph )
 		{
@@ -494,39 +487,27 @@ void FTIR_Analyzer::Initialize_Tree_Table()
 void FTIR_Analyzer::Graph_Tree_Node( const QTreeWidgetItem* tree_item )
 {
 	int column = ui.treeWidget->columnCount() - 1;
-	QString measurement_to_graph = tree_item->text( column );
+	QStringList measurements_to_graph{ tree_item->text( column ) };
 
 	//QStringList graph_label;
 	//for( int i = 0; i < ui.sampleList_tableWidget->columnCount() - 1; i++ )
 	//	graph_label.push_back( ui.sampleList_tableWidget->item( row, i )->text() );
 
 	QVector<double> x_data, y_data;
-	Grab_SQL_Data_From_Measurement_ID( measurement_to_graph, x_data, y_data );
-	this->Graph( measurement_to_graph, x_data, y_data );
-}
+	ID_To_XY_Data data_per_id;
+	Grab_SQL_Data_From_Measurement_IDs( measurements_to_graph, data_per_id );
 
-vector<const QTreeWidgetItem*> FTIR_Analyzer::Get_Bottom_Children_Elements_Under( const QTreeWidgetItem* tree_item ) const
-{
-	int number_of_children = tree_item->childCount();
-	if( number_of_children == 0 )
-		return { tree_item };
-
-	vector<const QTreeWidgetItem*> lowest_level_children;
-
-	for( int i = 0; i < number_of_children; i++ )
+	for( QString measurement_id : measurements_to_graph )
 	{
-		vector<const QTreeWidgetItem*> i_lowest_level_children = Get_Bottom_Children_Elements_Under( tree_item->child( i ) );
-		lowest_level_children.insert( lowest_level_children.end(), i_lowest_level_children.begin(), i_lowest_level_children.end() );
+		this->Graph( measurement_id, std::get<0>( data_per_id[ measurement_id ] ), std::get<1>( data_per_id[ measurement_id ] ) );
 	}
-
-	return lowest_level_children;
 }
 
-void FTIR_Analyzer::Grab_SQL_Data_From_Measurement_ID( QString measurement_id, QVector<double> & x_data, QVector<double> & y_data )
+void FTIR_Analyzer::Grab_SQL_Data_From_Measurement_IDs( const QStringList & measurement_ids, ID_To_XY_Data & data_per_id )
 {
 	// Grab SQL data
 	QSqlQuery query( sql_db );
-	query.prepare( "SELECT wavenumber,intensity FROM raw_ftir_data WHERE measurement_id = \"" + measurement_id + '"' );
+	query.prepare( "SELECT measurement_id,wavenumber,intensity FROM ftir_raw_data WHERE measurement_id=\"" + measurement_ids.join( "\" OR measurment_id=\"" ) + "\" ORDER BY measurement_id, wavenumber ASC" );
 	if( !query.exec() )
 	{
 		qDebug() << "Error pulling data from ftir_measurments: "
@@ -536,8 +517,10 @@ void FTIR_Analyzer::Grab_SQL_Data_From_Measurement_ID( QString measurement_id, Q
 
 	while( query.next() )
 	{
-		x_data.push_back( query.value( 0 ).toDouble() );
-		y_data.push_back( query.value( 1 ).toDouble() );
+		QString measurement_id = query.value( 0 ).toString();
+		XY_Data & one_measurement = data_per_id[ measurement_id ];
+		std::get<0>( one_measurement ).push_back( query.value( 1 ).toDouble() );
+		std::get<1>( one_measurement ).push_back( query.value( 2 ).toDouble() );
 	}
 }
 
@@ -545,6 +528,7 @@ void FTIR_Analyzer::Grab_SQL_Data_From_Measurement_ID( QString measurement_id, Q
 void FTIR_Analyzer::Graph( QString measurement_id, const QVector<double> & x_data, const QVector<double> & y_data, QString data_title, bool allow_y_scaling )
 {
 	QCPGraph* current_graph = ui.customPlot->Graph( x_data, y_data, measurement_id, data_title, allow_y_scaling );
+	ui.customPlot->replot();
 }
 
 void FTIR_Analyzer::Regraph_All_Plots()

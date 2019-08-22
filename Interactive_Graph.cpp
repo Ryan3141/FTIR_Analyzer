@@ -375,7 +375,7 @@ QCPGraph* Interactive_Graph::Graph( QVector<double> x_data, QVector<double> y_da
 			current_info.graph_pointer->setData( x_data, y_data );
 		}
 
-		this->replot();
+		//this->replot();
 		return current_info.graph_pointer;
 	}
 
@@ -385,7 +385,10 @@ QCPGraph* Interactive_Graph::Graph( QVector<double> x_data, QVector<double> y_da
 		static int color_index = 0;
 		bool this_is_the_first_graph = this->graphCount() == 0;
 		QCPGraph* current_graph = this->addGraph();
-		current_graph->setName( measurement_name );
+		if( graph_title.isEmpty() )
+			current_graph->setName( measurement_name );
+		else
+			current_graph->setName( graph_title );
 
 		//this->graph()->setName( meta_data.graph_title );
 		// Remember data before changing it at all
@@ -416,7 +419,10 @@ QCPGraph* Interactive_Graph::Graph( QVector<double> x_data, QVector<double> y_da
 			this->yAxis->setRangeLower( 0 );
 			double upper = this->yAxis->range().upper;
 			//this->yAxis->setRangeUpper( std::max( previous_upper_limit, std::min( upper, 1. ) ) );
-			this->yAxis->setRangeUpper( std::min( upper, 1. ) );
+			if( allow_y_scaling )
+				this->yAxis->setRangeUpper( std::min( upper, 1. ) );
+			else
+				this->yAxis->setRangeUpper( upper );
 		}
 		//this->yAxis->setRange( -10, 110 );
 		this->replot();

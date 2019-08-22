@@ -209,6 +209,35 @@ arma::cx_double MCT_Index( double wavelength, double temperature_k, double compo
 	}
 
 	double k;
+	//std::ofstream save_file( "Look at crossover.txt" );
+	//for( double x : arma::linspace( 0.0, 1.0, 1001 ) )
+	if( false )
+	{
+		double T0 = 61.9;  // Initial parameter is 81.9.Adjusted.
+		double W = T0 + temperature_k;
+		double E0 = -0.3424 + 1.838 * x + 0.148 * x * x * x * x;
+		double sigma = 3.267E4 * (1 + x);
+		double alpha0 = std::exp( 53.61 * x - 18.88 );
+		double beta = 3.109E5 * std::sqrt( (1 + x) / W );  // Initial parameter is 2.109E5.Adjusted.
+		double Eg = E0 + (6.29E-2 + 7.68E-4 * temperature_k) * ((1 - 2.14 * x) / (1 + x));
+
+		double E = 4.13566743 * 3 / 10 / wavelength;
+		double ab1 = alpha0 * std::exp( sigma * (E - E0) / W );
+		double ab2 = 0;
+		if( E >= Eg )
+			ab2 = beta * std::sqrt( E - Eg );
+
+		//if( ab1 < crossover_a && ab2 < crossover_a )
+		//	return ab1 / 4 / datum::pi * wavelength / 10000;
+		//else
+		//{
+		//	if( ab2 != 0 )
+		//		return ab2 / 4 / datum::pi * wavelength / 10000;
+		//	else
+		//		return ab1 / 4 / datum::pi * wavelength / 10000;
+		//}
+	}
+
 	{
 		double T0 = 61.9;  // Initial parameter is 81.9.Adjusted.
 		double W = T0 + temperature_k;
@@ -242,7 +271,8 @@ arma::cx_double MCT_Index( double wavelength, double temperature_k, double compo
 Material_To_Refraction_Component Load_Index_Of_Refraction_Files( const fs::path & directory, const char* indicator )
 {
 	if( !fs::exists( directory ) || !fs::is_directory( directory ) )
-		throw "Cannot access directory: " + directory.string();
+		return Material_To_Refraction_Component();
+		//throw "Cannot access directory: " + directory.string();
 
 	Material_To_Refraction_Component full_list;
 
