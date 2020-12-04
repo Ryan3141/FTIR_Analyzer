@@ -72,15 +72,8 @@ void Layer_Builder::Add_New_Material( QString material, double thickness_in_um, 
 		return;
 	QListWidgetItem *iconItem = new QListWidgetItem( this );
 	Material_Layer_Widget* one_material = new Material_Layer_Widget( this, material_names, material, thickness_in_um, alloy_composition );
-	connect( one_material, &Material_Layer_Widget::Material_Changed, [this]( QString previous_value, QString new_value )
-	{
-		if( previous_value == "" )
-			this->Add_New_Material();
-		emit Materials_List_Changed( Build_Material_List() );
-	} );
-
-	connect( one_material, &Material_Layer_Widget::Thickness_Changed, [this]( double new_value ) { emit Materials_List_Changed( Build_Material_List() ); } );
-	connect( one_material, &Material_Layer_Widget::Composition_Changed, [this]( double new_value ) { emit Materials_List_Changed( Build_Material_List() ); } );
+	connect( one_material, &Material_Layer_Widget::New_Material_Created, [this]{ this->Add_New_Material(); } );
+	connect( one_material, &Material_Layer_Widget::Material_Changed, [this]{ emit Materials_List_Changed( Build_Material_List() ); } );
 
 	connect( one_material, &Material_Layer_Widget::Delete_Requested, [iconItem, this]
 	{
@@ -101,12 +94,17 @@ std::vector<Material_Layer> Layer_Builder::Build_Material_List() const
 	for( int i = 0; i < this->count(); i++ )
 	{
 		const Material_Layer_Widget* layer = static_cast<const Material_Layer_Widget*>( this->itemWidget( this->item( i ) ) );
-		auto [is_valid, material_name, thickness, composition] = layer->Get_Details();
-		if( is_valid )
-		{
-			const Material & material = name_to_material.find( material_name.toStdString() )->second;
-			output.push_back( { material, thickness, composition } );
-		}
+		auto [mat_name, thickness, composition] = layer->Get_Details();
+		if( mat_name == "" )
+			continue;
+
+		auto find_mat = name_to_material.find( mat_name );
+		if( find_mat == name_to_material.end() )
+			continue;
+
+		Material mat = name_to_material.find( mat_name )->second;
+
+		output.push_back( { mat, thickness, composition } );
 	}
 	return output;
 }

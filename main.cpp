@@ -8,7 +8,7 @@
 int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
-	FTIR_Analyzer w;
+	FTIR::FTIR_Analyzer w;
 	w.show();
 	return a.exec();
 }

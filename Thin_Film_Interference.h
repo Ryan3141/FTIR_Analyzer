@@ -40,8 +40,8 @@ extern std::map<std::string, Material> name_to_material;
 struct Material_Layer
 {
 	Material material;
-	double composition;
 	double thickness;
+	double composition;
 };
 
 struct Result_Data
