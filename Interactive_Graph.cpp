@@ -395,7 +395,13 @@ void Interactive_Graph::graphClicked( QCPAbstractPlottable *plottable, int dataI
 const Single_Graph & Interactive_Graph::Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title, bool allow_y_scaling, Metadata meta )
 {
 	if( x_data.size() != y_data.size() )
-		throw "Trying to graph different x and y size arrays";
+	{
+		std::cerr << "Incompatible sizes being graphed, size(x) = " << x_data.size() << " size(y) = " << y_data.size() << "\n";
+		if( x_data.size() > y_data.size() )
+			x_data.resize( y_data.size() );
+		else
+			y_data.resize( x_data.size() );
+	}
 
 	for( auto & x : x_data )
 		if( !std::isnormal( x ) )

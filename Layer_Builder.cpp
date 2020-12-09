@@ -118,105 +118,105 @@ void Layer_Builder::Set_Material_List( std::map<std::string, Material> new_name_
 	Add_New_Material();
 }
 
-#include <QtGui>
-
-DTableWidget::DTableWidget( QWidget *parent ) : QTableWidget( parent )
-{
-	//set widget default properties:
-	setFrameStyle( QFrame::Sunken | QFrame::StyledPanel );
-	setDropIndicatorShown( true );
-	setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOn );
-	setEditTriggers( QAbstractItemView::NoEditTriggers );
-	setDragDropMode( QAbstractItemView::DropOnly );
-	setAlternatingRowColors( true );
-	setSelectionBehavior( QAbstractItemView::SelectRows );
-	setShowGrid( false );
-	setAcceptDrops( true );
-	setWordWrap( false );
-	setStyleSheet( "selection-background-color: yellow;"
-				   "selection-color: #002041;"
-				   "font-size: 75%;"
-	);
-	//setStyle( new NoFocusProxyStyle() );
-
-}
-
-void DTableWidget::dragEnterEvent( QDragEnterEvent *event )
-{
-	QObject* test = event->source();
-	event->acceptProposedAction();
-}
-
-void DTableWidget::dragMoveEvent( QDragMoveEvent *event )
-{
-	event->acceptProposedAction();
-}
-
-void DTableWidget::dropEvent( QDropEvent *event )
-{
-
-	event->acceptProposedAction();
-
-	if( event->mimeData()->urls().size() > 0 )
-		emit dropped( event->mimeData() );
-	else
-	{
-		QPoint old_coordinates = QPoint( -1, -1 );
-		int dropAction = event->dropAction();
-		if( currentItem() != NULL ) //Check if user is not accessing empty cell
-		{
-			old_coordinates = QPoint( currentItem()->row(), currentItem()->column() );
-		}
-		QTableWidget::dropEvent( event );
-		qDebug() << "Detected drop event...";
-		if( this->itemAt( event->pos().x(), event->pos().y() ) != NULL && old_coordinates != QPoint( -1, -1 ) )
-		{
-			qDebug() << "Drop Event Accepted.";
-			qDebug() << "Source: " << old_coordinates.x() << old_coordinates.y()
-				<< "Destinition: " << this->itemAt( event->pos().x(), event->pos().y() )->row()
-				<< this->itemAt( event->pos().x(), event->pos().y() )->column()
-				<< "Type: " << dropAction;
-
-			emit moved( old_coordinates.x(), itemAt( event->pos().x(), event->pos().y() )->row() );
-
-		}
-	}
-}
-
-void DTableWidget::dragLeaveEvent( QDragLeaveEvent *event )
-{
-	event->accept();
-}
-
-void DTableWidget::startDrag( Qt::DropActions supportedActions )
-{
-	QTableWidgetItem* item = currentItem();
-	QDrag* drag = new QDrag( this );
-	auto test = drag->exec( Qt::MoveAction );
-	if( test == Qt::MoveAction )
-	{
-		takeRow( row( item ) );
-		//delete takeRow( row( item ) );
-		//emit itemDroped();
-	}
-}
-
-// takes and returns the whole row
-QList<QTableWidgetItem*> DTableWidget::takeRow( int row )
-{
-	QList<QTableWidgetItem*> rowItems;
-	for( int col = 0; col < columnCount(); ++col )
-	{
-		rowItems << takeItem( row, col );
-	}
-	return rowItems;
-}
-
-// sets the whole row
-void DTableWidget::setRow( int row, const QList<QTableWidgetItem*>& rowItems )
-{
-	for( int col = 0; col < columnCount(); ++col )
-	{
-		setItem( row, col, rowItems.at( col ) );
-	}
-}
+//#include <QtGui>
+//
+//DTableWidget::DTableWidget( QWidget *parent ) : QTableWidget( parent )
+//{
+//	//set widget default properties:
+//	setFrameStyle( QFrame::Sunken | QFrame::StyledPanel );
+//	setDropIndicatorShown( true );
+//	setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOn );
+//	setEditTriggers( QAbstractItemView::NoEditTriggers );
+//	setDragDropMode( QAbstractItemView::DropOnly );
+//	setAlternatingRowColors( true );
+//	setSelectionBehavior( QAbstractItemView::SelectRows );
+//	setShowGrid( false );
+//	setAcceptDrops( true );
+//	setWordWrap( false );
+//	setStyleSheet( "selection-background-color: yellow;"
+//				   "selection-color: #002041;"
+//				   "font-size: 75%;"
+//	);
+//	//setStyle( new NoFocusProxyStyle() );
+//
+//}
+//
+//void DTableWidget::dragEnterEvent( QDragEnterEvent *event )
+//{
+//	QObject* test = event->source();
+//	event->acceptProposedAction();
+//}
+//
+//void DTableWidget::dragMoveEvent( QDragMoveEvent *event )
+//{
+//	event->acceptProposedAction();
+//}
+//
+//void DTableWidget::dropEvent( QDropEvent *event )
+//{
+//
+//	event->acceptProposedAction();
+//
+//	if( event->mimeData()->urls().size() > 0 )
+//		emit dropped( event->mimeData() );
+//	else
+//	{
+//		QPoint old_coordinates = QPoint( -1, -1 );
+//		int dropAction = event->dropAction();
+//		if( currentItem() != NULL ) //Check if user is not accessing empty cell
+//		{
+//			old_coordinates = QPoint( currentItem()->row(), currentItem()->column() );
+//		}
+//		QTableWidget::dropEvent( event );
+//		qDebug() << "Detected drop event...";
+//		if( this->itemAt( event->pos().x(), event->pos().y() ) != NULL && old_coordinates != QPoint( -1, -1 ) )
+//		{
+//			qDebug() << "Drop Event Accepted.";
+//			qDebug() << "Source: " << old_coordinates.x() << old_coordinates.y()
+//				<< "Destinition: " << this->itemAt( event->pos().x(), event->pos().y() )->row()
+//				<< this->itemAt( event->pos().x(), event->pos().y() )->column()
+//				<< "Type: " << dropAction;
+//
+//			emit moved( old_coordinates.x(), itemAt( event->pos().x(), event->pos().y() )->row() );
+//
+//		}
+//	}
+//}
+//
+//void DTableWidget::dragLeaveEvent( QDragLeaveEvent *event )
+//{
+//	event->accept();
+//}
+//
+//void DTableWidget::startDrag( Qt::DropActions supportedActions )
+//{
+//	QTableWidgetItem* item = currentItem();
+//	QDrag* drag = new QDrag( this );
+//	auto test = drag->exec( Qt::MoveAction );
+//	if( test == Qt::MoveAction )
+//	{
+//		takeRow( row( item ) );
+//		//delete takeRow( row( item ) );
+//		//emit itemDroped();
+//	}
+//}
+//
+//// takes and returns the whole row
+//QList<QTableWidgetItem*> DTableWidget::takeRow( int row )
+//{
+//	QList<QTableWidgetItem*> rowItems;
+//	for( int col = 0; col < columnCount(); ++col )
+//	{
+//		rowItems << takeItem( row, col );
+//	}
+//	return rowItems;
+//}
+//
+//// sets the whole row
+//void DTableWidget::setRow( int row, const QList<QTableWidgetItem*>& rowItems )
+//{
+//	for( int col = 0; col < columnCount(); ++col )
+//	{
+//		setItem( row, col, rowItems.at( col ) );
+//	}
+//}

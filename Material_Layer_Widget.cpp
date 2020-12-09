@@ -48,5 +48,5 @@ std::tuple<std::string, double, double> Material_Layer_Widget::Get_Details() con
 	std::string mat_name = ui.material_comboBox->currentText().toStdString();
 	double thickness = ui.thickness_lineEdit->text().toDouble() * 1E-6;
 	double composition = ui.composition_lineEdit->text().toDouble();
-	return { mat_name, composition, thickness };
+	return { mat_name, thickness, composition };
 }

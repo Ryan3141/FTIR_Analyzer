@@ -136,11 +136,11 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, double
 {
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
 	double upper_bound = std::max( 0.00000001, ui.customPlot->xAxis->range().upper );
-	arma::vec x_data = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 );
+	arma::vec x_data = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 ); // Remove zero x value (to avoid divide by zero type errors)
 	x_data.transform( [=]( double x ) { return Convert_Units( ui.customPlot->x_axis_units, Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6; } );
 
 	Thin_Film_Interference tfi;
-	//try
+	try
 	{
 		auto[ transmission, reflection ] = tfi.Get_Expected_Transmission( temperature_in_k, layers, x_data, backside_material );
 		transmission *= largest_transmission;
@@ -157,10 +157,10 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, double
 			ui.customPlot->Graph( toQVec( x_data_wavenumber ), toQVec( 100.0 - transmission - reflection ), "Absorption Simulation", "Absorption Simulation", false );
 		ui.customPlot->replot();
 	}
-	//catch( ... )
-	//{
-	//	return;
-	//}
+	catch( ... )
+	{
+		return;
+	}
 }
 
 void FTIR_Analyzer::Run_Fit()

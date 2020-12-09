@@ -512,118 +512,6 @@
                 </layout>
                </item>
                <item>
-                <widget class="DTableWidget" name="simulated_tableWidget">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>250</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>16777215</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="baseSize">
-                  <size>
-                   <width>260</width>
-                   <height>400</height>
-                  </size>
-                 </property>
-                 <property name="acceptDrops">
-                  <bool>true</bool>
-                 </property>
-                 <property name="sizeAdjustPolicy">
-                  <enum>QAbstractScrollArea::AdjustIgnored</enum>
-                 </property>
-                 <property name="dragEnabled">
-                  <bool>true</bool>
-                 </property>
-                 <property name="dragDropOverwriteMode">
-                  <bool>false</bool>
-                 </property>
-                 <property name="dragDropMode">
-                  <enum>QAbstractItemView::InternalMove</enum>
-                 </property>
-                 <property name="defaultDropAction">
-                  <enum>Qt::MoveAction</enum>
-                 </property>
-                 <property name="alternatingRowColors">
-                  <bool>true</bool>
-                 </property>
-                 <property name="selectionMode">
-                  <enum>QAbstractItemView::SingleSelection</enum>
-                 </property>
-                 <property name="selectionBehavior">
-                  <enum>QAbstractItemView::SelectRows</enum>
-                 </property>
-                 <property name="cornerButtonEnabled">
-                  <bool>false</bool>
-                 </property>
-                 <attribute name="horizontalHeaderCascadingSectionResizes">
-                  <bool>true</bool>
-                 </attribute>
-                 <attribute name="horizontalHeaderDefaultSectionSize">
-                  <number>82</number>
-                 </attribute>
-                 <attribute name="horizontalHeaderMinimumSectionSize">
-                  <number>20</number>
-                 </attribute>
-                 <attribute name="horizontalHeaderStretchLastSection">
-                  <bool>false</bool>
-                 </attribute>
-                 <attribute name="verticalHeaderVisible">
-                  <bool>false</bool>
-                 </attribute>
-                 <attribute name="verticalHeaderCascadingSectionResizes">
-                  <bool>true</bool>
-                 </attribute>
-                 <attribute name="verticalHeaderDefaultSectionSize">
-                  <number>24</number>
-                 </attribute>
-                 <attribute name="verticalHeaderMinimumSectionSize">
-                  <number>50</number>
-                 </attribute>
-                 <row>
-                  <property name="text">
-                   <string>New Row</string>
-                  </property>
-                 </row>
-                 <row>
-                  <property name="text">
-                   <string>test2</string>
-                  </property>
-                 </row>
-                 <row>
-                  <property name="text">
-                   <string>test3</string>
-                  </property>
-                 </row>
-                 <column>
-                  <property name="text">
-                   <string>Material</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Thickness</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
-                   <string>Composition</string>
-                  </property>
-                 </column>
-                </widget>
-               </item>
-               <item>
                 <layout class="QHBoxLayout" name="horizontalLayout_4">
                  <item>
                   <widget class="QLabel" name="label_18">
@@ -860,7 +748,7 @@
      <x>0</x>
      <y>0</y>
      <width>1279</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -891,11 +779,6 @@
    <class>SQL_Tree_Widget</class>
    <extends>QTreeWidget</extends>
    <header>SQL_Tree_Widget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>DTableWidget</class>
-   <extends>QTableWidget</extends>
-   <header>Layer_Builder.h</header>
   </customwidget>
   <customwidget>
    <class>Interactive_Graph_Toolbar</class>

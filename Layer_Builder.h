@@ -59,38 +59,38 @@ signals:
 	void Materials_List_Changed( const std::vector<Material_Layer> & layers );
 };
 
-#include <QWidget>
-#include <QTableWidget>
-#include <QDropEvent>
-#include <QDragMoveEvent>
-#include <QDropEvent>
-#include <QMimeData>
-#include <QDebug>
-#include <QKeyEvent>
-
-class DTableWidget : public QTableWidget
-{
-	Q_OBJECT
-
-public:
-	DTableWidget( QWidget *parent = 0 );
-
-public slots:
-
-signals:
-	void keyboard( QKeyEvent *event );
-	void dropped( const QMimeData* mimeData = 0 );
-	void moved( int old_row, int new_row );
-
-protected:
-	void dragEnterEvent( QDragEnterEvent *event );
-	void dragMoveEvent( QDragMoveEvent *event );
-	void dragLeaveEvent( QDragLeaveEvent *event );
-	void dropEvent( QDropEvent *event );
-	void startDrag( Qt::DropActions supportedActions ) override;
-	QList<QTableWidgetItem*> takeRow( int row );
-	void setRow( int row, const QList<QTableWidgetItem*>& rowItems );
-
-private:
-};
+//#include <QWidget>
+//#include <QTableWidget>
+//#include <QDropEvent>
+//#include <QDragMoveEvent>
+//#include <QDropEvent>
+//#include <QMimeData>
+//#include <QDebug>
+//#include <QKeyEvent>
+//
+//class DTableWidget : public QTableWidget
+//{
+//	Q_OBJECT
+//
+//public:
+//	DTableWidget( QWidget *parent = 0 );
+//
+//public slots:
+//
+//signals:
+//	void keyboard( QKeyEvent *event );
+//	void dropped( const QMimeData* mimeData = 0 );
+//	void moved( int old_row, int new_row );
+//
+//protected:
+//	void dragEnterEvent( QDragEnterEvent *event );
+//	void dragMoveEvent( QDragMoveEvent *event );
+//	void dragLeaveEvent( QDragLeaveEvent *event );
+//	void dropEvent( QDropEvent *event );
+//	void startDrag( Qt::DropActions supportedActions ) override;
+//	QList<QTableWidgetItem*> takeRow( int row );
+//	void setRow( int row, const QList<QTableWidgetItem*>& rowItems );
+//
+//private:
+//};
 
