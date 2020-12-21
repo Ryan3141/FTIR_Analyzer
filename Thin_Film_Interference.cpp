@@ -168,19 +168,40 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( double temperatur
 	}
 	//return { arma::vec(2049, arma::fill::ones), arma::vec(2049, arma::fill::ones) };
 
-	Debug_Print( "Overall Matrix", Overall_Matrix.slice( 0 ) );
-	auto transmission_amplitude = Overall_Matrix.tube( 0, 0 ) - Overall_Matrix.tube( 0, 1 ) % Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
-	vec transmission = real( transmission_amplitude % conj( transmission_amplitude ) );
-	auto reflection_amplitude = Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
-	vec reflection = real( reflection_amplitude % conj( reflection_amplitude ) );
+	if constexpr( false ) // Version with exit transition
+	{
+		arma::vec exit_backside_amount = [ this, &wavelengths, temperature_k, backside_material ]
+		{
+			auto backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, temperature_k, backside_material.composition );
+			cx_cube A( 2, 2, wavelengths.n_rows );
+			auto sum = ( 1. + backside_ns ) / 2.;
+			auto difference = ( 1. - backside_ns ) / 2.;
+			auto reflection_amplitude = difference / sum;
+			return vec( real( reflection_amplitude % conj( reflection_amplitude ) ) );
+		}();
+		Debug_Print( "Overall Matrix", Overall_Matrix.slice( 0 ) );
+		auto transmission_amplitude = Overall_Matrix.tube( 0, 0 ) - Overall_Matrix.tube( 0, 1 ) % Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
+		vec transmission = ( 1.0 - exit_backside_amount ) % vec( real( transmission_amplitude % conj( transmission_amplitude ) ) );
+		auto reflection_amplitude = Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
+		vec reflection = exit_backside_amount % vec( real( reflection_amplitude % conj( reflection_amplitude ) ) );
 
+		return { transmission, reflection };
+	}
+	else
+	{
+		Debug_Print( "Overall Matrix", Overall_Matrix.slice( 0 ) );
+		auto transmission_amplitude = Overall_Matrix.tube( 0, 0 ) - Overall_Matrix.tube( 0, 1 ) % Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
+		vec transmission = real( transmission_amplitude % conj( transmission_amplitude ) );
+		auto reflection_amplitude = Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
+		vec reflection = real( reflection_amplitude % conj( reflection_amplitude ) );
+
+		return { transmission, reflection };
+	}
 	//if( std::norm( one_slice( 1, 1 ) ) > 1E-9 )
 	//if( std::norm<double>( one_slice( 1, 1 ) ) != 0.0 )
 
 	//if( transmission > 1.0 )
 	//	Debug_Print( "Overall Matrix", one_slice );
-
-	return { transmission, reflection };
 }
 
 void Thin_Film_Interference::Get_Best_Fit( double temperature_k,

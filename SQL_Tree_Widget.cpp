@@ -1,28 +1,11 @@
 #include "SQL_Tree_Widget.h"
 
-//#include <range/v3/all.hpp> // get everything
-
 #include <algorithm>
 #include "fn.hpp"
 
 namespace fn = rangeless::fn;
 using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>(arg))));
 using fn::operators::operator%=;  // arg %= fn;       // arg = fn(std::move(arg));
-
-static QString Sanitize_SQL( const QString & raw_string )
-{ // Got regex from https://stackoverflow.com/questions/9651582/sanitize-table-column-name-in-dynamic-sql-in-net-prevent-sql-injection-attack
-	if( raw_string.contains( ';' ) )
-		return QString();
-
-	QRegularExpression re( R"(^[\p{L}{\p{Nd}}$#_][\p{L}{\p{Nd}}@$#_]*$)" );
-	QRegularExpressionMatch match = re.match( raw_string );
-	bool hasMatch = match.hasMatch();
-
-	if( hasMatch )
-		return raw_string;
-	else
-		return QString();
-}
 
 SQL_Tree_Widget::SQL_Tree_Widget( QWidget* parent ) : QTreeWidget( parent )
 {
@@ -34,15 +17,15 @@ SQL_Tree_Widget::SQL_Tree_Widget( QWidget* parent ) : QTreeWidget( parent )
 }
 
 
-SQL_Tree_Widget::~SQL_Tree_Widget()
-{
-}
-
 void SQL_Tree_Widget::Set_Data_To_Gather( const QStringList & header_titles, const QStringList & what_to_collect, int columns_to_show )
 {
 	this->header_titles = header_titles;
 	this->what_to_collect = what_to_collect;
 	this->columns_to_show = columns_to_show;
+
+	this->setHeaderLabels( header_titles );
+	for( int i = columns_to_show; i < header_titles.size(); i++ )
+		this->hideColumn( i );
 }
 
 void SQL_Tree_Widget::Refilter( QString filter_string )
@@ -51,9 +34,9 @@ void SQL_Tree_Widget::Refilter( QString filter_string )
 	this->setSizeAdjustPolicy( QAbstractScrollArea::AdjustToContents );
 	int measurment_name_i = header_titles.indexOf( "Sample Name" );
 
-	std::vector<QVariantList> filtered_data( this->current_meta_data.size() );
+	std::vector<Metadata> filtered_data( this->current_meta_data.size() );
 	auto last_match = std::copy_if( this->current_meta_data.begin(), this->current_meta_data.end(), filtered_data.begin(),
-									[measurment_name_i, filter_string]( const QVariantList & row ) { return row[ measurment_name_i ].toString().contains( filter_string, Qt::CaseInsensitive ); } );
+									[measurment_name_i, filter_string]( const Metadata & row ) { return row[ measurment_name_i ].toString().contains( filter_string, Qt::CaseInsensitive ); } );
 	filtered_data.resize( std::distance( filtered_data.begin(), last_match ) );
 
 	Recursive_Build( filtered_data, this->invisibleRootItem(), 0 );
@@ -61,48 +44,7 @@ void SQL_Tree_Widget::Refilter( QString filter_string )
 		this->resizeColumnToContents( i );
 }
 
-void SQL_Tree_Widget::Repoll_SQL( QSqlDatabase & sql_db, QString sql_table, QString user )
-{
-	if( !sql_db.isOpen() )
-		return;
-
-	QSqlQuery query( sql_db );
-	this->setHeaderLabels( header_titles );
-	for( int i = columns_to_show; i < header_titles.size(); i++ )
-		this->hideColumn( i );
-
-	QString query_string = QString( "SELECT %1 FROM %2 WHERE user=\"%3\"" ).arg( what_to_collect.join( "," ), sql_table, Sanitize_SQL( user ) );
-	query.prepare( query_string );
-	if( !query.exec() )
-	{
-		qDebug() << "Error pulling data from " << sql_table << ": "
-			<< query.lastError();
-		return;
-	}
-
-	int number_of_rows = 0;
-	if( query.last() ) // Count the number of rows returned
-	{
-		number_of_rows = query.at() + 1;
-		this->current_meta_data.clear();
-		this->current_meta_data.resize( number_of_rows );
-		query.first();
-		query.previous();
-	}
-
-	int number_of_columns = query.record().count();
-	for( int row_i = 0; row_i < number_of_rows; row_i++ )
-	{
-		query.next();
-		for( int col_i = 0; col_i < number_of_columns; col_i++ )
-		{
-			QVariant current_value = query.value( col_i );
-			this->current_meta_data[ row_i ].push_back( current_value );
-		}
-	}
-}
-
-void SQL_Tree_Widget::Recursive_Build( const std::vector<QVariantList> & row_data, QTreeWidgetItem* parent_tree, int current_collectable_i )
+void SQL_Tree_Widget::Recursive_Build( const std::vector<Metadata> & row_data, QTreeWidgetItem* parent_tree, int current_collectable_i )
 {
 	if( current_collectable_i == what_to_collect.size() )
 		return;
@@ -115,7 +57,7 @@ void SQL_Tree_Widget::Recursive_Build( const std::vector<QVariantList> & row_dat
 	// Now add a new node for each unique element (in this column)
 	for( QVariant element : unique_elements )
 	{
-		const std::vector<QVariantList> matching_row_data = fn::cfrom( row_data )
+		const std::vector<Metadata> matching_row_data = fn::cfrom( row_data )
 			% fn::to_vector() // Make the vector that the results will be stored in
 			% fn::where( [element, current_collectable_i]( const auto & row ) { return row[ current_collectable_i ] == element; } );
 

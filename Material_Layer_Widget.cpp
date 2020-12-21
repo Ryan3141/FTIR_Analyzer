@@ -10,9 +10,10 @@ Material_Layer_Widget::Material_Layer_Widget( QWidget *parent, const QStringList
 	////x.addItems;
 	ui.material_comboBox->addItem( "" );
 	ui.material_comboBox->addItems( material_names );
+	ui.material_comboBox->setCurrentText( material );
 
-	ui.composition_lineEdit->setText( QString::number( composition ) );
-	ui.thickness_lineEdit->setText( QString::number( thickness ) );
+	ui.thickness_doubleSpinBox->setValue( thickness );
+	ui.composition_doubleSpinBox->setValue( composition );
 
 	connect( ui.material_comboBox, qOverload<const QString &>( &QComboBox::currentIndexChanged ), [ this ]( const QString & new_value )
 	{
@@ -32,11 +33,11 @@ Material_Layer_Widget::Material_Layer_Widget( QWidget *parent, const QStringList
 		}
 		this->previous_value = new_value;
 	} );
-	connect( ui.thickness_lineEdit, &QLineEdit::textChanged, [this]( const QString & new_value )
+	connect( ui.thickness_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [this]( double new_value )
 	{
 		emit Material_Changed();
 	} );
-	connect( ui.composition_lineEdit, &QLineEdit::textChanged, [this]( const QString & new_value )
+	connect( ui.composition_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [this]( double new_value )
 	{
 		emit Material_Changed();
 	} );
@@ -46,7 +47,7 @@ Material_Layer_Widget::Material_Layer_Widget( QWidget *parent, const QStringList
 std::tuple<std::string, double, double> Material_Layer_Widget::Get_Details() const
 {
 	std::string mat_name = ui.material_comboBox->currentText().toStdString();
-	double thickness = ui.thickness_lineEdit->text().toDouble() * 1E-6;
-	double composition = ui.composition_lineEdit->text().toDouble();
+	double thickness = ui.thickness_doubleSpinBox->value() * 1E-6;
+	double composition = ui.composition_doubleSpinBox->value();
 	return { mat_name, thickness, composition };
 }

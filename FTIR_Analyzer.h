@@ -30,7 +30,6 @@ private:
 	using ID_To_XY_Data = std::map<QString, XY_Data>;
 	//FTIR_Analyzer & self{ *this };
 	Ui::FTIR_AnalyzerClass ui;
-	void showPointToolTip( QMouseEvent * event );
 	void treeContextMenuRequest( QPoint pos );
 
 
@@ -53,7 +52,7 @@ private:
 
 	QLabel* statusLabel;
 	Thin_Film_Interference* thin_film_manager;
-	SQL_Manager sql_manager;
+	SQL_Manager* sql_manager;
 };
 
 }

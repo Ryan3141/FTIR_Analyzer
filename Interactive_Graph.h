@@ -5,9 +5,10 @@
 #include <functional>
 #include <map>
 
+#include <QVector>
+
 #include "Units.h"
 
-#include <QVector>
 template<typename FloatType>
 constexpr QVector<FloatType> toQVec( const std::vector<FloatType> & input )
 {

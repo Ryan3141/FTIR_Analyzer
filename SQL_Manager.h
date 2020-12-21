@@ -3,18 +3,19 @@
 #include <tuple>
 #include <map>
 #include <string>
+#include <vector>
 
 #include <QVector>
 #include <QVariant>
 #include <QWidget>
 #include <QSqlDatabase>
+#include <QFileInfo>
+#include <QThread>
 
-class SQL_Manager : QWidget
+
+class SQL_Manager : public QObject
 {
 	Q_OBJECT
-
-signals:
-public slots:
 
 public:
 	using XY_Data = std::tuple< QVector<double>, QVector<double> >;
@@ -22,15 +23,28 @@ public:
 	using Metadata = std::vector<QVariant>;
 	using ID_To_Metadata = std::map<QString, Metadata>;
 
-	void Connect_To_DB( QString config_filename );
+signals:
+	void Error_Connecting_To_SQL( const QSqlError & error_message );
+	void SQL_XY_Data_Ready( ID_To_XY_Data data_per_id );
+	void SQL_Meta_Data_Ready( ID_To_Metadata data_per_id );
 
-	ID_To_XY_Data Grab_SQL_Data_From_Measurement_IDs(  const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, const QString & extra_filtering = "" ) const;
-	ID_To_Metadata Grab_SQL_Metadata_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, const QString & extra_filtering = "" ) const;
+public slots:
+	void Start_Thread();
+
+public:
+	SQL_Manager( QObject* parent, QFileInfo config_filename );
 
 
-	QSqlDatabase sql_db;
+	void Grab_SQL_XY_Data_From_Measurement_IDs(  const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* callback_context,
+												 std::function< void( ID_To_XY_Data ) > callback, const QString & extra_filtering = "" ) const;
+	void Grab_SQL_Metadata_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* callback_context,
+												 std::function< void( ID_To_Metadata ) > callback, const QString & extra_filtering = "" ) const;
+	void Grab_All_SQL_Metadata(                  const QStringList & what_to_collect, const QString & table_name, QObject* context,
+												 std::function< void( std::vector<Metadata> ) > callback, const QString & extra_filtering = "" ) const;
 
 private:
-	bool Initialize_DB_Connection( const QString & database_type, const QString & host_location, const QString & database_name, const QString & username, const QString & password );
-
+	bool Initialize_DB_Connection();
+	QSqlDatabase sql_db;
+	QFileInfo config_filename_;
+	QThread* worker_thread = nullptr;
 };

@@ -4,16 +4,11 @@
 #include <algorithm>
 #include <armadillo>
 
-//#include <meta/meta.hpp>
-//#include <range/v3/all.hpp> // get everything
 
 #include "boost/algorithm/string.hpp"
 #include "fn.hpp"
-//#include <range/v3/all.hpp> // get everything
-
 namespace fn = rangeless::fn;
 using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>(arg))));
-using fn::operators::operator%=;  // arg %= fn;       // arg = fn(std::move(arg));
 
 
 static QString Unit_Names[ 3 ] = { "Wave Number (cm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + ")",
@@ -61,6 +56,8 @@ void Interactive_Graph::Initialize_Graph()
 	// connect slots that takes care that when an axis is selected, only that direction can be dragged and zoomed:
 	connect( this, &QCustomPlot::mousePress, this, &Interactive_Graph::mousePress );
 	connect( this, &QCustomPlot::mouseWheel, this, &Interactive_Graph::mouseWheel );
+
+	connect( this, &QCustomPlot::mouseDoubleClick, this, &Interactive_Graph::refitGraphs );
 
 	// make bottom and left axes transfer their ranges to top and right axes:
 	connect( this->xAxis, SIGNAL( rangeChanged( QCPRange ) ), this->xAxis2, SLOT( setRange( QCPRange ) ) );
@@ -239,7 +236,7 @@ void Interactive_Graph::mouseWheel()
 void Interactive_Graph::refitGraphs( QMouseEvent* event )
 {
 	event->accept();
-	this->rescaleAxes();
+	this->rescaleAxes( true );
 	this->yAxis->setRangeLower( 0 );
 	//this->yAxis->setRange( -10, 110 );
 	this->replot();
@@ -407,7 +404,7 @@ const Single_Graph & Interactive_Graph::Graph( QVector<double> x_data, QVector<d
 		if( !std::isnormal( x ) )
 			x = qQNaN();
 	for( auto & y : y_data )
-		if( !std::isfinite( y ) || y > 1.0E9 )
+		if( !std::isfinite( y ) || y > 1.0E4 )
 			y = qQNaN();
 
 	auto existing_graph = remembered_graphs.find( measurement_name );
@@ -483,7 +480,7 @@ const Single_Graph & Interactive_Graph::Graph( QVector<double> x_data, QVector<d
 		const QVector< Qt::PenStyle > patterns = { Qt::SolidLine, Qt::DotLine, Qt::DashLine, Qt::DashDotDotLine, Qt::DashDotLine };
 		graphPen.setColor( gradient.color( color_index / 10.0, QCPRange( 0.0, 1.0 ) ) );
 		graphPen.setStyle( patterns[ color_index % patterns.size() ] );
-		graphPen.setWidthF( 2 );
+		//graphPen.setWidthF( 2 ); Changing width currently causes massive performance issues
 		color_index++;
 		//graphPen.setColor( QColor::fromHslF( (color_index++)/10.0*0.8, 0.95, 0.5) );
 		//graphPen.setColor( QColor::fromHsv( rand() % 255, 255, 255 ) );
@@ -624,20 +621,6 @@ const Single_Graph & Interactive_Graph::FindDataFromGraphPointer( QCPGraph* grap
 	else
 		return nothing_selected;
 }
-
-//QString Interactive_Graph::FindMeasurementID( QCPGraph* graph_pointer ) const
-//{
-//	auto result = std::find_if(
-//		this->remembered_graphs.begin(),
-//		this->remembered_graphs.end(),
-//		[graph_pointer]( const auto& mo ) { return mo.second.graph_pointer == graph_pointer; } );
-//
-//	//RETURN VARIABLE IF FOUND
-//	if( result != this->remembered_graphs.end() )
-//		return result->first;
-//	else
-//		return "";
-//}
 
 void Interactive_Graph::Set_As_Background( XY_Data xy )
 {
