@@ -1025,7 +1025,7 @@ namespace get
         view() = default;
 
         using iterator = Iterator;
-        using value_type = typename iterator::value_type;
+		using value_type = typename std::remove_const_t< std::remove_reference_t<decltype( *std::declval<Iterator>() )> >;
         
         Iterator begin() const { return it_beg; }
         Iterator end()   const { return it_end; }
@@ -1070,13 +1070,19 @@ namespace get
     // communicates that the range will be moved-from.
 
     /// @brief Create a range-view from a pair of iterators.
-    template<typename Iterator>
-    constexpr view<Iterator> from(Iterator it_beg, Iterator it_end) noexcept
-    {
-        return { std::move(it_beg), std::move(it_end) };
-    }
+	template<typename Iterator>
+	constexpr view<Iterator> from( Iterator it_beg, Iterator it_end ) noexcept
+	{
+		return { std::move( it_beg ), std::move( it_end ) };
+	}
 
-    /// To enable composability of APIs returning a pair of iterators, e.g. std::equal_range
+	template<typename Array_Value_Type, size_t Array_Size>
+	constexpr auto from( Array_Value_Type (&src)[ Array_Size ] ) noexcept
+	{
+		return view<decltype( &src[ 0 ] )>{ &src[ 0 ], &src[ Array_Size ] };
+	}
+
+	/// To enable composability of APIs returning a pair of iterators, e.g. std::equal_range
     template<typename Iterator>
     constexpr view<Iterator> from(std::pair<Iterator, Iterator> p) noexcept
     {

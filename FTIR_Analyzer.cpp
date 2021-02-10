@@ -2,6 +2,7 @@
 
 #include <QSettings>
 #include <QFileDialog>
+#include <QVariant>
 #include <vector>
 #include <math.h>
 
@@ -57,6 +58,20 @@ static QVector<double> Find_Zero_Crossings( QVector<double> x_data, QVector<doub
 	}
 
 	return output;
+}
+
+template< typename T >
+T Info_Or_Default( const Metadata & meta, QString column, T Default )
+{
+	if( meta.empty() )
+		return Default;
+	int index = header_titles.indexOf( column );
+	if( index == -1 )
+		return Default;
+	QVariant stuff = meta[ index ];
+	if( stuff == QVariant::Invalid )
+		return Default;
+	return qvariant_cast<T>( meta[ index ] );
 }
 
 
@@ -137,7 +152,8 @@ void FTIR_Analyzer::Graph_Refractive_Index( Material material, double temperatur
 
 	auto x_data_wavenumber = x_data;
 	x_data_wavenumber.transform( [=]( double x ) { return Convert_Units( Unit_Type::WAVELENGTH_MICRONS, Unit_Type::WAVE_NUMBER, x * 1E6 ); } );
-	auto refractive_index = Thin_Film_Interference().Get_Refraction_Index( material, x_data, temperature_in_k, composition );
+	Optional_Material_Parameters parameters( temperature_in_k, std::nullopt, composition );
+	auto refractive_index = Thin_Film_Interference().Get_Refraction_Index( material, x_data, parameters );
 	ui.customPlot->Graph( toQVec( x_data_wavenumber ), toQVec( arma::real( refractive_index ) ), "Index (n)", "Index (n)", false );
 	ui.customPlot->Graph( toQVec( x_data_wavenumber ), toQVec( arma::imag( refractive_index ) ), "Index (k)", "Index (k)", false );
 
@@ -145,7 +161,7 @@ void FTIR_Analyzer::Graph_Refractive_Index( Material material, double temperatur
 
 }
 
-void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, double temperature_in_k, std::tuple<bool,bool,bool> what_to_plot, double largest_transmission, Material_Layer backside_material )
+void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, std::tuple<bool,bool,bool> what_to_plot, double largest_transmission, Material_Layer backside_material )
 {
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
 	double upper_bound = std::max( 0.00000001, ui.customPlot->xAxis->range().upper );
@@ -155,7 +171,7 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, double
 	Thin_Film_Interference tfi;
 	try
 	{
-		auto[ transmission, reflection ] = tfi.Get_Expected_Transmission( temperature_in_k, layers, x_data, backside_material );
+		auto[ transmission, reflection ] = tfi.Get_Expected_Transmission( layers, x_data, backside_material );
 		transmission *= largest_transmission;
 		reflection *= largest_transmission;
 
@@ -182,16 +198,60 @@ void FTIR_Analyzer::Run_Fit()
 	if( selected_graph.graph_pointer == nullptr )
 		return;
 
-	std::vector<Material_Layer> copy_layers = ui.simulated_listWidget->Build_Material_List();
-	arma::vec wavelength_data( &selected_graph.x_data[ 0 ], selected_graph.x_data.size() );
-	wavelength_data.transform( [&selected_graph]( double x ) { return Convert_Units( selected_graph.x_units, Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6; } );
-	arma::vec transmission_data( &selected_graph.y_data[ 0 ], selected_graph.y_data.size() );
+	std::array<double, 2> bounds = { ui.customPlot->xAxis->range().lower, ui.customPlot->xAxis->range().upper };
+	for( double & x : bounds )
+		x = Convert_Units( ui.customPlot->x_axis_units, Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6;
+
+	arma::vec wavelength_data = arma::conv_to< arma::vec >::from( selected_graph.x_data.toStdVector() );
+	arma::vec transmission_data = arma::conv_to< arma::vec >::from( selected_graph.y_data.toStdVector() );
 	for( int i = 0; i < transmission_data.size(); i++ )
-		transmission_data( i ) = ui.customPlot->y_display_method( selected_graph.x_data[ i ], selected_graph.y_data[ i ] ); // Do the y stuff first to not screw up x data for y_display_method
-	double temperature = ui.simulationTemperature_doubleSpinBox->value();
+		transmission_data( i ) = ui.customPlot->y_display_method( wavelength_data( i ), transmission_data( i ) ); // Do the y stuff first to not screw up x data for y_display_method
+	wavelength_data.transform( [ &selected_graph ]( double x ) { return Convert_Units( selected_graph.x_units, Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6; } );
+	double temperature = Info_Or_Default( selected_graph.meta, "Temperature (K)", 300.0 );
+	//double temperature = ui.simulationTemperature_doubleSpinBox->value();
 	std::string material_name = ui.backsideMaterial_comboBox->currentText().toStdString();
-	Material_Layer backside_material = { name_to_material[ material_name ], 0.0, 0.0 };
-	QMetaObject::invokeMethod( this->thin_film_manager, [=] { this->thin_film_manager->Get_Best_Fit( temperature, copy_layers, wavelength_data, transmission_data, backside_material ); } );
+	Material_Layer backside_material( name_to_material[ material_name ], temperature );
+	std::vector<Material_Layer> copy_layers = ui.simulated_listWidget->Build_Material_List( temperature );
+
+	//wavelength_data = wavelength_data % fn::where( [ lower_bound, upper_bound ]( double num ) { return lower_bound >= num && num <= upper_bound; } );
+	//arma::uvec debug1 = arma::find( lower_bound >= wavelength_data );
+	//arma::uvec debug2 = arma::find( wavelength_data <= upper_bound );
+	//arma::vec debug3 = wavelength_data.elem( debug1 );
+	//arma::uvec filter_visible = arma::find( lower_bound >= wavelength_data && wavelength_data <= upper_bound );
+	//wavelength_data = wavelength_data.subvec( filter_visible );
+	//transmission_data = transmission_data.elem( filter_visible );
+	//double debug[20];
+	//const auto test3 = fn::from( &debug[0], &debug[20] );
+	//const auto[ filtered_wavelength_data, filtered_transmission_data ] = fn::zip( fn::cfrom( wavelength_data ), fn::cfrom( transmission_data ) )
+	const auto [ filtered_wavelength_data, filtered_transmission_data ] = fn::zip( fn::cfrom( wavelength_data ), fn::cfrom( transmission_data ) )
+		% fn::where( [ bounds ]( auto x ) { auto[ wavelength, transmission ] = x; return wavelength >= bounds[ 0 ] && wavelength <= bounds[ 1 ]; } )
+		% fn::unzip( std::tuple < arma::vec, arma::vec >{} );
+	double transmission_max = arma::max( filtered_transmission_data );
+	{ // Start the thread
+		QThread* thread = new QThread;
+		this->thin_film_manager = new Thin_Film_Interference();
+		//connect( this->thin_film_manager, &Thin_Film_Interference::Final_Guess, thread, &QThread::quit );
+		//automatically delete thread and task object when work is done:
+		connect( thread, &QThread::finished, this->thin_film_manager, &QObject::deleteLater );
+		connect( thread, &QThread::finished, thread, &QObject::deleteLater );
+		//qRegisterMetaType< std::tuple<bool,bool,bool> >();
+		auto test = connect( this->thin_film_manager, &Thin_Film_Interference::Updated_Guess, this, [ = ]( std::vector<Material_Layer> updated_layers )
+		{
+			ui.simulated_listWidget->Make_From_Material_List( updated_layers );
+			this->Graph_Simulation( updated_layers, { true, false, false }, transmission_max, backside_material );
+		} );
+		auto test2 = connect( thread, &QThread::started, this->thin_film_manager, [ = ] { this->thin_film_manager->Get_Best_Fit( copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material ); } );
+		auto test3 = connect( this->thin_film_manager, &Thin_Film_Interference::Debug_Plot, [ this ]( arma::vec wavelengths_um, arma::vec y_data )
+		{
+			auto x_data_wavenumber = wavelengths_um;
+			x_data_wavenumber.transform( [ = ]( double x ) { return Convert_Units( Unit_Type::WAVELENGTH_MICRONS, Unit_Type::WAVE_NUMBER, x * 1E6 ); } );
+			ui.customPlot->Graph( toQVec( std::move( x_data_wavenumber ) ), toQVec( std::move( y_data ) ), "Debug", "Debug", false );
+		} );
+		this->thin_film_manager->moveToThread( thread );
+		thread->start();
+	}
+
+	//QMetaObject::invokeMethod( this->thin_film_manager, [=] { this->thin_film_manager->Get_Best_Fit( temperature, copy_layers, wavelength_data, transmission_data, backside_material ); } );
 }
 
 void FTIR_Analyzer::Initialize_Tree_Table()
@@ -231,28 +291,15 @@ void FTIR_Analyzer::Initialize_Tree_Table()
 	repoll_sql();
 }
 
-QString Info_Or_Default( const Metadata & meta, QString column, QString Default )
-{
-	if( meta.empty() )
-		return Default;
-	int index = header_titles.indexOf( column );
-	if( index == -1 )
-		return Default;
-	QVariant stuff = meta[ index ];
-	if( stuff == QVariant::Invalid )
-		return Default;
-	return meta[ index ].toString();
-}
-
 void FTIR_Analyzer::Initialize_Graph()
 {
 	ui.interactiveGraphToolbar->Connect_To_Graph( ui.customPlot );
 	connect( ui.customPlot, &Interactive_Graph::Graph_Selected, [this]( QCPGraph* selected_graph )
 	{
 		const Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
-		this->ui.selectedName_lineEdit->setText(        Info_Or_Default( measurement.meta, "Sample Name", "" ) );
-		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default( measurement.meta, "Temperature (K)", "" ) );
-		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default( measurement.meta, "Gain", "" ) );
+		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "Sample Name", "" ) );
+		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "Temperature (K)", "" ) );
+		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default<QString>( measurement.meta, "Gain", "" ) );
 
 		//	QVector<double> cutoffs = Find_Zero_Crossings( x_data, y_data, *std::max_element( y_data.constBegin(), y_data.constEnd() ) / 2 );
 		//	if( !cutoffs.isEmpty() )
@@ -287,9 +334,9 @@ void FTIR_Analyzer::Initialize_Simulation()
 		if( plot_T || plot_R || plot_A )
 		{
 			std::string material_name = ui.backsideMaterial_comboBox->currentText().toStdString();
-			Material_Layer backside_material = { name_to_material[ material_name ], 0.0, 0.0 };
-			this->Graph_Simulation( ui.simulated_listWidget->Build_Material_List(),
-									ui.simulationTemperature_doubleSpinBox->value(),
+			Material_Layer backside_material( name_to_material[ material_name ] );
+			double temperature = ui.simulationTemperature_doubleSpinBox->value();
+			this->Graph_Simulation( ui.simulated_listWidget->Build_Material_List( temperature ),
 									{ plot_T, plot_R, plot_A },
 									100.0, backside_material );
 		}
@@ -323,7 +370,7 @@ void FTIR_Analyzer::Initialize_Simulation()
 
 	connect( ui.customPlot->xAxis, qOverload<const QCPRange &>( &QCPAxis::rangeChanged ), [replot_simulation, replot_blackbody, replot_refractive_index]( const QCPRange & ) { replot_simulation();  replot_blackbody(); replot_refractive_index(); } );
 	connect( ui.backsideMaterial_comboBox, qOverload<int>( &QComboBox::currentIndexChanged ), [replot_simulation](int){ replot_simulation(); } );
-	connect( ui.simulated_listWidget, &Layer_Builder::Materials_List_Changed, [replot_simulation]( const std::vector<Material_Layer> & mats ) { replot_simulation(); } );
+	connect( ui.simulated_listWidget, &Layer_Builder::Materials_List_Changed, [replot_simulation] { replot_simulation(); } );
 	connect( ui.simulationTemperature_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation, replot_refractive_index]( double ) { replot_simulation(); replot_refractive_index(); } );
 	connect( ui.simulationTransmissionOn_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
 	connect( ui.simulationReflectionOn_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
@@ -364,7 +411,7 @@ void FTIR_Analyzer::Initialize_Simulation()
 		else
 			dialog.selectFile( QFileInfo( current_text ).baseName() );
 
-		int result = dialog.exec();
+		auto result = dialog.exec();
 		if( result != QDialog::Accepted )
 			return;
 
@@ -392,18 +439,6 @@ void FTIR_Analyzer::Initialize_Simulation()
 		ui.simulated_listWidget->Save_To_File( full_file_path );
 		ui.layersFile_lineEdit->setText( file_path_string );
 	} );
-	
-	{ // Start the thread
-		QThread* thread = new QThread;
-		this->thin_film_manager = new Thin_Film_Interference();
-		this->thin_film_manager->moveToThread( thread );
-		//connect( this->thin_film_manager, &Thin_Film_Interference::Final_Guess, thread, &QThread::quit );
-		//automatically delete thread and task object when work is done:
-		connect( thread, &QThread::finished, this->thin_film_manager, &QObject::deleteLater );
-		connect( thread, &QThread::finished, thread, &QObject::deleteLater );
-		auto test = connect( this->thin_film_manager, &Thin_Film_Interference::Updated_Guess, this, &FTIR_Analyzer::Graph_Simulation );
-		thread->start();
-	}
 }
 
 void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
@@ -423,8 +458,8 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 			sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( raw_data_columns, raw_data_table, { measurement_id }, this, [ this, measurement_id, row ]( ID_To_XY_Data data )
 			{
 				XY_Data background_data = Scale_FTIR_XY_Data( row, data[ measurement_id ] );
-				ui.customPlot->Set_As_Background( background_data );
-			} );
+				ui.customPlot->Set_As_Background( std::move( background_data ) );
+			}, sorting_strategy );
 		} );
 	}
 
@@ -481,7 +516,7 @@ void FTIR_Analyzer::Save_To_CSV( const std::vector<const QTreeWidgetItem*> & thi
 			int longest_y_data = 0;
 			std::vector< std::vector<std::string> > data_before_transpose;
 			//for( const auto &[ measurement_id, metadata ] : measurements_to_graph % fn::zip_with( measurements_meta_data, []( const auto & x, const auto & y ) { return std::tuple<QString, Metadata>{ x, y }; } ) )
-			for( const auto &[ measurement_id, metadata ] : fn::zip( measurements_to_graph, measurements_meta_data ) )
+			for( const auto &[ measurement_id, metadata ] : fn::zip( fn::from( measurements_to_graph ), fn::from( measurements_meta_data ) ) )
 			{
 				if( id_to_data.find( measurement_id ) == id_to_data.end() )
 					continue;
@@ -540,7 +575,7 @@ void FTIR_Analyzer::Save_To_CSV( const std::vector<const QTreeWidgetItem*> & thi
 				}
 				out_file << "\n";
 			}
-		} );
+		}, sorting_strategy );
 	}
 
 }
@@ -553,7 +588,7 @@ void FTIR_Analyzer::Graph_Tree_Node( const QTreeWidgetItem* tree_item )
 	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( raw_data_columns, raw_data_table, { measurement_id }, this, [ this, measurement_id, row ]( ID_To_XY_Data data )
 	{
 		auto[ x, y ] = Scale_FTIR_XY_Data( row, data[ measurement_id ] );
-		this->Graph( measurement_id, x, y, QString( "%1 %2 K" ).arg( row[ 0 ].toString(), row[ 2 ].toString() ) );
+		this->Graph( measurement_id, x, y, QString( "%1 %2 K" ).arg( row[ 0 ].toString(), row[ 2 ].toString() ), true, row );
 	}, sorting_strategy );
 }
 

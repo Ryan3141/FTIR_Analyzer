@@ -1,51 +1,581 @@
 #pragma once
 
 #include <tuple>
+#include <armadillo>
 
 #include "fn.hpp"
 
+// Adapted From: https://stackoverflow.com/questions/87372/check-if-a-class-has-a-member-function-of-a-given-signature
+#include <type_traits>
+
+// Primary template with a static assertion
+// for a meaningful error message
+// if it ever gets instantiated.
+// We could leave it undefined if we didn't care.
+
+template<typename, typename T>
+struct has_emplace_back
+{
+	static_assert(
+		std::integral_constant<T, false>::value,
+		"Second template parameter needs to be of function type." );
+};
+
+// specialization that does the checking
+
+template<typename C, typename Ret, typename... Args>
+struct has_emplace_back<C, Ret( Args... )>
+{
+private:
+	template<typename T>
+	static constexpr auto check( T* )
+		-> typename
+		std::is_same<
+		decltype( std::declval<T>().emplace_back( std::declval<Args>()... ) ),
+		Ret    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		>::type;  // attempt to call it and see if the return type is correct
+
+	template<typename>
+	static constexpr std::false_type check( ... );
+
+	typedef decltype( check<C>( 0 ) ) type;
+
+public:
+	static constexpr bool value = type::value;
+};
+
+//template<typename C, typename Ret, typename... Args>
+//struct has_emplace_back<C, Ret( Args... )>
+//{
+//private:
+//	template<typename T>
+//	static constexpr auto check( T* )
+//		-> typename
+//		std::is_same<
+//		decltype( std::declval<T>().emplace_back( std::declval<Args>()... ) ),
+//		Ret    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//		>::type;  // attempt to call it and see if the return type is correct
+//
+//	template<typename>
+//	static constexpr std::false_type check( ... );
+//
+//	typedef decltype( check<C>( 0 ) ) type;
+//
+//public:
+//	static constexpr bool value = type::value;
+//};
 
 namespace rangeless::fn
 {
 
-template<typename Iterable1, typename Iterable2>
+// Based on https://stackoverflow.com/questions/40781417/declare-member-variables-from-variadic-template-parameter/53075340#53075340
+template <class T, class... Rest> class hold : hold<Rest...>
+{
+	using base = hold<Rest...>;
+	T v_;
+
+public:
+	hold( T v, Rest... a ) : base( a... ), v_( v )
+	{
+	}
+
+	template <class F, class... args> auto apply( F f, args & ... a )
+	{
+		return base::apply( f, a..., v_ );
+	}
+
+	bool any_equal( const hold<T, Rest...> & rhs )
+	{
+		return v_ == rhs.v_ || base::any_equal( static_cast<const base &>( rhs ) );
+	}
+};
+
+template <class T> class hold<T>
+{
+	T v_;
+
+public:
+	hold( T v ) : v_( v )
+	{
+	}
+
+	template <class F, class... args> auto apply( F f, args & ... a )
+	{
+		return f( a..., v_ );
+	}
+
+	bool any_equal( const hold<T> & rhs )
+	{
+		return v_ == rhs.v_;
+	}
+};
+
+template <typename... Ts>
+inline void variadic_expand( const Ts&...args )
+{
+}
+
+template <class... Iterators>
 struct zip_gen
 {
-	Iterable1 src1;
-	Iterable2 src2;
-	typename Iterable1::iterator it1;
-	typename Iterable2::iterator it2;
-	bool started;
+	hold<Iterators...> iterators;
+	hold<Iterators...> end_iterators;
 
-	//using value_type = decltype( { std::move( *it1 ), std::move( *it2 ) } );
-	using value_type = std::tuple< decltype( *it1 ), decltype( *it2 ) >;
+	using value_type = typename std::tuple< std::add_lvalue_reference_t< std::remove_reference_t<decltype( *std::declval<Iterators>() )> >... >;
+
+	zip_gen( Iterators... begin, Iterators... end ) : iterators( begin... ), end_iterators( end... )
+	{
+	}
 
 	auto operator()() -> impl::maybe<value_type>
 	{
-		if( !started )
-		{
-			it1 = src1.begin();
-			it2 = src2.begin();
-			started = true;
-		}
-
-		if( it1 == src1.end() || it2 == src2.end() )
+		if( iterators.any_equal( end_iterators ) )
 		{
 			return { };
 		}
 
-		auto ret = value_type{ *it1, *it2 };
-		++it1;
-		++it2;
-		return { ret };
+		value_type && ret = iterators.apply( []( Iterators & ... iters ) { return std::tie( *iters... ); } );
+		iterators.apply( []( Iterators & ... iters ) { variadic_expand( ++iters... ); } );
+		return { std::move( ret ) };
 	}
+
+};
+
+//template<class... Iterators>
+//struct unzip_gen
+//{
+//	// passthrough overload
+//	std::tuple<Iterable1, Iterable2> operator()( std::tuple<Iterable1, Iterable2> tup ) const
+//	{
+//		return std::move( tup );
+//	}
+//
+//	// overload for a seq - invoke rvalue-specific implicit conversion
+//	template<typename Gen,
+//		typename Out_Type = std::tuple<Iterable1, Iterable2> >
+//		Out_Type operator()( impl::seq<Gen> r ) const
+//	{
+//		Iterable1 out1;
+//		std::vector< Iterable1::value_type > temp1;
+//		Iterable2 out2;
+//		std::vector< Iterable2::value_type > temp2;
+//		for( auto && x : r )
+//		{
+//			if constexpr( has_emplace_back< Iterable1, Iterable1::value_type( Iterable1::value_type ) >::value )
+//				out1.emplace_back( std::move( std::get<0>( x ) ) );
+//			else
+//				temp1.emplace_back( std::move( std::get<0>( x ) ) );
+//
+//			if constexpr( has_emplace_back< Iterable2, Iterable2::value_type( Iterable2::value_type ) >::value )
+//				out2.emplace_back( std::move( std::get<1>( x ) ) );
+//			else
+//				temp2.emplace_back( std::move( std::get<1>( x ) ) );
+//		}
+//		if constexpr( !has_emplace_back< Iterable1, Iterable1::value_type( Iterable1::value_type ) >::value )
+//			out1 = arma::conv_to<Iterable1>::from( temp1 );
+//		if constexpr( !has_emplace_back< Iterable2, Iterable2::value_type( Iterable2::value_type ) >::value )
+//			out2 = arma::conv_to<Iterable1>::from( temp2 );
+//
+//		return Out_Type{ std::move( out1 ), std::move( out2 ) };
+//	}
+//};
+//template<typename This_Iterator, typename ...Rest_of_Iterators>
+//struct zip_gen : zip_gen<Rest_of_Iterators...>
+//{
+//	//using value_type1 = typename std::remove_reference_t<decltype( *std::declval<Iterator1>() )>;
+//	//using value_type2 = typename std::remove_reference_t<decltype( *std::declval<Iterator2>() )>;
+//	//using value_type = std::tuple< (std::remove_reference_t<decltype( *std::declval<Iterators>() )>)... >;
+//	This_Iterator this_iterator;
+//	const This_Iterator end_iterator;
+//	using value_type = decltype( std::tie( *iterators... ) );
+//	typedef std::tuple<Rest_of_Iterators...> Base_Tuple;
+//
+//	template<
+//		class This_Iterator2,
+//		class... Rest_of_Iterators2
+//		//,
+//		//enable_if_t<is_same_v<_Tag, _Exact_args_t>, int> = 0
+//	>
+//	constexpr class zip_gen( This_Iterator2&& begin_arg, This_Iterator2&& end_arg, Rest_of_Iterators2&&... _Rest_arg )
+//		: Base_zip_gen( std::forward<Rest_of_Iterators2>( _Rest_arg )... ),
+//		this_iterator( std::forward<This_Iterator2>( begin_arg ) ), end_iterator( std::forward<This_Iterator2>( end_arg ) )
+//	{	// construct from one arg per element
+//	}
+//
+//	value_type unzip_tuple( std::tuple<This_Iterator, Rest_of_Iterators...> && tup )
+//	{
+//		return unzip_tuple( *this_iterator );
+//	}
+//
+//	template<typename... Rest2, typename Current2>
+//	constexpr void Fill_In_Container( value_type & output )
+//	{
+//		constexpr auto index = sizeof...( Rest2 );
+//		std::get<index>( output ) = *this_iterator;
+//		Fill_In_Container< Container, Rest... >( output );
+//	}
+//
+//	template<>
+//	constexpr void Fill_In_Container( value_type & output )
+//	{
+//	}
+//
+//	auto operator()() -> impl::maybe<value_type>
+//	{
+//		//if( it1 == it_end1 || it2 == it_end2 )
+//		//{
+//		//	return { };
+//		//}
+//
+//		//value_type && ret = std::tie( *iterators... );
+//		value_type ret;
+//		Fill_In_Container( ret );
+//		//++iterators...;
+//		return { std::move( ret ) };
+//	}
+//};
+
+//template<typename Iterator1, typename Iterator2>
+//struct zip_gen
+//{
+//	//using value_type1 = typename std::remove_reference_t<decltype( *std::declval<Iterator1>() )>;
+//	//using value_type2 = typename std::remove_reference_t<decltype( *std::declval<Iterator2>() )>;
+//
+//	typename Iterator1 it1;
+//	typename Iterator2 it2;
+//
+//	typename Iterator1 it_end1;
+//	typename Iterator2 it_end2;
+//
+//	using value_type = decltype( std::tie( *it1, *it2 ) );
+//
+//	auto operator()() -> impl::maybe<value_type>
+//	{
+//		if( it1 == it_end1 || it2 == it_end2 )
+//		{
+//			return { };
+//		}
+//
+//		value_type && ret = std::tie( *it1, *it2 );
+//		++it1;
+//		++it2;
+//		return { std::move( ret ) };
+//	}
+//};
+
+
+//template<typename Iterable1, typename Iterable2, typename check1 = Iterable1::is_view, typename check2 = Iterable2::is_view>
+//auto zip( Iterable1 src1, Iterable2 src2 )
+//{
+//	return impl::seq<zip_gen<decltype( std::begin( src1 ) ), decltype( std::begin( src2 ) )>>{
+//		{
+//			std::begin( src1 ), std::begin( src2 ), std::end( src1 ), std::end( src2 )
+//		} };
+//}
+//
+//template<typename Iterable1, typename Iterable2, typename check = Iterable1::is_view>
+//auto zip( Iterable1 src1, Iterable2 src2 )
+//{
+//	auto && view_src2 = fn::view<Iterable2>{ src2 };
+//	return impl::seq<zip_gen<decltype( std::begin( src1 ) ), decltype( std::begin( view_src2 ) )>>{
+//		{
+//			std::begin( src1 ), std::begin( view_src2 ), std::end( src1 ), std::end( view_src2 )
+//		} };
+//}
+//
+//template<typename Iterable1, typename Iterable2, typename check = Iterable2::is_view>
+//auto zip( Iterable1 src1, Iterable2 src2 )
+//{
+//	auto && view_src1 = fn::view<Iterable1>{ src1 };
+//	return impl::seq<zip_gen<decltype( std::begin( view_src1 ) ), decltype( std::begin( src2 ) )>>{
+//		{
+//			std::begin( view_src1 ), std::begin( src2 ), std::end( view_src1 ), std::end( src2 )
+//		} };
+//}
+//
+//template<typename Iterable1, typename Iterable2>
+//auto zip( Iterable1 src1, Iterable2 src2 )
+//{
+//	auto && view_src1 = fn::view<Iterable1>{ src1 };
+//	auto && view_src2 = fn::view<Iterable2>{ src2 };
+//	return impl::seq<zip_gen<decltype( std::begin( view_src1 ) ), decltype( std::begin( view_src2 ) )>>{
+//		{
+//			std::begin( view_src1 ), std::begin( view_src2 ), std::end( view_src1 ), std::end( view_src2 )
+//		} };
+//}
+
+//template<typename Iterable1, typename Iterable2>
+//auto zip( Iterable1 src1, Iterable2 src2 )
+//{
+//	return impl::seq<zip_gen<decltype( std::begin( src1 ) ), decltype( std::begin( src2 ) )>>{
+//		{
+//			std::begin( src1 ), std::begin( src2 ), std::end( src1 ), std::end( src2 )
+//		} };
+//}
+
+
+template<typename ...Iterables>
+auto zip( Iterables& ... src )
+{
+	using zip_gen_type = typename zip_gen< std::remove_reference_t<decltype( std::begin( std::declval<Iterables>() ) )>... >;
+
+	return impl::seq < zip_gen_type >{
+		{
+			std::begin( src )..., std::end( src )...
+		} };
+}
+
+//template<typename T, typename ...Rest>
+//auto zip( T& src1, Rest & ... rest )
+//{
+//	return impl::seq< decltype( variadic_get_zip_gen( src... ) ) >{
+//		{
+//			std::begin( src )..., std::end( src )...
+//		} };
+//}
+
+
+//template<typename Iterable1, typename Iterable2>
+//struct unzip_gen
+//{
+//	Iterable1 src1;
+//	Iterable2 src2;
+//	typename Iterable1::iterator it1;
+//	typename Iterable2::iterator it2;
+//
+//	//using value_type = decltype( { std::move( *it1 ), std::move( *it2 ) } );
+//	using value_type = std::tuple< decltype( *it1 ), decltype( *it2 ) >;
+//
+//	auto operator()( std::tuple<Iterable1, Iterable2> ) -> impl::maybe<value_type>
+//	{
+//		if( it1 == src1.end() || it2 == src2.end() )
+//		{
+//			return { };
+//		}
+//
+//		auto ret = value_type{ *it1, *it2 };
+//		++it1;
+//		++it2;
+//		return { ret };
+//	}
+//};
+//
+//template<typename Iterable1, typename Iterable2>
+//impl::seq<unzip_gen<Iterable1, Iterable2>> unzip( std::tuple<Iterable1, Iterable2> )
+//{
+//	return { { std::move( src1 ), std::move( src2 ), src1.begin(), src2.begin() } };
+//}
+
+//template<typename Iterable, typename value_type = Iterable::value_type>
+//struct unzip_gen_helper
+//{
+//	Iterable storage;
+//	void emplace_back( Iterable::value_type && v )
+//	{
+//		storage.emplace_back( v );
+//	}
+//
+//	Iterable results()
+//	{
+//		return std::move( storage );
+//	}
+//};
+//
+//template<typename value_type>
+//struct unzip_gen_helper<arma::vec, value_type>
+//{
+//	std::vector< value_type > storage;
+//	void emplace_back( Iterable::value_type && v )
+//	{
+//		storage.emplace_back( v );
+//	}
+//
+//	Iterable results()
+//	{
+//		return std::move( arma::conv_to<arma::vec>::from( storage ) );
+//	}
+//};
+//
+//template< typename T, typename... Iterables >
+//struct unzip_splitter : unzip_splitter< Iterables... >
+//{
+//	unzip_gen_helper<T> storage;
+//	template< int index >
+//	void emplace_back( auto && x )
+//	{
+//		storage.emplace_back( std::get< index >( x ) );
+//	}
+//
+//	std::tuple< T, Iterables... > split()
+//	{
+//		return { storage, };
+//	}
+//};
+//
+//template<typename... Iterables>
+//struct unzip_gen_n
+//{
+//	// passthrough overload
+//	std::tuple<Iterables...> operator()( std::tuple<Iterables...> tup ) const
+//	{
+//		return std::move( tup );
+//	}
+//
+//	// overload for a seq - invoke rvalue-specific implicit conversion
+//	template<typename Gen,
+//		typename Out_Type = std::tuple<Iterables...> >
+//		Out_Type operator()( impl::seq<Gen> r ) const
+//	{
+//		unzip_splitter<Iterables...> out;
+//		for( auto && x : r )
+//			out.emplace_back( std::move( x ) );
+//
+//		return out.split();
+//	}
+//};
+
+template<typename Iterable1, typename Iterable2>
+struct unzip_gen
+{
+	// passthrough overload
+	std::tuple<Iterable1, Iterable2> operator()( std::tuple<Iterable1, Iterable2> tup ) const
+	{
+		return std::move( tup );
+	}
+
+	// overload for a seq - invoke rvalue-specific implicit conversion
+	template<typename Gen,
+		typename Out_Type = std::tuple<Iterable1, Iterable2> >
+	Out_Type operator()( impl::seq<Gen> r ) const
+	{
+		Iterable1 out1;
+		std::vector< Iterable1::value_type > temp1;
+		Iterable2 out2;
+		std::vector< Iterable2::value_type > temp2;
+		for( auto && x : r )
+		{
+			if constexpr( has_emplace_back< Iterable1, Iterable1::value_type( Iterable1::value_type ) >::value )
+				out1.emplace_back( std::move( std::get<0>( x ) ) );
+			else
+				temp1.emplace_back( std::move( std::get<0>( x ) ) );
+
+			if constexpr( has_emplace_back< Iterable2, Iterable2::value_type( Iterable2::value_type ) >::value )
+				out2.emplace_back( std::move( std::get<1>( x ) ) );
+			else
+				temp2.emplace_back( std::move( std::get<1>( x ) ) );
+		}
+		if constexpr( !has_emplace_back< Iterable1, Iterable1::value_type( Iterable1::value_type ) >::value )
+			out1 = arma::conv_to<Iterable1>::from( temp1 );
+		if constexpr( !has_emplace_back< Iterable2, Iterable2::value_type( Iterable2::value_type ) >::value )
+			out2 = arma::conv_to<Iterable1>::from( temp2 );
+
+		return Out_Type{ std::move( out1 ), std::move( out2 ) };
+	}
+
+	//// overload for other iterable: move-insert elements into vec
+	//template<typename Iterable,
+	//	typename Vec = std::vector<typename Iterable::value_type> >
+	//	Vec operator()( Iterable src ) const
+	//{
+	//	// Note: this will not compile with std::set
+	//	// in conjunction with move-only value_type because 
+	//	// set's iterators are const, and std::move will try 
+	//	// and fail to use the copy-constructor.
+
+	//	return this->operator()( Vec{
+	//			std::make_move_iterator( src.begin() ),
+	//			std::make_move_iterator( src.end() ) } );
+	//}
 };
 
 template<typename Iterable1, typename Iterable2>
-impl::seq<zip_gen<Iterable1, Iterable2>> zip( Iterable1 src1, Iterable2 src2 )
+unzip_gen< Iterable1, Iterable2 > unzip( std::tuple<Iterable1, Iterable2> )
 {
-	return { { std::move( src1 ), std::move( src2 ), {}, {}, false } };
+	return {};
 }
+
+//template< typename Iterator, std::enable_if_t<std::is_pointer_v<Iterator>, bool> = true >
+//class view
+//{
+//private:
+//	Iterator it_beg;
+//	Iterator it_end;
+//
+//public:
+//	view( Iterator b, Iterator e )
+//		: it_beg( std::move( b ) )
+//		, it_end( std::move( e ) )
+//	{
+//	}
+//
+//	view() = default;
+//
+//	using iterator = Iterator;
+//	//using value_type = typename iterator::value_type;
+//
+//	Iterator begin() const
+//	{
+//		return it_beg;
+//	}
+//	Iterator end()   const
+//	{
+//		return it_end;
+//	}
+//
+//	///// Truncate the view.
+//	/////
+//	///// Precondition: `b == begin() || e = end()`; throws `std::logic_error` otherwise.
+//	///// This does not affect the underlying range.
+//	//void erase( Iterator b, Iterator e )
+//	//{
+//	//	// We support the erase method to obviate view-specific overloads 
+//	//	// for some hofs, e.g. take_while, take_first, drop_whille, drop_last, etc -
+//	//	// the container-specific overloads will work for views as well.
+//
+//	//	if( b == it_beg )
+//	//	{
+//	//		// erase at front
+//	//		it_beg = e;
+//	//	}
+//	//	else if( e == it_end )
+//	//	{
+//
+//	//		// erase at end
+//	//		impl::require_iterator_category_at_least<std::forward_iterator_tag>( *this );
+//
+//	//		it_end = b;
+//	//	}
+//	//	else
+//	//	{
+//	//		RANGELESS_FN_THROW( "Can only erase at the head or at the tail of the view" );
+//	//	}
+//	//}
+//
+//	void clear()
+//	{
+//		it_beg = it_end;
+//	}
+//
+//	bool empty() const
+//	{
+//		return it_beg == it_end;
+//	}
+//};
+
+//template<typename From_Type, typename Interior_Type>
+//std::vector<Interior_Type> from_arma( From_Type< Interior_Type > f )
+//{
+//	return conv_to< std::vector<Interior_Type> >( std::move( f ) );
+//}
+
+//template<typename Interior_Type, typename< template<typename...> class From_Type>
+//struct to_arma
+//{
+//	auto operator()( From_Type< Interior_Type > f )
+//	{
+//		return conv_to< std::vector<Interior_Type> >( std::move( f ) );
+//	}
+//};
 
 //struct transpose2D
 //{
@@ -128,3 +658,6 @@ impl::seq<zip_gen<Iterable1, Iterable2>> zip( Iterable1 src1, Iterable2 src2 )
 //	} );
 //};
 }
+
+namespace fn = rangeless::fn;
+using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>(arg))));

@@ -58,7 +58,7 @@ arma::vec Minimize_Function_Starting_Point( std::function<double( const arma::ve
 											int max_iteration_count,
 											double attenuation_coefficient,
 											double resolution,
-											double biggest_step_size,
+											double biggest_step_ratio,
 											std::function<void( arma::vec )> iteration_finished_callback )
 {
 	arma::vec current_guess = starting_point;
@@ -97,7 +97,7 @@ arma::vec Minimize_Function_Starting_Point( std::function<double( const arma::ve
 		//		move_vector( j ) = 0.0005 * abs( current_guess( j ) ) * move_vector( j ) / abs( move_vector( j ) );
 		//}
 		arma::vec to_zero = -gradient / (2 * resolution) / function_to_minimize( current_guess );
-		arma::vec move_vector = std::min( arma::norm( to_zero ), biggest_step_size ) * arma::normalise( to_zero );
+		arma::vec move_vector = arma::min( arma::abs(to_zero), biggest_step_ratio * current_guess ) % arma::sign( to_zero );
 		//double length = arma::norm( gradient ) / (2 * resolution);
 		//arma::vec move_vector = -arma::normalise( gradient ) * std::min( length, 1000 * resolution );
 		//arma::vec extend_thing = { 0, 0, 0 };
@@ -114,7 +114,7 @@ arma::vec Minimize_Function_Starting_Point( std::function<double( const arma::ve
 		if( arma::dot( move_vector, move_vector ) < resolution * resolution )
 			break; // Quit out if we are barely moving anymore
 		if( arma::dot( move_vector, previous_direction ) < 0 )
-			biggest_step_size *= 0.9;
+			biggest_step_ratio *= 0.9;
 
 		previous_direction = move_vector;
 	}

@@ -9,10 +9,13 @@
 
 #include "SQL_Manager.h"
 
+//Q_DECLARE_METATYPE( std::tuple<bool, bool, bool> )
+
 namespace FTIR
 {
 using XY_Data = std::tuple< QVector<double>, QVector<double> >;
 using Metadata = std::vector<QVariant>;
+
 
 class FTIR_Analyzer : public QMainWindow
 {
@@ -39,7 +42,7 @@ private:
 	void Initialize_SQL( QString config_filename );
 
 	void Graph_Tree_Node( const QTreeWidgetItem* tree_item );
-	void Graph_Simulation( std::vector<Material_Layer> layers, double temperature_in_k, std::tuple<bool, bool, bool> what_to_plot, double largest_transmission = 100.0, Material_Layer backside_material = Material_Layer() );
+	void Graph_Simulation( std::vector<Material_Layer> layers, std::tuple<bool, bool, bool> what_to_plot, double largest_transmission = 100.0, Material_Layer backside_material = Material_Layer() );
 	void Graph_Blackbody( double temperature_in_k, double amplitude );
 	void Graph_Refractive_Index( Material material, double temperature_in_k = 300.0, double composition = 0.5 );
 

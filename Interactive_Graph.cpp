@@ -74,9 +74,9 @@ void Interactive_Graph::Initialize_Graph()
 	// setup policy and connect slot for context menu popup:
 	this->setContextMenuPolicy( Qt::CustomContextMenu );
 
-	this->x_axis_menu_functions.push_back( [this]( Interactive_Graph* graph, QMenu* menu, QPoint pos )
+	this->x_axis_menu_functions.push_back( [ this ]( Interactive_Graph* graph, QMenu* menu, QPoint pos )
 	{
-		auto Fix_X_Range = [graph, this]( Unit_Type new_type )
+		auto Fix_X_Range = [ graph, this ]( Unit_Type new_type )
 		{
 			std::array<double, 2> bounds = { xAxis->range().lower, xAxis->range().upper };
 			for( double & x : bounds )
@@ -86,22 +86,45 @@ void Interactive_Graph::Initialize_Graph()
 			graph->xAxis->setLabel( Unit_Names[ int( new_type ) ] );
 			emit X_Units_Changed( new_type );
 		};
-		menu->addAction( "Change to Wavelength", [this, Fix_X_Range]
+		menu->addAction( "Change to Wavelength", [ this, Fix_X_Range ]
 		{
 			Fix_X_Range( Unit_Type::WAVELENGTH_MICRONS );
 			this->RegraphAll();
 		} );
-		menu->addAction( "Change to Wave Number", [this, Fix_X_Range]
+		menu->addAction( "Change to Wave Number", [ this, Fix_X_Range ]
 		{
 			Fix_X_Range( Unit_Type::WAVE_NUMBER );
 			this->RegraphAll();
 		} );
-		menu->addAction( "Change to Energy", [this, Fix_X_Range]
+		menu->addAction( "Change to Energy", [ this, Fix_X_Range ]
 		{
 			Fix_X_Range( Unit_Type::ENERGY_EV );
 			this->RegraphAll();
 		} );
 	} );
+	//this->y_axis_menu_functions.push_back( [ this ]( Interactive_Graph* graph, QMenu* menu, QPoint pos )
+	//{
+	//	auto Fix_X_Range = [ graph, this ]( Unit_Type new_type )
+	//	{
+	//		std::array<double, 2> bounds = { yAxis->range().lower, yAxis->range().upper };
+	//		for( double & x : bounds )
+	//			x = Convert_Units( this->x_axis_units, new_type, x );
+	//		xAxis->setRange( std::min( bounds[ 0 ], bounds[ 1 ] ), std::max( bounds[ 0 ], bounds[ 1 ] ) );
+	//		this->x_axis_units = new_type;
+	//		graph->xAxis->setLabel( Unit_Names[ int( new_type ) ] );
+	//		emit X_Units_Changed( new_type );
+	//	};
+	//	menu->addAction( "Change to Intensity", [ this, Fix_X_Range ]
+	//	{
+	//		Fix_X_Range( Unit_Type::WAVELENGTH_MICRONS );
+	//		this->RegraphAll();
+	//	} );
+	//	menu->addAction( "Change to Derivative", [ this, Fix_X_Range ]
+	//	{
+	//		Fix_X_Range( Unit_Type::WAVE_NUMBER );
+	//		this->RegraphAll();
+	//	} );
+	//} );
 }
 
 void Interactive_Graph::mouseDoubleClickEvent( QMouseEvent* event )
@@ -411,8 +434,8 @@ const Single_Graph & Interactive_Graph::Graph( QVector<double> x_data, QVector<d
 	if( existing_graph != remembered_graphs.end() )
 	{
 		Single_Graph & current_info = existing_graph->second;
-		if( current_info.x_data.size() == x_data.size() &&
-			current_info.y_data.size() == y_data.size() )
+		//if( current_info.x_data.size() == x_data.size() &&
+		//	current_info.y_data.size() == y_data.size() )
 		{
 			current_info.x_data = x_data;
 			current_info.y_data = y_data;
@@ -444,13 +467,12 @@ const Single_Graph & Interactive_Graph::Graph( QVector<double> x_data, QVector<d
 		static int color_index = 0;
 		bool this_is_the_first_graph = this->graphCount() == 0;
 		QCPGraph* current_graph = this->addGraph();
-		//current_graph->
+
 		if( graph_title.isEmpty() )
 			current_graph->setName( measurement_name );
 		else
 			current_graph->setName( graph_title );
 
-		//this->graph()->setName( meta_data.graph_title );
 		// Remember data before changing it at all
 		remembered_graphs[ measurement_name ] = Single_Graph{ Unit_Type::WAVE_NUMBER, x_data, y_data, current_graph, allow_y_scaling, meta };
 		if( allow_y_scaling )
@@ -624,9 +646,10 @@ const Single_Graph & Interactive_Graph::FindDataFromGraphPointer( QCPGraph* grap
 
 void Interactive_Graph::Set_As_Background( XY_Data xy )
 {
-	this->y_display_method = [xy]( double x, double y )
+	QVector x_data = std::get<0>( xy ) % fn::sort();
+	QVector y_data = std::get<1>( xy );
+	this->y_display_method = [ x_data=std::move( x_data ), y_data=std::move( y_data ) ]( double x, double y )
 	{
-		auto[ x_data, y_data ] = xy;
 		int i = std::distance( x_data.begin(), std::lower_bound( x_data.begin(), x_data.end(), x ) );
 		i = std::min( y_data.size() - 1, i );
 

@@ -21,9 +21,9 @@ static QString Sanitize_SQL( const QString & raw_string )
 	bool hasMatch = match.hasMatch();
 
 	if( hasMatch )
-		return raw_string;
-	else
 		return QString();
+	else
+		return raw_string;
 }
 
 SQL_Manager::SQL_Manager( QObject* parent, QFileInfo config_filename ) : config_filename_( config_filename )

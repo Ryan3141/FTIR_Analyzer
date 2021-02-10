@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>304</width>
+    <width>412</width>
     <height>29</height>
    </rect>
   </property>
@@ -40,7 +40,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QDoubleSpinBox" name="thickness_doubleSpinBox">
+    <widget class="Fit_DoubleSpinBox" name="thickness_doubleSpinBox">
      <property name="suffix">
       <string> μm</string>
      </property>
@@ -59,7 +59,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QDoubleSpinBox" name="composition_doubleSpinBox">
+    <widget class="Fit_DoubleSpinBox" name="composition_doubleSpinBox">
      <property name="decimals">
       <number>3</number>
      </property>
@@ -74,9 +74,57 @@
      </property>
     </widget>
    </item>
+   <item>
+    <widget class="Fit_DoubleSpinBox" name="tautsGap_doubleSpinBox">
+     <property name="suffix">
+      <string> meV</string>
+     </property>
+     <property name="decimals">
+      <number>1</number>
+     </property>
+     <property name="maximum">
+      <double>1000.000000000000000</double>
+     </property>
+     <property name="singleStep">
+      <double>1.000000000000000</double>
+     </property>
+     <property name="value">
+      <double>100.000000000000000</double>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="Fit_DoubleSpinBox" name="urbachEnergy_doubleSpinBox">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="suffix">
+      <string> meV</string>
+     </property>
+     <property name="decimals">
+      <number>1</number>
+     </property>
+     <property name="maximum">
+      <double>1000.000000000000000</double>
+     </property>
+     <property name="singleStep">
+      <double>1.000000000000000</double>
+     </property>
+     <property name="value">
+      <double>100.000000000000000</double>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>Fit_DoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>Fit_DoubleSpinBox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

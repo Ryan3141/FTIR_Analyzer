@@ -76,7 +76,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -86,7 +86,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -96,7 +96,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -106,12 +106,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>C:\Code\armadillo-10.1.2\examples\lib_win64;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libopenblas.lib;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Code\armadillo-8.600.0\examples\lib_win64;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>blas_win64_MT.lib;lapack_win64_MT.lib;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
@@ -190,6 +190,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Fit_DoubleSpinBox.cpp" />
     <ClCompile Include="III_V_Materials.cpp" />
     <ClCompile Include="Interactive_Graph.cpp" />
     <ClCompile Include="Interactive_Graph_Toolbar.cpp" />
@@ -201,6 +202,7 @@
     <ClCompile Include="SQL_Tree_Widget.cpp" />
     <ClCompile Include="Thin_Film_Interference.cpp" />
     <QtRcc Include="FTIR_Analyzer.qrc" />
+    <QtUic Include="skip_Fit_DoubleSpinBox.ui" />
     <QtUic Include="FTIR_Analyzer.ui" />
     <QtMoc Include="FTIR_Analyzer.h" />
     <ClCompile Include="FTIR_Analyzer.cpp" />
@@ -211,6 +213,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Blackbody_Radiation.h" />
+    <QtMoc Include="Fit_DoubleSpinBox.h" />
     <ClInclude Include="fn.hpp" />
     <ClInclude Include="III_V_Materials.h" />
     <ClInclude Include="Optimize.h" />

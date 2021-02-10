@@ -35,13 +35,13 @@ void Layer_Builder::Load_From_File( QFileInfo file )
 		% fn::for_each( [this]( const auto & line_of_elements )
 			{
 				if( line_of_elements.size() >= 3 )
-					Add_New_Material( QString::fromStdString( line_of_elements[ 0 ] ),
-									  std::stod( line_of_elements[ 1 ] ) * 1E6,
+					Add_New_Material( line_of_elements[ 0 ],
+									  std::stod( line_of_elements[ 1 ] ),
 									  std::stod( line_of_elements[ 2 ] ) );
 			} );
 
-	Add_New_Material(); // Load blank entry for further filling in
-	emit Materials_List_Changed( Build_Material_List() );
+	Add_New_Material( Material_Adjustable_Parameters{ "" } ); // Load blank entry for further filling in
+	emit Materials_List_Changed();
 }
 
 void Layer_Builder::Save_To_File( QFileInfo file ) const
@@ -50,36 +50,82 @@ void Layer_Builder::Save_To_File( QFileInfo file ) const
 	if( !out.is_open() )
 		return;
 
-	std::vector<Material_Layer> layers = Build_Material_List();
+	std::vector<Material_Layer> layers = Build_Material_List( std::nullopt );
 	for( const Material_Layer & layer : layers )
 	{
 		auto material_name = std::find_if( std::begin( name_to_material ), std::end( name_to_material ), [layer]( const auto& mo ) { return mo.second == layer.material; } );
 		if( material_name == name_to_material.end() )
 			continue;
-		out << material_name->first << "," << layer.thickness << "," << layer.composition << "\n";
+		out << material_name->first;
+		out << "," << layer.optional.thickness.value_or( 0.0 );
+		out << "," << layer.optional.composition.value_or( 0.0 );
+		out << "\n";
 	}
 }
 
 void Layer_Builder::dropEvent( QDropEvent* event )
 {
 	QListWidget::dropEvent( event );
-	emit Materials_List_Changed( Build_Material_List() );
+	emit Materials_List_Changed();
 }
 
-void Layer_Builder::Add_New_Material( QString material, double thickness_in_um, double alloy_composition )
+void Layer_Builder::Add_New_Material( std::string material,
+									  double thickness,
+									  std::optional< double > composition,
+									  std::optional< double > tauts_gap,
+									  std::optional< double > urbach_energy )
 {
-	if( !material_names.contains( material ) && material != "" )
+	Material_Adjustable_Parameters parameters( material );
+	parameters.thickness     = thickness    ;
+	parameters.composition   = composition  ;
+	parameters.tauts_gap     = tauts_gap    ;
+	parameters.urbach_energy = urbach_energy;
+	Add_New_Material( std::move( parameters ) );
+}
+
+void Layer_Builder::Add_New_Material( Material_Adjustable_Parameters parameters )
+{
+	if( !material_names.contains( QString::fromStdString( parameters.material ) ) && parameters.material != "" )
 		return;
 	QListWidgetItem *iconItem = new QListWidgetItem( this );
-	Material_Layer_Widget* one_material = new Material_Layer_Widget( this, material_names, material, thickness_in_um, alloy_composition );
-	connect( one_material, &Material_Layer_Widget::New_Material_Created, [this]{ this->Add_New_Material(); } );
-	connect( one_material, &Material_Layer_Widget::Material_Changed, [this]{ emit Materials_List_Changed( Build_Material_List() ); } );
+	Material_Layer_Widget* one_material = new Material_Layer_Widget( this, material_names, parameters );
+	connect( one_material, &Material_Layer_Widget::New_Material_Created, [ this ] { this->Add_New_Material( Material_Adjustable_Parameters{ "" } ); } );
+	connect( one_material, &Material_Layer_Widget::Material_Values_Changed, [ this ] { emit Materials_List_Changed(); } );
+	connect( one_material, &Material_Layer_Widget::Material_Changed, [ this, one_material ]
+	{
+		auto [new_parameters, should_fit] = one_material->Get_Details();
+		auto find_mat_in_defaults = defaults_per_material.find( name_to_material[ new_parameters.material ] );
+		//if( find_mat_in_defaults == defaults_per_material.end() )
+		//	return;
+		auto [ mat, defaults ] = *find_mat_in_defaults;
+
+		bool oldState = one_material->blockSignals( true ); // Prevent remove from triggering another changed signal while we edit things
+		for( auto &[ widget, one_default ] : fn::zip( fn::from( one_material->double_widgets ), fn::from( defaults ) ) )
+		{
+			if( one_default.has_value() )
+			{
+				if( !widget->isEnabled() )
+				{ // Only write default over if it was previously not used
+					widget->setEnabled( true );
+					widget->setValue( one_default.value() );
+				}
+			}
+			else
+			{
+				widget->use_in_fit = false;
+				widget->setEnabled( false );
+			}
+		}
+		one_material->blockSignals( oldState );
+
+		emit Materials_List_Changed();
+	} );
 
 	connect( one_material, &Material_Layer_Widget::Delete_Requested, [iconItem, this]
 	{
 		this->removeItemWidget( iconItem );
 		delete iconItem;
-		emit Materials_List_Changed( Build_Material_List() );
+		emit Materials_List_Changed();
 	} );
 
 	iconItem->setSizeHint( one_material->sizeHint() );
@@ -87,26 +133,71 @@ void Layer_Builder::Add_New_Material( QString material, double thickness_in_um, 
 	this->setItemWidget( iconItem, one_material );
 }
 
-std::vector<Material_Layer> Layer_Builder::Build_Material_List() const
+std::vector<Material_Layer> Layer_Builder::Build_Material_List( std::optional< double > temperature ) const
 {
 	std::vector<Material_Layer> output;
 
 	for( int i = 0; i < this->count(); i++ )
 	{
 		const Material_Layer_Widget* layer = static_cast<const Material_Layer_Widget*>( this->itemWidget( this->item( i ) ) );
-		auto [mat_name, thickness, composition] = layer->Get_Details();
-		if( mat_name == "" )
+		auto [p, what_to_fit] = layer->Get_Details();
+		if( p.material == "" )
 			continue;
 
-		auto find_mat = name_to_material.find( mat_name );
+		auto find_mat = name_to_material.find( p.material );
 		if( find_mat == name_to_material.end() )
 			continue;
 
-		Material mat = name_to_material.find( mat_name )->second;
-
-		output.push_back( { mat, thickness, composition } );
+		Material_Layer one_layer( find_mat->second, temperature );
+		for( auto & [copy_to, copy_from] : fn::zip( fn::from( one_layer.optional.all ), fn::from( p.all ) ) )
+			copy_to = copy_from;
+		one_layer.what_to_fit = what_to_fit;
+		output.push_back( std::move( one_layer ) );
 	}
 	return output;
+}
+
+void Layer_Builder::Make_From_Material_List( const std::vector<Material_Layer> & layers )
+{
+	auto Avoid_Resignalling_setValue = []( auto going_to_change, auto value )
+	{
+		bool oldState = going_to_change->blockSignals( true ); // Prevent remove from triggering another changed signal
+		if( value.has_value() )
+		{
+			going_to_change->setEnabled( true );
+			going_to_change->setValue( value.value() );
+		}
+		else
+			going_to_change->setEnabled( false );
+		going_to_change->blockSignals( oldState );
+	};
+
+	auto Avoid_Resignalling_setCurrentText = []( auto going_to_change, auto value )
+	{
+		bool oldState = going_to_change->blockSignals( true ); // Prevent remove from triggering another changed signal
+		going_to_change->setCurrentText( value );
+		going_to_change->blockSignals( oldState );
+	};
+
+
+	int i = 0;
+	for( const Material_Layer & layer : layers )
+	{
+		auto material_iterator = std::find_if( std::begin( name_to_material ), std::end( name_to_material ), [ layer ]( const auto& mo ) { return mo.second == layer.material; } );
+		if( material_iterator == name_to_material.end() )
+			continue;
+		const auto [ material_name, mat ] = *material_iterator;
+		Material_Layer_Widget* layer_widget = static_cast<Material_Layer_Widget*>( this->itemWidget( this->item( i ) ) );
+		Avoid_Resignalling_setCurrentText( layer_widget->ui.material_comboBox, QString::fromStdString( material_name ) );
+		for( auto &[ widget, parameter ] : fn::zip( fn::from( layer_widget->double_widgets ), fn::from( layer.optional.all ) ) )
+		{
+			Avoid_Resignalling_setValue( widget, parameter );
+		}
+		if( layer.optional.thickness.has_value() )
+			Avoid_Resignalling_setValue( layer_widget->ui.thickness_doubleSpinBox, std::optional<double>{ layer.optional.thickness.value() * 1E6 } );
+
+		i++;
+	}
 }
 
 void Layer_Builder::Set_Material_List( std::map<std::string, Material> new_name_to_material )
@@ -115,7 +206,7 @@ void Layer_Builder::Set_Material_List( std::map<std::string, Material> new_name_
 		material_names.push_back( QString::fromStdString( name ) );
 
 	this->name_to_material = std::move( new_name_to_material );
-	Add_New_Material();
+	Add_New_Material( Material_Adjustable_Parameters{ "" } );
 }
 
 //#include <QtGui>

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <optional>
 #include <algorithm>
 #include <numeric>
 #include <vector>
@@ -8,6 +10,8 @@
 //#include <boost/units/systems/si.hpp>
 #include <QObject>
 #include <qmetatype.h>
+
+#include "rangeless_helper.hpp"
 
 #include "Units.h"
 
@@ -30,19 +34,82 @@ enum class Material
 	AlAs,
 	GaAs,
 	InAs,
-	Mirror
+	Mirror,
+	INVALID
 };
 
 extern std::map<std::string, Material> name_to_material;
+extern std::map< Material, std::array< std::optional<double>, 4 > > defaults_per_material;
 
 //using Length = boost::units::quantity<boost::units::si::length, double>;
 
+struct Optional_Material_Parameters
+{
+	Optional_Material_Parameters() : all()
+	{
+	}
+
+	Optional_Material_Parameters( std::optional< double > temperature,
+								  std::optional< double > thickness = {},
+								  std::optional< double > composition = {},
+								  std::optional< double > tauts_gap_eV = {},
+								  std::optional< double > urbach_energy_eV = {} )
+	{
+		this->temperature = temperature;
+		this->thickness = thickness;
+		this->composition = composition;
+		this->tauts_gap_eV = tauts_gap_eV;
+		this->urbach_energy_eV = urbach_energy_eV;
+	}
+
+	std::optional< double > temperature;
+	union
+	{
+		struct
+		{
+			std::optional< double > thickness;
+			std::optional< double > composition;
+			std::optional< double > tauts_gap_eV;
+			std::optional< double > urbach_energy_eV;
+		};
+
+		std::optional< double > all[ 4 ];
+	};
+};
+
 struct Material_Layer
 {
+	Material_Layer()
+	{
+		this->material = Material::Air;
+	}
+
+	Material_Layer( Material material, std::optional< double > temperature_in_k = std::nullopt )
+	{
+		this->material = material;
+		this->optional.temperature = temperature_in_k;
+	}
+
 	Material material;
-	double thickness;
-	double composition;
+	Optional_Material_Parameters optional;
+	std::array< bool, 4 > what_to_fit;
 };
+
+inline std::vector<std::optional<double>*> Get_Things_To_Fit( std::vector< Material_Layer > & layers )
+{
+	std::vector<std::optional<double>*> output;
+	for( Material_Layer & layer : layers )
+	{
+		for( auto & x : fn::zip( fn::from( layer.what_to_fit ), fn::from( layer.optional.all ) ) )
+		{
+			auto &[ should_fit, value ] = x;
+			if( should_fit )
+				output.emplace_back( &value );
+		}
+	}
+
+	return output;
+}
 
 struct Result_Data
 {
@@ -88,28 +155,31 @@ class Thin_Film_Interference : public QObject
 	Q_OBJECT
 
 signals:
-	void Updated_Guess( std::vector<Material_Layer> layers, double temperature, std::tuple<bool,bool,bool> what_to_plot, double largest_transmission, Material_Layer backside_material );
-	void Final_Guess( std::vector<Material_Layer> layers, double temperature, std::tuple<bool, bool, bool> what_to_plot, double largest_transmission, Material_Layer backside_material );
+	void Updated_Guess( std::vector<Material_Layer> layers );
+	void Final_Guess( std::vector<Material_Layer> layers );
+	void Debug_Plot( arma::vec wavelengths, arma::vec y_data );
 
 public:
 	Thin_Film_Interference();
 
-	Result_Data Get_Expected_Transmission( double temperature_k, const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, Material_Layer backside_material = Material_Layer() ) const;
+	Result_Data Get_Expected_Transmission( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, Material_Layer backside_material ) const;
 	//std::map< Material, std::function<arma::cx_double( Material, double, double )> > Get_Refraction_Index;
 
-	void Get_Best_Fit( double temperature_k, const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, const arma::vec & transmissions, Material_Layer backside_material );
+	void Get_Best_Fit( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, const arma::vec & transmissions, Material_Layer backside_material );
 
-	inline arma::cx_vec Get_Refraction_Index( Material mat, const arma::vec & wavelengths, double temperature, double composition ) const
+	inline arma::cx_vec Get_Refraction_Index( Material mat,
+											  const arma::vec & wavelengths,
+											  Optional_Material_Parameters optional_parameters ) const
 	{
 		auto refraction_index_function = all_material_indices.find( mat );
 		if( refraction_index_function != all_material_indices.end() )
-			return refraction_index_function->second( wavelengths, temperature, composition );
+			return refraction_index_function->second( wavelengths, optional_parameters );
 		else
 			throw "Material unavailable";
 	}
 
 private:
-	using IndexFunction = std::function< arma::cx_vec( const arma::vec & wavelengths, double temperature, double composition ) >;
+	using IndexFunction = std::function< arma::cx_vec( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) >;
 	std::map< Material, IndexFunction > all_material_indices;
 
 	static Material_To_Refraction_Component Attenuation_Coefficient;
