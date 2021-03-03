@@ -46,7 +46,7 @@ private:
 	void Graph_Blackbody( double temperature_in_k, double amplitude );
 	void Graph_Refractive_Index( Material material, double temperature_in_k = 300.0, double composition = 0.5 );
 
-	void Graph( QString measurement_id, const QVector<double> & x_data, const QVector<double> & y_data, QString data_title = QString(), bool allow_y_scaling = true, Metadata meta = Metadata() );
+	//void Graph( QString measurement_id, const QVector<double> & x_data, const QVector<double> & y_data, QString data_title = QString(), bool allow_y_scaling = true, Metadata meta = Metadata() );
 	void Run_Fit();
 
 	void Save_To_CSV( const std::vector<const QTreeWidgetItem*> & things_to_save );

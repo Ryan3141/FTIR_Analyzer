@@ -55,20 +55,20 @@ void Interactive_Graph_Toolbar::Connect_To_Graph( Interactive_Graph* graph )
 	connect( ui.yMin_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), update_y_axes );
 	connect( ui.yMax_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), update_y_axes );
 
-	connect( graph, &Interactive_Graph::X_Units_Changed, [this]( Unit_Type new_units )
+	connect( graph, &Interactive_Graph::X_Units_Changed, [this]( X_Unit_Type new_units )
 	{
 		//using namespace Unit_Type;
 		switch( new_units )
 		{
-			case Unit_Type::WAVE_NUMBER:
+			case X_Unit_Type::WAVE_NUMBER:
 			ui.xMin_doubleSpinBox->setSingleStep( 100.0 );
 			ui.xMax_doubleSpinBox->setSingleStep( 100.0 );
 			break;
-			case Unit_Type::WAVELENGTH_MICRONS:
+			case X_Unit_Type::WAVELENGTH_MICRONS:
 			ui.xMin_doubleSpinBox->setSingleStep( 0.5 );
 			ui.xMax_doubleSpinBox->setSingleStep( 0.5 );
 			break;
-			case Unit_Type::ENERGY_EV:
+			case X_Unit_Type::ENERGY_EV:
 			ui.xMin_doubleSpinBox->setSingleStep( 0.1 );
 			ui.xMax_doubleSpinBox->setSingleStep( 0.1 );
 			break;

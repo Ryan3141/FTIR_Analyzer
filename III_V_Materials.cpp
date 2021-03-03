@@ -206,7 +206,7 @@ arma::cx_vec Epsilon_IV( const arma::vec & ħω )
 template< typename Element >
 arma::cx_vec Get_Refraction_Index( const arma::vec & wavelengths, double temperature_k )
 {
-	arma::vec ħω = Convert_Units( Unit_Type::WAVELENGTH_MICRONS, Unit_Type::ENERGY_EV, arma::vec(wavelengths * 1E6) );
+	arma::vec ħω = Convert_X_Units( X_Unit_Type::WAVELENGTH_MICRONS, X_Unit_Type::ENERGY_EV, arma::vec(wavelengths * 1E6) );
 	arma::cx_vec εA = Epsilon_I  <Element>( ħω );
 	arma::cx_vec εB = Epsilon_II <Element>( ħω );
 	arma::cx_vec εC = Epsilon_III<Element>( ħω );
@@ -307,7 +307,7 @@ arma::cx_vec Epsilon_D( const arma::vec & ħω ) // #Eg
 
 arma::cx_vec Get_InAs_Refraction_Index( const arma::vec & wavelengths, double temperature_k )
 {
-	arma::vec ħω = Convert_Units( Unit_Type::WAVELENGTH_MICRONS, Unit_Type::ENERGY_EV, arma::vec( wavelengths * 1E6 ) );
+	arma::vec ħω = Convert_X_Units( X_Unit_Type::WAVELENGTH_MICRONS, X_Unit_Type::ENERGY_EV, arma::vec( wavelengths * 1E6 ) );
 	arma::cx_vec εA = InAs::Epsilon_A( ħω );
 	arma::cx_vec εB = InAs::Epsilon_B( ħω );
 	arma::cx_vec εC = InAs::Epsilon_C( ħω );

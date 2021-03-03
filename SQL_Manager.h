@@ -12,7 +12,6 @@
 #include <QFileInfo>
 #include <QThread>
 
-
 class SQL_Manager : public QObject
 {
 	Q_OBJECT

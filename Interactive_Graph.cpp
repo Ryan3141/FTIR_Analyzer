@@ -3,20 +3,28 @@
 #include <array>
 #include <algorithm>
 #include <armadillo>
+#include <functional>
 
 
 #include "boost/algorithm/string.hpp"
 #include "fn.hpp"
+#include "rangeless_helper.hpp"
 namespace fn = rangeless::fn;
 using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>(arg))));
 
 
-static QString Unit_Names[ 3 ] = { "Wave Number (cm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + ")",
+static QString X_Unit_Names[ 3 ] = { "Wave Number (cm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + ")",
 							"Wavelength (" + QString( QChar( 0x03BC ) ) + "m)",
 							"Photon Energy (eV)" };
 
+static QString Y_Unit_Names[ 4 ] = { "Raw Sensor Data (arbitrary units)",
+							"Transmission %",
+							"Absorption %",
+							"Absorption Derivative" };
+
 Interactive_Graph::Interactive_Graph( QWidget *parent ) :
-	QCustomPlot( parent )
+	QCustomPlot( parent ),
+	axes( [ this ]() { this->RegraphAll(); } )
 {
 	Initialize_Graph();
 }
@@ -34,8 +42,8 @@ void Interactive_Graph::Initialize_Graph()
 	//QCPTextElement *title = new QCPTextElement( this, "Transmission", QFont( "sans", 17, QFont::Bold ) );
 	//this->plotLayout()->addElement( 0, 0, title );
 
-	this->xAxis->setLabel( Unit_Names[ int(Unit_Type::WAVELENGTH_MICRONS) ] );
-	this->yAxis->setLabel( "Transmission (%)" );
+	this->xAxis->setLabel( X_Unit_Names[ int( X_Unit_Type::WAVELENGTH_MICRONS ) ] );
+	this->yAxis->setLabel( Y_Unit_Names[ int( Y_Unit_Type::RAW_SENSOR ) ] );
 	this->legend->setVisible( true );
 	{ // Set up fonts
 		QFont legendFont = font();
@@ -76,55 +84,58 @@ void Interactive_Graph::Initialize_Graph()
 
 	this->x_axis_menu_functions.push_back( [ this ]( Interactive_Graph* graph, QMenu* menu, QPoint pos )
 	{
-		auto Fix_X_Range = [ graph, this ]( Unit_Type new_type )
+		auto Fix_X_Range = [ graph, this ]( X_Unit_Type new_type )
 		{
 			std::array<double, 2> bounds = { xAxis->range().lower, xAxis->range().upper };
 			for( double & x : bounds )
-				x = Convert_Units( this->x_axis_units, new_type, x );
+				x = Convert_X_Units( this->axes.x_units, new_type, x );
 			xAxis->setRange( std::min( bounds[ 0 ], bounds[ 1 ] ), std::max( bounds[ 0 ], bounds[ 1 ] ) );
-			this->x_axis_units = new_type;
-			graph->xAxis->setLabel( Unit_Names[ int( new_type ) ] );
+			graph->xAxis->setLabel( X_Unit_Names[ int( new_type ) ] );
+			this->axes.Set_X_Units( new_type );
 			emit X_Units_Changed( new_type );
 		};
 		menu->addAction( "Change to Wavelength", [ this, Fix_X_Range ]
 		{
-			Fix_X_Range( Unit_Type::WAVELENGTH_MICRONS );
-			this->RegraphAll();
+			Fix_X_Range( X_Unit_Type::WAVELENGTH_MICRONS );
 		} );
 		menu->addAction( "Change to Wave Number", [ this, Fix_X_Range ]
 		{
-			Fix_X_Range( Unit_Type::WAVE_NUMBER );
-			this->RegraphAll();
+			Fix_X_Range( X_Unit_Type::WAVE_NUMBER );
 		} );
 		menu->addAction( "Change to Energy", [ this, Fix_X_Range ]
 		{
-			Fix_X_Range( Unit_Type::ENERGY_EV );
-			this->RegraphAll();
+			Fix_X_Range( X_Unit_Type::ENERGY_EV );
 		} );
 	} );
-	//this->y_axis_menu_functions.push_back( [ this ]( Interactive_Graph* graph, QMenu* menu, QPoint pos )
-	//{
-	//	auto Fix_X_Range = [ graph, this ]( Unit_Type new_type )
-	//	{
-	//		std::array<double, 2> bounds = { yAxis->range().lower, yAxis->range().upper };
-	//		for( double & x : bounds )
-	//			x = Convert_Units( this->x_axis_units, new_type, x );
-	//		xAxis->setRange( std::min( bounds[ 0 ], bounds[ 1 ] ), std::max( bounds[ 0 ], bounds[ 1 ] ) );
-	//		this->x_axis_units = new_type;
-	//		graph->xAxis->setLabel( Unit_Names[ int( new_type ) ] );
-	//		emit X_Units_Changed( new_type );
-	//	};
-	//	menu->addAction( "Change to Intensity", [ this, Fix_X_Range ]
-	//	{
-	//		Fix_X_Range( Unit_Type::WAVELENGTH_MICRONS );
-	//		this->RegraphAll();
-	//	} );
-	//	menu->addAction( "Change to Derivative", [ this, Fix_X_Range ]
-	//	{
-	//		Fix_X_Range( Unit_Type::WAVE_NUMBER );
-	//		this->RegraphAll();
-	//	} );
-	//} );
+	this->y_axis_menu_functions.push_back( [ this ]( Interactive_Graph* graph, QMenu* menu, QPoint pos )
+	{
+		auto Fix_Y_Range = [ graph, this ]( Y_Unit_Type new_type )
+		{
+			graph->yAxis->setLabel( Y_Unit_Names[ int( new_type ) ] );
+			this->axes.Set_Y_Units( new_type );
+			emit Y_Units_Changed( new_type );
+		};
+		menu->addAction( "Change to Raw Sensor Data", [ this, Fix_Y_Range ]
+		{
+			Fix_Y_Range( Y_Unit_Type::RAW_SENSOR );
+		} );
+		menu->addAction( "Change to Transmission", [ this, Fix_Y_Range ]
+		{
+			if( this->axes.y_units == Y_Unit_Type::RAW_SENSOR )
+				yAxis->setRange( 0.0, 100.0 );
+			Fix_Y_Range( Y_Unit_Type::TRANSMISSION );
+		} );
+		menu->addAction( "Change to Absorption", [ this, Fix_Y_Range ]
+		{
+			if( this->axes.y_units == Y_Unit_Type::RAW_SENSOR )
+				yAxis->setRange( 0.0, 100.0 );
+			Fix_Y_Range( Y_Unit_Type::ABSORPTION );
+		} );
+		menu->addAction( "Change to Derivative", [ this, Fix_Y_Range ]
+		{
+			Fix_Y_Range( Y_Unit_Type::ABSORPTION_DERIVATIVE );
+		} );
+	} );
 }
 
 void Interactive_Graph::mouseDoubleClickEvent( QMouseEvent* event )
@@ -327,7 +338,7 @@ void Interactive_Graph::graphContextMenuRequest( QPoint pos )
 		if( this->graphCount() > 0 )
 			menu->addAction( "Remove all graphs", this, &Interactive_Graph::removeAllGraphs );
 		menu->addAction( "Save current graph", this, &Interactive_Graph::saveCurrentGraph );
-		menu->addAction( "Clear Background", this, &Interactive_Graph::Clear_Background );
+		menu->addAction( "Clear Background", this, [ this ] { axes.Set_Y_Units( Y_Unit_Type::RAW_SENSOR ); } );
 
 		menu->addAction( "Paste From Clipboard", [this]
 		{
@@ -337,7 +348,7 @@ void Interactive_Graph::graphContextMenuRequest( QPoint pos )
 			if( mimeData->hasText() )
 			{
 				auto [x_data, y_data] = Load_XY_CSV_Data( mimeData->text().toStdString(), ",\t" );
-				this->Graph( toQVec( Convert_Units( Unit_Type::WAVELENGTH_MICRONS, Unit_Type::WAVE_NUMBER, arma::vec(x_data) ) ),
+				this->Graph<X_Unit_Type::WAVELENGTH_MICRONS, Y_Unit_Type::TRANSMISSION>( toQVec( x_data ),
 							 toQVec( arma::vec( y_data ) * 100.0 ), "Clipboard Data", "Clipboard Data" );
 				this->replot();
 			}
@@ -346,44 +357,15 @@ void Interactive_Graph::graphContextMenuRequest( QPoint pos )
 				//setText( tr( "Cannot display data" ) );
 				return;
 			}
-			//std::vector< std::array<double,2> > test = fn::from( mimeData->text().toStdString() )
-			//	% fn::group_adjacent_by( []( const char ch ) { return ch != '\n' && ch != '\r'; } )
-			//	% fn::where( []( const auto ch ) { return ch != "\n" && ch != "\r"; } )
-			//	% fn::transform( []( auto one_line )
-			//		{
-			//			return std::move( one_line ) % fn::group_adjacent_by( []( const char ch ) { return ch != ','; } )
-			//				% fn::where( []( const auto ch ) { return ch != ","; } );
-			//		} )
-			//	% fn::transform( [this]( const auto & line_of_elements )
-			//		{
-			//			if( line_of_elements.size() >= 2 )
-			//				return std::array<double, 2>{
-			//					std::stod( line_of_elements[ 0 ] ),
-			//					std::stod( line_of_elements[ 1 ] ) };
-			//			else
-			//				return std::array<double, 2>{};
-			//		} )
-			//	% fn::transform( [this]( const auto & line_of_elements )
-			//		{
-			//			if( line_of_elements.size() >= 2 )
-			//				return std::array<double, 2>{
-			//					std::stod( line_of_elements[ 0 ] ),
-			//					std::stod( line_of_elements[ 1 ] ) };
-			//			else
-			//				return std::array<double, 2>{};
-			//		} )
-			//	% fn::to_vector();
-
-			//using namespace ranges;
-			////auto test = mimeData->text().toStdString() | views::split( '_' );
-			//auto const s = std::string{ "feel_the_force" };
-			//auto words = s | views::split('_'); // [[f,e,e,l],[t,h,e],[f,o,r,c,e]]
-			//ui.customPlot->Graph( x_data, y_data, "Clipboard Data", "Clipboard Data" );
 		} );
 	}
 
 	if( selected_x_axis )
 		for( auto menu_function : this->x_axis_menu_functions )
+			menu_function( this, menu, pos );
+
+	if( selected_y_axis )
+		for( auto menu_function : this->y_axis_menu_functions )
 			menu_function( this, menu, pos );
 
 	menu->popup( this->mapToGlobal( pos ) );
@@ -412,121 +394,6 @@ void Interactive_Graph::graphClicked( QCPAbstractPlottable *plottable, int dataI
 	//ui.statusBar->showMessage( message, 2500 );
 }
 
-const Single_Graph & Interactive_Graph::Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title, bool allow_y_scaling, Metadata meta )
-{
-	if( x_data.size() != y_data.size() )
-	{
-		std::cerr << "Incompatible sizes being graphed, size(x) = " << x_data.size() << " size(y) = " << y_data.size() << "\n";
-		if( x_data.size() > y_data.size() )
-			x_data.resize( y_data.size() );
-		else
-			y_data.resize( x_data.size() );
-	}
-
-	for( auto & x : x_data )
-		if( !std::isnormal( x ) )
-			x = qQNaN();
-	for( auto & y : y_data )
-		if( !std::isfinite( y ) || y > 1.0E4 )
-			y = qQNaN();
-
-	auto existing_graph = remembered_graphs.find( measurement_name );
-	if( existing_graph != remembered_graphs.end() )
-	{
-		Single_Graph & current_info = existing_graph->second;
-		//if( current_info.x_data.size() == x_data.size() &&
-		//	current_info.y_data.size() == y_data.size() )
-		{
-			current_info.x_data = x_data;
-			current_info.y_data = y_data;
-			if( allow_y_scaling )
-			{
-				for( int i = 0; i < y_data.size(); i++ )
-					y_data[ i ] = y_display_method( x_data[ i ], y_data[ i ] ); // Do the y stuff first to not screw up x data for y_display_method
-			}
-			else
-			{
-			}
-			for( double & x : x_data )
-				x = Convert_Units( current_info.x_units, this->x_axis_units, x );
-			current_info.graph_pointer->setData( x_data, y_data );
-			current_info.graph_pointer->setVisible( true );
-			current_info.graph_pointer->addToLegend();
-
-		}
-
-		if( !meta.empty() )
-			current_info.meta = meta;
-		//this->replot();
-		return current_info;
-	}
-
-	// Add graph
-	{
-		//double previous_upper_limit = this->yAxis->range().upper;
-		static int color_index = 0;
-		bool this_is_the_first_graph = this->graphCount() == 0;
-		QCPGraph* current_graph = this->addGraph();
-
-		if( graph_title.isEmpty() )
-			current_graph->setName( measurement_name );
-		else
-			current_graph->setName( graph_title );
-
-		// Remember data before changing it at all
-		remembered_graphs[ measurement_name ] = Single_Graph{ Unit_Type::WAVE_NUMBER, x_data, y_data, current_graph, allow_y_scaling, meta };
-		if( allow_y_scaling )
-		{
-			for( int i = 0; i < y_data.size(); i++ )
-				y_data[ i ] = y_display_method( x_data[ i ], y_data[ i ] ); // Do the y stuff first to not screw up x data for y_display_method
-			//arma::vec test( y_data.size() );
-			//for( int i = 0; i < y_data.size(); i++ )
-			//{
-			//	test( i ) = y_display_method( x_data[ i ], y_data[ i ] ); // Do the y stuff first to not screw up x data for y_display_method
-			//	y_data[ i ] = y_display_method( x_data[ i ], y_data[ i ] ); // Do the y stuff first to not screw up x data for y_display_method
-			//}
-			//test = arma::real( arma::fft( test ) );
-			//y_data = QVector<double>::fromStdVector( arma::conv_to<std::vector<double>>::from( test ) );
-		}
-		for( double & x : x_data )
-			x = Convert_Units( remembered_graphs[ measurement_name ].x_units, this->x_axis_units, x );
-		this->graph()->setData( x_data, y_data );
-		this->graph()->setLineStyle( QCPGraph::lsLine );// (QCPGraph::LineStyle)(rand() % 5 + 1) );
-																 //if( rand() % 100 > 50 )
-																 //	this->graph()->setScatterStyle( QCPScatterStyle( (QCPScatterStyle::ScatterShape)(rand() % 14 + 1) ) );
-		QPen graphPen;
-		//QCPColorGradient gradient( QCPColorGradient::gpPolar );
-		QCPColorGradient gradient( QCPColorGradient::gpSpectrum );
-		gradient.setPeriodic( true );
-		//gradient.setLevelCount( 10 );
-		const QVector< Qt::PenStyle > patterns = { Qt::SolidLine, Qt::DotLine, Qt::DashLine, Qt::DashDotDotLine, Qt::DashDotLine };
-		graphPen.setColor( gradient.color( color_index / 10.0, QCPRange( 0.0, 1.0 ) ) );
-		graphPen.setStyle( patterns[ color_index % patterns.size() ] );
-		//graphPen.setWidthF( 2 ); Changing width currently causes massive performance issues
-		color_index++;
-		//graphPen.setColor( QColor::fromHslF( (color_index++)/10.0*0.8, 0.95, 0.5) );
-		//graphPen.setColor( QColor::fromHsv( rand() % 255, 255, 255 ) );
-		//graphPen.setWidthF( rand() / (double)RAND_MAX * 2 + 1 );
-		this->graph()->setPen( graphPen );
-		//if( this_is_the_first_graph )
-		//{
-		//	//this->rescaleAxes();
-		//	this->yAxis->rescale();
-		//	this->yAxis->setRangeLower( 0 );
-		//	double upper = this->yAxis->range().upper;
-		//	//this->yAxis->setRangeUpper( std::max( previous_upper_limit, std::min( upper, 1. ) ) );
-		//	if( allow_y_scaling )
-		//		this->yAxis->setRangeUpper( std::min( upper, 100. ) );
-		//	else
-		//		this->yAxis->setRangeUpper( upper );
-		//}
-		//this->yAxis->setRange( -10, 110 );
-		//this->replot();
-
-		return remembered_graphs[ measurement_name ];
-	}
-}
-
 void Interactive_Graph::Hide_Graph( QString graph_name )
 {
 	auto existing_graph = remembered_graphs.find( graph_name );
@@ -543,35 +410,17 @@ void Interactive_Graph::Hide_Graph( QString graph_name )
 
 void Interactive_Graph::RegraphAll()
 {
-	//for( int i = 0; i < ui.customPlot->graphCount(); i++ )
 	for( const auto &[ name, graph ] : remembered_graphs )
 	{
-		//QCPGraph* graph = ui.customPlot->graph( i );
-		//QString measurement_id = graph->name();
-
-		//QVector<double> x_data, y_data;
-		//Grab_SQL_Data_From_Measurement_ID( measurement_id, x_data, y_data );
-
-		QVector<double> x_data{ graph.x_data };
-		QVector<double> y_data{ graph.y_data };
-		if( graph.allow_y_scaling )
-		{
-			for( int i = 0; i < y_data.size(); i++ )
-				y_data[ i ] = y_display_method( x_data[ i ], y_data[ i ] ); // Do the y stuff first to not screw up x data for y_display_method
-		}
-		for( double & x : x_data )
-			x = Convert_Units( graph.x_units, this->x_axis_units, x );
-
-		if( x_data.size() != y_data.size() )
-			throw "Trying to graph different x and y size arrays";
+		auto[ x_data, y_data ] = axes.Prepare_XY_Data( graph );
 
 		this->UpdateGraph( graph.graph_pointer, x_data, y_data );
 	}
 
-	this->rescaleAxes();
-	this->yAxis->setRangeLower( 0 );
-	double upper = this->yAxis->range().upper;
-	this->yAxis->setRangeUpper( std::min( upper, 100. ) );
+	//this->rescaleAxes();
+	//this->yAxis->setRangeLower( 0 );
+	//double upper = this->yAxis->range().upper;
+	//this->yAxis->setRangeUpper( std::min( upper, 100. ) );
 	this->replot();
 }
 
@@ -642,26 +491,6 @@ const Single_Graph & Interactive_Graph::FindDataFromGraphPointer( QCPGraph* grap
 		return result->second;
 	else
 		return nothing_selected;
-}
-
-void Interactive_Graph::Set_As_Background( XY_Data xy )
-{
-	QVector x_data = std::get<0>( xy ) % fn::sort();
-	QVector y_data = std::get<1>( xy );
-	this->y_display_method = [ x_data=std::move( x_data ), y_data=std::move( y_data ) ]( double x, double y )
-	{
-		int i = std::distance( x_data.begin(), std::lower_bound( x_data.begin(), x_data.end(), x ) );
-		i = std::min( y_data.size() - 1, i );
-
-		return (100 * y / y_data[ i ]);
-	};
-	this->RegraphAll();
-}
-
-void Interactive_Graph::Clear_Background()
-{
-	this->y_display_method = []( double x, double y ) { return y; };
-	this->RegraphAll();
 }
 
 std::tuple< std::vector<double>, std::vector<double> > Load_XY_CSV_Data( const std::string & data_to_parse, const char* delimiter )
@@ -771,5 +600,135 @@ std::tuple< std::vector<double>, std::vector<double> > Load_XY_CSV_Data( const s
 	//					std::stod(line_of_elements[1]) * 1E6,
 	//					std::stod(line_of_elements[2]));
 	//		});
+				//std::vector< std::array<double,2> > test = fn::from( mimeData->text().toStdString() )
+			//	% fn::group_adjacent_by( []( const char ch ) { return ch != '\n' && ch != '\r'; } )
+			//	% fn::where( []( const auto ch ) { return ch != "\n" && ch != "\r"; } )
+			//	% fn::transform( []( auto one_line )
+			//		{
+			//			return std::move( one_line ) % fn::group_adjacent_by( []( const char ch ) { return ch != ','; } )
+			//				% fn::where( []( const auto ch ) { return ch != ","; } );
+			//		} )
+			//	% fn::transform( [this]( const auto & line_of_elements )
+			//		{
+			//			if( line_of_elements.size() >= 2 )
+			//				return std::array<double, 2>{
+			//					std::stod( line_of_elements[ 0 ] ),
+			//					std::stod( line_of_elements[ 1 ] ) };
+			//			else
+			//				return std::array<double, 2>{};
+			//		} )
+			//	% fn::transform( [this]( const auto & line_of_elements )
+			//		{
+			//			if( line_of_elements.size() >= 2 )
+			//				return std::array<double, 2>{
+			//					std::stod( line_of_elements[ 0 ] ),
+			//					std::stod( line_of_elements[ 1 ] ) };
+			//			else
+			//				return std::array<double, 2>{};
+			//		} )
+			//	% fn::to_vector();
 
+			//using namespace ranges;
+			////auto test = mimeData->text().toStdString() | views::split( '_' );
+			//auto const s = std::string{ "feel_the_force" };
+			//auto words = s | views::split('_'); // [[f,e,e,l],[t,h,e],[f,o,r,c,e]]
+			//ui.customPlot->Graph( x_data, y_data, "Clipboard Data", "Clipboard Data" );
+
+}
+
+void Axes_Scales::Set_X_Units( X_Unit_Type units )
+{
+	if( units == x_units )
+		return;
+
+	x_units = units;
+
+	graph_function();
+}
+
+void Axes_Scales::Set_Y_Units( Y_Unit_Type units )
+{
+	if( units == y_units )
+		return;
+
+	y_units = units;
+
+	graph_function();
+}
+
+void Axes_Scales::Set_As_Background( XY_Data xy )
+{
+	background_x_data = std::get<0>( xy );
+	background_y_data = std::get<1>( xy );
+
+	graph_function();
+}
+
+std::tuple< QVector<double>, QVector<double> > Axes_Scales::Prepare_XY_Data( const Single_Graph & graph_data ) const
+{
+	const QVector<double> x_data = [ &graph_data, this ] {
+		if( this->x_units == graph_data.x_units )
+			return graph_data.x_data;
+
+		QVector<double> x_data = graph_data.x_data;
+		for( double & x : x_data )
+			x = Convert_X_Units( graph_data.x_units, this->x_units, x );
+		return x_data;
+	}();
+
+	const QVector<double> y_data = [ &graph_data, this ] {
+		if( this->y_units == graph_data.y_units || graph_data.y_units == Y_Unit_Type::DONT_CHANGE )
+			return graph_data.y_data;
+
+		if( graph_data.y_units == Y_Unit_Type::RAW_SENSOR )
+		{
+			QVector<double> transmission_data( graph_data.y_data.size() );
+			//auto y_data_min_element = std::min_element( y_data.constBegin(), y_data.constEnd(), []( double a, double b ) { return std::abs( a ) < std::abs( b ); } );
+			//double y_data_min = std::min( 0.0004, std::abs( *y_data_min_element ) );
+			//auto background_min_element = std::min_element( y_data.constBegin(), y_data.constEnd(), []( double a, double b ) { return std::abs( a ) < std::abs( b ); } );
+			//double background_min = std::min( 0.0004, std::abs( *background_min_element ) );
+
+			auto cleanup_low_resolution_input = [ & ]( double y )
+			{
+				const double minimum_reliable_reading = 0.003;
+				if( std::abs( y ) < minimum_reliable_reading )
+					return 0.0;
+				return std::pow( std::abs( ( std::abs( y ) - minimum_reliable_reading ) / y ), 1 );
+			};
+			for( auto[ transmission, x, y ] : fn::zip( transmission_data, graph_data.x_data, graph_data.y_data ) )
+			{
+				int i = std::distance( background_x_data.begin(), std::lower_bound( background_x_data.begin(), background_x_data.end(), x ) );
+				i = std::min( background_y_data.size() - 1, i );
+				transmission = 100 * y / background_y_data[ i ] * cleanup_low_resolution_input( y ) * cleanup_low_resolution_input( background_y_data[ i ] );
+			}
+
+			if( this->y_units == Y_Unit_Type::ABSORPTION )
+			{
+				double max_transmission = *std::max_element( transmission_data.constBegin(), transmission_data.constEnd() );
+				QVector<double> & absorption_data = transmission_data;
+				for( double & y : absorption_data )
+					y = max_transmission - y;
+				return absorption_data;
+			}
+			else
+				return transmission_data;
+		}
+
+		if( ( this->y_units == Y_Unit_Type::TRANSMISSION && graph_data.y_units == Y_Unit_Type::ABSORPTION ) ||
+			( this->y_units == Y_Unit_Type::ABSORPTION   && graph_data.y_units == Y_Unit_Type::TRANSMISSION ) )
+		{
+			QVector<double> y_data = graph_data.y_data;
+			for( double & y : y_data )
+				y = 100.0 - y;
+			return y_data;
+		}
+
+		if( ( this->y_units == Y_Unit_Type::RAW_SENSOR && graph_data.y_units == Y_Unit_Type::ABSORPTION ) ||
+			( this->y_units == Y_Unit_Type::RAW_SENSOR && graph_data.y_units == Y_Unit_Type::TRANSMISSION ) )
+			return graph_data.y_data;
+
+		throw "Didn't consider this condition in " __FILE__ " in function " __FUNCTION__;
+	}();
+
+	return { std::move( x_data ), std::move( y_data ) };
 }

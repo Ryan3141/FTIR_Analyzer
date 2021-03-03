@@ -25,7 +25,7 @@ Material_Layer_Widget::Material_Layer_Widget( QWidget *parent, const QStringList
 	if( parameters.urbach_energy.has_value() )
 		parameters.urbach_energy.value() *= 1E3;
 
-	for( auto &[ widget, parameter ] : fn::zip( fn::from( double_widgets ), fn::from( parameters.all ) ) )
+	for( auto [ widget, parameter ] : fn::zip( double_widgets, parameters.all ) )
 	{
 		if( parameter.has_value() )
 			widget->setValue( parameter.value() );
@@ -62,9 +62,8 @@ std::tuple< Material_Adjustable_Parameters, std::array< bool, 4 > >  Material_La
 	std::string mat_name = ui.material_comboBox->currentText().toStdString();
 	
 	Material_Adjustable_Parameters parameters( mat_name );
-	for( auto & x : fn::zip( double_widgets, fn::from( parameters.all ) ) )
+	for( auto [ widget, parameter ] : fn::zip( double_widgets, parameters.all ) )
 	{
-		auto &[ widget, parameter ] = x;
 		if( widget->isEnabled() )
 			parameter = widget->value();
 	}
@@ -76,9 +75,8 @@ std::tuple< Material_Adjustable_Parameters, std::array< bool, 4 > >  Material_La
 		parameters.urbach_energy.value() *= 1E-3;
 
 	std::array< bool, 4 > should_fit;
-	for( auto & x : fn::zip( double_widgets, fn::from( should_fit ) ) )
+	for( auto [ widget, fit_bool ] : fn::zip( double_widgets, should_fit ) )
 	{
-		auto &[ widget, fit_bool ] = x;
 		if( widget->isEnabled() )
 			fit_bool = widget->use_in_fit;
 	}

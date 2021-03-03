@@ -100,9 +100,8 @@ inline std::vector<std::optional<double>*> Get_Things_To_Fit( std::vector< Mater
 	std::vector<std::optional<double>*> output;
 	for( Material_Layer & layer : layers )
 	{
-		for( auto & x : fn::zip( fn::from( layer.what_to_fit ), fn::from( layer.optional.all ) ) )
+		for( auto [ should_fit, value ] : fn::zip( layer.what_to_fit, layer.optional.all ) )
 		{
-			auto &[ should_fit, value ] = x;
 			if( should_fit )
 				output.emplace_back( &value );
 		}

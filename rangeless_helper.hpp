@@ -44,26 +44,6 @@ public:
 	static constexpr bool value = type::value;
 };
 
-//template<typename C, typename Ret, typename... Args>
-//struct has_emplace_back<C, Ret( Args... )>
-//{
-//private:
-//	template<typename T>
-//	static constexpr auto check( T* )
-//		-> typename
-//		std::is_same<
-//		decltype( std::declval<T>().emplace_back( std::declval<Args>()... ) ),
-//		Ret    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//		>::type;  // attempt to call it and see if the return type is correct
-//
-//	template<typename>
-//	static constexpr std::false_type check( ... );
-//
-//	typedef decltype( check<C>( 0 ) ) type;
-//
-//public:
-//	static constexpr bool value = type::value;
-//};
 
 namespace rangeless::fn
 {
@@ -75,16 +55,17 @@ template <class T, class... Rest> class hold : hold<Rest...>
 	T v_;
 
 public:
-	hold( T v, Rest... a ) : base( a... ), v_( v )
+	constexpr hold( T v, Rest... a ) : base( a... ), v_( v )
 	{
 	}
 
-	template <class F, class... args> auto apply( F f, args & ... a )
+	template <class F, class... args>
+	constexpr auto apply( F f, args & ... a )
 	{
 		return base::apply( f, a..., v_ );
 	}
 
-	bool any_equal( const hold<T, Rest...> & rhs )
+	constexpr bool any_equal( const hold<T, Rest...> & rhs )
 	{
 		return v_ == rhs.v_ || base::any_equal( static_cast<const base &>( rhs ) );
 	}
@@ -95,23 +76,24 @@ template <class T> class hold<T>
 	T v_;
 
 public:
-	hold( T v ) : v_( v )
+	constexpr hold( T v ) : v_( v )
 	{
 	}
 
-	template <class F, class... args> auto apply( F f, args & ... a )
+	template <class F, class... args>
+	constexpr auto apply( F f, args & ... a )
 	{
 		return f( a..., v_ );
 	}
 
-	bool any_equal( const hold<T> & rhs )
+	constexpr bool any_equal( const hold<T> & rhs )
 	{
 		return v_ == rhs.v_;
 	}
 };
 
 template <typename... Ts>
-inline void variadic_expand( const Ts&...args )
+constexpr void variadic_expand( const Ts&...args )
 {
 }
 
@@ -119,15 +101,15 @@ template <class... Iterators>
 struct zip_gen
 {
 	hold<Iterators...> iterators;
-	hold<Iterators...> end_iterators;
+	const hold<Iterators...> end_iterators;
 
 	using value_type = typename std::tuple< std::add_lvalue_reference_t< std::remove_reference_t<decltype( *std::declval<Iterators>() )> >... >;
 
-	zip_gen( Iterators... begin, Iterators... end ) : iterators( begin... ), end_iterators( end... )
+	constexpr zip_gen( Iterators... begin, Iterators... end ) : iterators( begin... ), end_iterators( end... )
 	{
 	}
 
-	auto operator()() -> impl::maybe<value_type>
+	constexpr auto operator()() -> rangeless::fn::impl::maybe<value_type>
 	{
 		if( iterators.any_equal( end_iterators ) )
 		{
@@ -142,11 +124,11 @@ struct zip_gen
 };
 
 template<typename ...Iterables>
-auto zip( Iterables& ... src )
+constexpr auto zip( Iterables& ... src ) noexcept
 {
-	using zip_gen_type = typename zip_gen< std::remove_reference_t<decltype( std::begin( std::declval<Iterables>() ) )>... >;
+	using zip_gen_type = zip_gen< std::remove_reference_t<decltype( std::begin( src ) )>... >;
 
-	return impl::seq < zip_gen_type >{
+	return rangeless::fn::impl::seq < zip_gen_type >{
 		{
 			std::begin( src )..., std::end( src )...
 		} };

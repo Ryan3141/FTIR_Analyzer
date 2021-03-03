@@ -100,7 +100,7 @@ void Layer_Builder::Add_New_Material( Material_Adjustable_Parameters parameters 
 		auto [ mat, defaults ] = *find_mat_in_defaults;
 
 		bool oldState = one_material->blockSignals( true ); // Prevent remove from triggering another changed signal while we edit things
-		for( auto &[ widget, one_default ] : fn::zip( fn::from( one_material->double_widgets ), fn::from( defaults ) ) )
+		for( auto [ widget, one_default ] : fn::zip( one_material->double_widgets, defaults ) )
 		{
 			if( one_default.has_value() )
 			{
@@ -149,7 +149,7 @@ std::vector<Material_Layer> Layer_Builder::Build_Material_List( std::optional< d
 			continue;
 
 		Material_Layer one_layer( find_mat->second, temperature );
-		for( auto & [copy_to, copy_from] : fn::zip( fn::from( one_layer.optional.all ), fn::from( p.all ) ) )
+		for( auto [copy_to, copy_from] : fn::zip( one_layer.optional.all, p.all ) )
 			copy_to = copy_from;
 		one_layer.what_to_fit = what_to_fit;
 		output.push_back( std::move( one_layer ) );
@@ -189,7 +189,7 @@ void Layer_Builder::Make_From_Material_List( const std::vector<Material_Layer> &
 		const auto [ material_name, mat ] = *material_iterator;
 		Material_Layer_Widget* layer_widget = static_cast<Material_Layer_Widget*>( this->itemWidget( this->item( i ) ) );
 		Avoid_Resignalling_setCurrentText( layer_widget->ui.material_comboBox, QString::fromStdString( material_name ) );
-		for( auto &[ widget, parameter ] : fn::zip( fn::from( layer_widget->double_widgets ), fn::from( layer.optional.all ) ) )
+		for( auto [ widget, parameter ] : fn::zip( layer_widget->double_widgets, layer.optional.all ) )
 		{
 			Avoid_Resignalling_setValue( widget, parameter );
 		}
