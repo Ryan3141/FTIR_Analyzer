@@ -35,6 +35,7 @@ private:
 	Ui::FTIR_AnalyzerClass ui;
 	void treeContextMenuRequest( QPoint pos );
 
+	Material_Layer Get_Backside_Material( double temperature_in_k );
 
 	void Initialize_Tree_Table();
 	void Initialize_Graph();
@@ -44,7 +45,7 @@ private:
 	void Graph_Tree_Node( const QTreeWidgetItem* tree_item );
 	void Graph_Simulation( std::vector<Material_Layer> layers, std::tuple<bool, bool, bool> what_to_plot, double largest_transmission = 100.0, Material_Layer backside_material = Material_Layer() );
 	void Graph_Blackbody( double temperature_in_k, double amplitude );
-	void Graph_Refractive_Index( Material material, double temperature_in_k = 300.0, double composition = 0.5 );
+	void Graph_Refractive_Index( std::string material_name, Optional_Material_Parameters parameters );
 
 	//void Graph( QString measurement_id, const QVector<double> & x_data, const QVector<double> & y_data, QString data_title = QString(), bool allow_y_scaling = true, Metadata meta = Metadata() );
 	void Run_Fit();

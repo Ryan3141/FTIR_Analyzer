@@ -141,15 +141,14 @@ void FTIR_Analyzer::Graph_Blackbody( double temperature_in_k, double amplitude )
 	ui.customPlot->replot();
 }
 
-void FTIR_Analyzer::Graph_Refractive_Index( Material material, double temperature_in_k, double composition )
+void FTIR_Analyzer::Graph_Refractive_Index( std::string material_name, Optional_Material_Parameters parameters )
 {
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
 	double upper_bound = std::max( 0.00000001, ui.customPlot->xAxis->range().upper );
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 );
 	x_data_meters.transform( [=]( double x ) { return Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_METERS, x ); } );
 
-	Optional_Material_Parameters parameters( temperature_in_k, std::nullopt, composition );
-	auto refractive_index = Thin_Film_Interference().Get_Refraction_Index( material, x_data_meters, parameters );
+	auto refractive_index = Thin_Film_Interference().Get_Refraction_Index( name_to_material[ material_name ], x_data_meters, parameters );
 	ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::real( refractive_index ) ), "Index (n)", "Index (n)" );
 	ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::imag( refractive_index ) ), "Index (k)", "Index (k)" );
 
@@ -185,6 +184,15 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, std::t
 	}
 }
 
+Material_Layer FTIR_Analyzer::Get_Backside_Material( double temperature_in_k )
+{
+	std::string material_name = ui.backsideMaterial_comboBox->currentText().toStdString();
+	Optional_Material_Parameters backside_parameters( material_name, temperature_in_k );
+	Material_Layer backside_material( name_to_material[ material_name ], backside_parameters );
+
+	return backside_material;
+}
+
 void FTIR_Analyzer::Run_Fit()
 {
 	const Single_Graph & selected_graph = ui.customPlot->GetSelectedGraphData();
@@ -199,11 +207,12 @@ void FTIR_Analyzer::Run_Fit()
 	arma::vec wavelength_data = arma::conv_to< arma::vec >::from( x_data.toStdVector() );
 	arma::vec transmission_data = arma::conv_to< arma::vec >::from( y_data.toStdVector() );
 	wavelength_data.transform( [ this ]( double x ) { return Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6; } );
-	double temperature = Info_Or_Default( selected_graph.meta, "Temperature (K)", 300.0 );
+	double temperature_in_k = Info_Or_Default( selected_graph.meta, "Temperature (K)", 300.0 );
+	if( temperature_in_k == 0.0 )
+		temperature_in_k = 300.0;
 	//double temperature = ui.simulationTemperature_doubleSpinBox->value();
-	std::string material_name = ui.backsideMaterial_comboBox->currentText().toStdString();
-	Material_Layer backside_material( name_to_material[ material_name ], temperature );
-	std::vector<Material_Layer> copy_layers = ui.simulated_listWidget->Build_Material_List( temperature );
+	Material_Layer backside_material = Get_Backside_Material( temperature_in_k );
+	std::vector<Material_Layer> copy_layers = ui.simulated_listWidget->Build_Material_List( temperature_in_k );
 
 	//wavelength_data = wavelength_data % fn::where( [ lower_bound, upper_bound ]( double num ) { return lower_bound >= num && num <= upper_bound; } );
 	//arma::uvec debug1 = arma::find( lower_bound >= wavelength_data );
@@ -324,11 +333,10 @@ void FTIR_Analyzer::Initialize_Simulation()
 		if( plot_T || plot_R || plot_A )
 		{
 			std::string material_name = ui.backsideMaterial_comboBox->currentText().toStdString();
-			Material_Layer backside_material( name_to_material[ material_name ] );
-			double temperature = ui.simulationTemperature_doubleSpinBox->value();
-			this->Graph_Simulation( ui.simulated_listWidget->Build_Material_List( temperature ),
+			double temperature_in_k = ui.simulationTemperature_doubleSpinBox->value();
+			this->Graph_Simulation( ui.simulated_listWidget->Build_Material_List( temperature_in_k ),
 									{ plot_T, plot_R, plot_A },
-									100.0, backside_material );
+									100.0, Get_Backside_Material( temperature_in_k ) );
 		}
 		if( !plot_T )
 			ui.customPlot->Hide_Graph( "Transmission Simulation" );
@@ -349,7 +357,10 @@ void FTIR_Analyzer::Initialize_Simulation()
 		if( this->ui.plotMaterialIndex_checkBox->isChecked() )
 		{
 			std::string material_name = ui.plotMaterialIndex_comboBox->currentText().toStdString();
-			this->Graph_Refractive_Index( name_to_material[ material_name ], ui.simulationTemperature_doubleSpinBox->value() );
+			double temperature_in_k = ui.simulationTemperature_doubleSpinBox->value();
+			Optional_Material_Parameters parameters( material_name, temperature_in_k, std::nullopt, 0.5 );
+
+			this->Graph_Refractive_Index( material_name, parameters );
 		}
 		else
 		{

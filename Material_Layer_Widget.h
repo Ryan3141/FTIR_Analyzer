@@ -7,27 +7,7 @@
 #include <QWidget>
 #include "ui_Material_Layer_Widget.h"
 
-struct Material_Adjustable_Parameters
-{
-	Material_Adjustable_Parameters( std::string material ) : all()
-	{
-		this->material = material;
-	}
-
-	std::string material;
-	union
-	{
-		struct
-		{
-			std::optional< double > thickness;
-			std::optional< double > composition;
-			std::optional< double > tauts_gap;
-			std::optional< double > urbach_energy;
-		};
-
-		std::optional< double > all[ 4 ];
-	};
-};
+#include "Thin_Film_Interference.h"
 
 class Material_Layer_Widget : public QWidget
 {
@@ -36,9 +16,10 @@ class Material_Layer_Widget : public QWidget
 public:
 	Material_Layer_Widget( QWidget *parent,
 						   const QStringList & material_names,
-						   Material_Adjustable_Parameters parameters );
+						   Optional_Material_Parameters parameters );
 
-	std::tuple< Material_Adjustable_Parameters, std::array< bool, 4 > > Get_Details() const;
+	std::tuple< Optional_Material_Parameters, std::array< bool, 4 > > Get_Details() const;
+	void Update_Values( Optional_Material_Parameters parameters );
 
 	Ui::Material_Layer_Widget ui;
 	std::array< Fit_DoubleSpinBox*, 4 > double_widgets;

@@ -49,12 +49,14 @@ struct Optional_Material_Parameters
 	{
 	}
 
-	Optional_Material_Parameters( std::optional< double > temperature,
+	Optional_Material_Parameters( std::string material_name,
+								  std::optional< double > temperature = {},
 								  std::optional< double > thickness = {},
 								  std::optional< double > composition = {},
 								  std::optional< double > tauts_gap_eV = {},
 								  std::optional< double > urbach_energy_eV = {} )
 	{
+		this->material_name = material_name;
 		this->temperature = temperature;
 		this->thickness = thickness;
 		this->composition = composition;
@@ -62,6 +64,7 @@ struct Optional_Material_Parameters
 		this->urbach_energy_eV = urbach_energy_eV;
 	}
 
+	std::string material_name;
 	std::optional< double > temperature;
 	union
 	{
@@ -84,14 +87,14 @@ struct Material_Layer
 		this->material = Material::Air;
 	}
 
-	Material_Layer( Material material, std::optional< double > temperature_in_k = std::nullopt )
+	Material_Layer( Material material, Optional_Material_Parameters parameters )
 	{
 		this->material = material;
-		this->optional.temperature = temperature_in_k;
+		this->parameters = parameters;
 	}
 
 	Material material;
-	Optional_Material_Parameters optional;
+	Optional_Material_Parameters parameters;
 	std::array< bool, 4 > what_to_fit;
 };
 
@@ -100,7 +103,7 @@ inline std::vector<std::optional<double>*> Get_Things_To_Fit( std::vector< Mater
 	std::vector<std::optional<double>*> output;
 	for( Material_Layer & layer : layers )
 	{
-		for( auto [ should_fit, value ] : fn::zip( layer.what_to_fit, layer.optional.all ) )
+		for( auto [ should_fit, value ] : fn::zip( layer.what_to_fit, layer.parameters.all ) )
 		{
 			if( should_fit )
 				output.emplace_back( &value );

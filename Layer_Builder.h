@@ -54,8 +54,8 @@ public:
 	//};
 
 private:
-	void Add_New_Material( Material_Adjustable_Parameters parameters );
-	void Add_New_Material( std::string material,
+	void Add_New_Material( Optional_Material_Parameters parameters );
+	void Add_New_Material( std::string material_name,
 						   double thickness,
 						   std::optional< double > composition = {},
 						   std::optional< double > tauts_gap = {},

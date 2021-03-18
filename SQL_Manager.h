@@ -47,3 +47,23 @@ private:
 	QFileInfo config_filename_;
 	QThread* worker_thread = nullptr;
 };
+
+//class SQL_Buffered_Manager
+//{
+//	Q_OBJECT
+//
+//public:
+//	SQL_Buffered_Manager( QObject* parent, QFileInfo config_filename );
+//
+//signals:
+//	void Error_Connecting_To_SQL( const QSqlError & error_message );
+//	void SQL_XY_Data_Ready(   SQL_Manager::ID_To_XY_Data data_per_id );
+//	void SQL_Meta_Data_Ready( SQL_Manager::ID_To_Metadata data_per_id );
+//
+//public slots:
+//	void Start_Thread();
+//
+//private:
+//	SQL_Manager remote_db;
+//	SQL_Manager local_db
+//};

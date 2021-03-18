@@ -137,7 +137,7 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 	cx_cube M_matrix( arma::size( Overall_Matrix ) );
 	for( const auto & layer : layers )
 	{
-		cx_vec current_ns = Get_Refraction_Index( layer.material, wavelengths, layer.optional );
+		cx_vec current_ns = Get_Refraction_Index( layer.material, wavelengths, layer.parameters );
 		{ // Setup A_matrix
 			cx_vec sum = (current_ns + previous_ns) / (2. * current_ns);
 			cx_vec difference = (current_ns - previous_ns) / (2. * current_ns);
@@ -150,7 +150,7 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 		}
 
 		{ // Setup M_matrix
-			arma::cx_vec exponent = 2.0 * datum::pi * current_ns % (layer.optional.thickness.value() / wavelengths);
+			arma::cx_vec exponent = 2.0 * datum::pi * current_ns % (layer.parameters.thickness.value() / wavelengths);
 			M_matrix.zeros();
 			cx_double debug_again = std::exp( 1i * exponent( 0 ) );
 			for( cx_double & z : exponent )
@@ -171,7 +171,7 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 			A_matrix.fill( cx_double( 1 / 2., 0 ) );
 		else
 		{ // Setup final A_matrix
-			auto backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, backside_material.optional );
+			auto backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, backside_material.parameters );
 			auto sum = (backside_ns + previous_ns) / (2. * backside_ns);
 			auto difference = (backside_ns - previous_ns) / (2. * backside_ns);
 			A_matrix.tube( 0, 0 ) = sum;
@@ -190,7 +190,7 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 	{
 		arma::vec exit_backside_amount = [ this, &wavelengths, backside_material ]
 		{
-			auto backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, backside_material.optional );
+			auto backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, backside_material.parameters );
 			cx_cube A( 2, 2, wavelengths.n_rows );
 			auto sum = ( 1. + backside_ns ) / 2.;
 			auto difference = ( 1. - backside_ns ) / 2.;

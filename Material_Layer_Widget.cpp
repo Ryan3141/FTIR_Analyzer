@@ -4,7 +4,7 @@
 
 #include "rangeless_helper.hpp"
 
-Material_Layer_Widget::Material_Layer_Widget( QWidget *parent, const QStringList & material_names, Material_Adjustable_Parameters parameters )
+Material_Layer_Widget::Material_Layer_Widget( QWidget *parent, const QStringList & material_names, Optional_Material_Parameters parameters )
 	: QWidget(parent)
 {
 	ui.setupUi(this);
@@ -14,22 +14,12 @@ Material_Layer_Widget::Material_Layer_Widget( QWidget *parent, const QStringList
 	////x.addItems;
 	ui.material_comboBox->addItem( "" );
 	ui.material_comboBox->addItems( material_names );
-	ui.material_comboBox->setCurrentText( QString::fromStdString( parameters.material ) );
-	if( parameters.material != "" )
+	if( parameters.material_name != "" )
 		ui.material_comboBox->addItem( "Delete" );
-
-	if( parameters.thickness.has_value() )
-		parameters.thickness.value() *= 1E6;
-	if( parameters.tauts_gap.has_value() )
-		parameters.tauts_gap.value() *= 1E3;
-	if( parameters.urbach_energy.has_value() )
-		parameters.urbach_energy.value() *= 1E3;
 
 	for( auto [ widget, parameter ] : fn::zip( double_widgets, parameters.all ) )
 	{
-		if( parameter.has_value() )
-			widget->setValue( parameter.value() );
-		else
+		if( !parameter.has_value() )
 			widget->setEnabled( false );
 		connect( widget, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ this ]( double new_value )
 		{
@@ -54,14 +44,54 @@ Material_Layer_Widget::Material_Layer_Widget( QWidget *parent, const QStringList
 			emit Material_Changed();
 		}
 	} );
+
+	this->Update_Values( parameters );
 }
 
+void Material_Layer_Widget::Update_Values( Optional_Material_Parameters parameters )
+{
+	if( parameters.thickness.has_value() )
+		parameters.thickness.value() *= 1E6;
+	if( parameters.tauts_gap_eV.has_value() )
+		parameters.tauts_gap_eV.value() *= 1E3;
+	if( parameters.urbach_energy_eV.has_value() )
+		parameters.urbach_energy_eV.value() *= 1E3;
 
-std::tuple< Material_Adjustable_Parameters, std::array< bool, 4 > >  Material_Layer_Widget::Get_Details() const
+	auto Avoid_Resignalling_setValue = []( auto going_to_change, auto value )
+	{
+		bool oldState = going_to_change->blockSignals( true ); // Prevent remove from triggering another changed signal
+		if( value.has_value() )
+		{
+			going_to_change->setEnabled( true );
+			going_to_change->setValue( value.value() );
+		}
+		else
+			going_to_change->setEnabled( false );
+		going_to_change->blockSignals( oldState );
+	};
+
+	auto Avoid_Resignalling_setCurrentText = []( auto going_to_change, auto value )
+	{
+		bool oldState = going_to_change->blockSignals( true ); // Prevent remove from triggering another changed signal
+		going_to_change->setCurrentText( value );
+		going_to_change->blockSignals( oldState );
+	};
+
+	Avoid_Resignalling_setCurrentText( this->ui.material_comboBox, QString::fromStdString( parameters.material_name ) );
+	for( auto[ widget, parameter ] : fn::zip( this->double_widgets, parameters.all ) )
+	{
+		Avoid_Resignalling_setValue( widget, parameter );
+	}
+	//if( layer.optional.thickness.has_value() )
+	//	Avoid_Resignalling_setValue( layer_widget->ui.thickness_doubleSpinBox, std::optional<double>{ layer.optional.thickness.value() * 1E6 } );
+
+}
+
+std::tuple< Optional_Material_Parameters, std::array< bool, 4 > >  Material_Layer_Widget::Get_Details() const
 {
 	std::string mat_name = ui.material_comboBox->currentText().toStdString();
 	
-	Material_Adjustable_Parameters parameters( mat_name );
+	Optional_Material_Parameters parameters( mat_name );
 	for( auto [ widget, parameter ] : fn::zip( double_widgets, parameters.all ) )
 	{
 		if( widget->isEnabled() )
@@ -69,10 +99,10 @@ std::tuple< Material_Adjustable_Parameters, std::array< bool, 4 > >  Material_La
 	}
 	if( parameters.thickness.has_value() )
 		parameters.thickness.value() *= 1E-6;
-	if( parameters.tauts_gap.has_value() )
-		parameters.tauts_gap.value() *= 1E-3;
-	if( parameters.urbach_energy.has_value() )
-		parameters.urbach_energy.value() *= 1E-3;
+	if( parameters.tauts_gap_eV.has_value() )
+		parameters.tauts_gap_eV.value() *= 1E-3;
+	if( parameters.urbach_energy_eV.has_value() )
+		parameters.urbach_energy_eV.value() *= 1E-3;
 
 	std::array< bool, 4 > should_fit;
 	for( auto [ widget, fit_bool ] : fn::zip( double_widgets, should_fit ) )
