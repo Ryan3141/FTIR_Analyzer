@@ -20,723 +20,756 @@
    <string>FTIR Analyzer</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QGridLayout" name="gridLayout_4">
+   <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
-     <widget class="QSplitter" name="splitter">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+     <widget class="QTabWidget" name="main_tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
       </property>
-      <property name="handleWidth">
-       <number>12</number>
-      </property>
-      <widget class="QWidget" name="layoutWidget_2">
-       <layout class="QVBoxLayout" name="verticalLayout2" stretch="0,0,0">
-        <property name="sizeConstraint">
-         <enum>QLayout::SetDefaultConstraint</enum>
-        </property>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_3">
-            <item>
-             <widget class="QLabel" name="label_8">
-              <property name="text">
-               <string>Search</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="filter_lineEdit"/>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_4">
-            <property name="sizeConstraint">
-             <enum>QLayout::SetFixedSize</enum>
-            </property>
-            <item>
-             <widget class="QLabel" name="label_9">
-              <property name="text">
-               <string>User</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="sqlUser_lineEdit">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="QCommandLinkButton" name="refresh_commandLinkButton">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>120</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>120</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>Refresh</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <widget class="SQL_Tree_Widget" name="treeWidget">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>1</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="contextMenuPolicy">
-           <enum>Qt::ActionsContextMenu</enum>
-          </property>
-          <property name="sizeAdjustPolicy">
-           <enum>QAbstractScrollArea::AdjustToContents</enum>
-          </property>
-          <property name="editTriggers">
-           <set>QAbstractItemView::EditKeyPressed</set>
-          </property>
-          <property name="alternatingRowColors">
-           <bool>true</bool>
-          </property>
-          <property name="selectionMode">
-           <enum>QAbstractItemView::ExtendedSelection</enum>
-          </property>
-          <property name="sortingEnabled">
-           <bool>true</bool>
-          </property>
-          <property name="expandsOnDoubleClick">
-           <bool>false</bool>
-          </property>
-          <attribute name="headerCascadingSectionResizes">
-           <bool>false</bool>
-          </attribute>
-          <attribute name="headerMinimumSectionSize">
-           <number>20</number>
-          </attribute>
-          <attribute name="headerShowSortIndicator" stdset="0">
-           <bool>true</bool>
-          </attribute>
-          <attribute name="headerStretchLastSection">
-           <bool>false</bool>
-          </attribute>
-          <column>
-           <property name="text">
-            <string>Sample Name</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Date</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Temperature</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Bias</string>
-           </property>
-          </column>
-          <column>
-           <property name="text">
-            <string>Time</string>
-           </property>
-          </column>
-          <item>
-           <property name="text">
-            <string>Sample1</string>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <item>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="text">
-             <string>First</string>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="text">
-             <string>Second</string>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-           </item>
-          </item>
-         </widget>
-        </item>
-        <item>
-         <spacer name="verticalSpacer">
+      <widget class="QWidget" name="ftir_tab">
+       <attribute name="title">
+        <string>FTIR</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_4">
+        <item row="0" column="0">
+         <widget class="QSplitter" name="splitter">
           <property name="orientation">
-           <enum>Qt::Vertical</enum>
+           <enum>Qt::Horizontal</enum>
           </property>
-          <property name="sizeType">
-           <enum>QSizePolicy::Expanding</enum>
+          <property name="handleWidth">
+           <number>12</number>
           </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>13</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </widget>
-      <widget class="Interactive_Graph" name="customPlot" native="true">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-         <horstretch>100</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>300</width>
-         <height>300</height>
-        </size>
-       </property>
-       <property name="toolTipDuration">
-        <number>10</number>
-       </property>
-      </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <layout class="QVBoxLayout" name="Options">
-        <property name="sizeConstraint">
-         <enum>QLayout::SetDefaultConstraint</enum>
-        </property>
-        <item>
-         <widget class="QTabWidget" name="settings_tabWidget">
-          <property name="currentIndex">
-           <number>1</number>
-          </property>
-          <widget class="QWidget" name="graphSettings_tab">
-           <attribute name="title">
-            <string>Graph</string>
-           </attribute>
-           <layout class="QGridLayout" name="gridLayout_3">
-            <item row="0" column="0">
-             <layout class="QVBoxLayout" name="verticalLayout_2">
+          <widget class="QWidget" name="layoutWidget_2">
+           <layout class="QVBoxLayout" name="verticalLayout2" stretch="0,0,0">
+            <property name="sizeConstraint">
+             <enum>QLayout::SetDefaultConstraint</enum>
+            </property>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout">
               <item>
-               <widget class="Interactive_Graph_Toolbar" name="interactiveGraphToolbar" native="true">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>100</height>
-                 </size>
-                </property>
-               </widget>
+               <layout class="QVBoxLayout" name="verticalLayout_3">
+                <item>
+                 <widget class="QLabel" name="label_8">
+                  <property name="text">
+                   <string>Search</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="filter_lineEdit"/>
+                </item>
+               </layout>
               </item>
               <item>
-               <spacer name="verticalSpacer_4">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+               <layout class="QVBoxLayout" name="verticalLayout_4">
+                <property name="sizeConstraint">
+                 <enum>QLayout::SetFixedSize</enum>
                 </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <layout class="QGridLayout" name="gridLayout_2">
-                <item row="2" column="0">
-                 <widget class="QLabel" name="label_7">
-                  <property name="baseSize">
-                   <size>
-                    <width>80</width>
-                    <height>0</height>
-                   </size>
-                  </property>
+                <item>
+                 <widget class="QLabel" name="label_9">
                   <property name="text">
-                   <string>Max/2 Cutoff</string>
+                   <string>User</string>
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="0">
-                 <widget class="QLabel" name="label_6">
-                  <property name="baseSize">
-                   <size>
-                    <width>80</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="text">
-                   <string>Selected</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <widget class="QLineEdit" name="selectedCutoff_lineEdit">
+                <item>
+                 <widget class="QLineEdit" name="sqlUser_lineEdit">
                   <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
-                  </property>
-                  <property name="baseSize">
-                   <size>
-                    <width>200</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QLabel" name="label_5">
-                  <property name="baseSize">
-                   <size>
-                    <width>80</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="text">
-                   <string>Temperature</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QLineEdit" name="selectedName_lineEdit">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="baseSize">
-                   <size>
-                    <width>200</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QLineEdit" name="selectedTemperature_lineEdit">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="baseSize">
-                   <size>
-                    <width>200</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QFrame" name="frame">
-                  <property name="frameShape">
-                   <enum>QFrame::StyledPanel</enum>
-                  </property>
-                  <property name="frameShadow">
-                   <enum>QFrame::Raised</enum>
                   </property>
                  </widget>
                 </item>
                </layout>
               </item>
+              <item>
+               <widget class="QCommandLinkButton" name="refresh_commandLinkButton">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>120</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>120</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Refresh</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="simulated_tab">
-           <attribute name="title">
-            <string>Simulated</string>
-           </attribute>
-           <layout class="QVBoxLayout" name="verticalLayout_5">
             <item>
-             <widget class="QGroupBox" name="groupBox_2">
-              <property name="title">
-               <string>Thin Film Interference</string>
+             <widget class="SQL_Tree_Widget" name="treeWidget">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>1</verstretch>
+               </sizepolicy>
               </property>
-              <layout class="QVBoxLayout" name="verticalLayout">
+              <property name="contextMenuPolicy">
+               <enum>Qt::ActionsContextMenu</enum>
+              </property>
+              <property name="sizeAdjustPolicy">
+               <enum>QAbstractScrollArea::AdjustToContents</enum>
+              </property>
+              <property name="editTriggers">
+               <set>QAbstractItemView::EditKeyPressed</set>
+              </property>
+              <property name="alternatingRowColors">
+               <bool>true</bool>
+              </property>
+              <property name="selectionMode">
+               <enum>QAbstractItemView::ExtendedSelection</enum>
+              </property>
+              <property name="rootIsDecorated">
+               <bool>true</bool>
+              </property>
+              <property name="sortingEnabled">
+               <bool>true</bool>
+              </property>
+              <property name="expandsOnDoubleClick">
+               <bool>false</bool>
+              </property>
+              <attribute name="headerCascadingSectionResizes">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="headerMinimumSectionSize">
+               <number>50</number>
+              </attribute>
+              <attribute name="headerShowSortIndicator" stdset="0">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="headerStretchLastSection">
+               <bool>false</bool>
+              </attribute>
+              <column>
+               <property name="text">
+                <string>Sample Name</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Date</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Temperature</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Bias</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Time</string>
+               </property>
+              </column>
+              <item>
+               <property name="text">
+                <string>Sample1</string>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
                <item>
-                <widget class="QCheckBox" name="simulationTransmissionOn_checkBox">
-                 <property name="text">
-                  <string>Transmission</string>
-                 </property>
-                </widget>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="text">
+                 <string>First</string>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
                </item>
                <item>
-                <widget class="QCheckBox" name="simulationReflectionOn_checkBox">
-                 <property name="text">
-                  <string>Reflection</string>
-                 </property>
-                </widget>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="text">
+                 <string>Second</string>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
                </item>
-               <item>
-                <widget class="QCheckBox" name="simulationAbsorptionOn_checkBox">
-                 <property name="text">
-                  <string>Absorption</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_6">
-                 <item>
-                  <widget class="QLabel" name="label">
-                   <property name="text">
-                    <string>Back Side Material:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QComboBox" name="backsideMaterial_comboBox"/>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_2">
-                 <item>
-                  <widget class="QLabel" name="label_11">
-                   <property name="text">
-                    <string>Material</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="label_12">
-                   <property name="text">
-                    <string>Thickness</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="label_13">
-                   <property name="text">
-                    <string>Composition</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <widget class="Layer_Builder" name="simulated_listWidget">
-                 <property name="dragEnabled">
-                  <bool>true</bool>
-                 </property>
-                 <property name="dragDropMode">
-                  <enum>QAbstractItemView::InternalMove</enum>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_7">
-                 <item>
-                  <widget class="QLabel" name="label_2">
-                   <property name="text">
-                    <string>Plot Material Index:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QComboBox" name="plotMaterialIndex_comboBox"/>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="plotMaterialIndex_checkBox">
-                   <property name="text">
-                    <string/>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_4">
-                 <item>
-                  <widget class="QLabel" name="label_18">
-                   <property name="text">
-                    <string>Temperature</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QDoubleSpinBox" name="simulationTemperature_doubleSpinBox">
-                   <property name="suffix">
-                    <string> K</string>
-                   </property>
-                   <property name="minimum">
-                    <double>1.000000000000000</double>
-                   </property>
-                   <property name="maximum">
-                    <double>1000.000000000000000</double>
-                   </property>
-                   <property name="singleStep">
-                    <double>10.000000000000000</double>
-                   </property>
-                   <property name="value">
-                    <double>300.000000000000000</double>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <widget class="QGroupBox" name="groupBox_3">
-                 <property name="title">
-                  <string>Layers File</string>
-                 </property>
-                 <layout class="QVBoxLayout" name="verticalLayout_6">
-                  <item>
-                   <widget class="QLineEdit" name="layersFile_lineEdit">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                      <horstretch>5</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <layout class="QHBoxLayout" name="horizontalLayout_5">
-                    <item>
-                     <widget class="QPushButton" name="loadLayersFile_pushButton">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                        <horstretch>1</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="maximumSize">
-                       <size>
-                        <width>16777215</width>
-                        <height>16777215</height>
-                       </size>
-                      </property>
-                      <property name="text">
-                       <string>Load</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QPushButton" name="saveLayersFile_pushButton">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                        <horstretch>1</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="maximumSize">
-                       <size>
-                        <width>16777215</width>
-                        <height>16777215</height>
-                       </size>
-                      </property>
-                      <property name="text">
-                       <string>Save</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="fitGraph_pushButton">
-                 <property name="text">
-                  <string>Fit To Data</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
+              </item>
              </widget>
             </item>
             <item>
-             <widget class="QGroupBox" name="groupBox">
-              <property name="title">
-               <string>Blackbody</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_5">
-               <item row="2" column="0">
-                <widget class="QLabel" name="label_15">
-                 <property name="text">
-                  <string>Temperature</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="2">
-                <widget class="QSlider" name="blackbodyTemperature_horizontalSlider">
-                 <property name="minimum">
-                  <number>0</number>
-                 </property>
-                 <property name="maximum">
-                  <number>100000</number>
-                 </property>
-                 <property name="singleStep">
-                  <number>1</number>
-                 </property>
-                 <property name="pageStep">
-                  <number>1000</number>
-                 </property>
-                 <property name="value">
-                  <number>82000</number>
-                 </property>
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="2">
-                <widget class="QSlider" name="blackbodyAmplitude_horizontalSlider">
-                 <property name="minimum">
-                  <number>1</number>
-                 </property>
-                 <property name="maximum">
-                  <number>100000</number>
-                 </property>
-                 <property name="singleStep">
-                  <number>1</number>
-                 </property>
-                 <property name="pageStep">
-                  <number>50</number>
-                 </property>
-                 <property name="value">
-                  <number>1000</number>
-                 </property>
-                 <property name="orientation">
-                  <enum>Qt::Horizontal</enum>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="label_14">
-                 <property name="text">
-                  <string>Amplitude</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QDoubleSpinBox" name="blackbodyAmplitude_doubleSpinBox">
-                 <property name="minimum">
-                  <double>0.100000000000000</double>
-                 </property>
-                 <property name="maximum">
-                  <double>200.000000000000000</double>
-                 </property>
-                 <property name="singleStep">
-                  <double>0.100000000000000</double>
-                 </property>
-                 <property name="value">
-                  <double>1.000000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QDoubleSpinBox" name="blackbodyTemperature_doubleSpinBox">
-                 <property name="maximum">
-                  <double>10000.000000000000000</double>
-                 </property>
-                 <property name="value">
-                  <double>820.000000000000000</double>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_16">
-                 <property name="text">
-                  <string>Activate</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="QCheckBox" name="blackbodyOn_checkBox">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <spacer name="verticalSpacer_2">
+             <spacer name="verticalSpacer">
               <property name="orientation">
                <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::Expanding</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
                 <width>20</width>
-                <height>40</height>
+                <height>13</height>
                </size>
               </property>
              </spacer>
             </item>
            </layout>
           </widget>
+          <widget class="Interactive_Graph" name="customPlot" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+             <horstretch>100</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>300</width>
+             <height>300</height>
+            </size>
+           </property>
+           <property name="toolTipDuration">
+            <number>10</number>
+           </property>
+          </widget>
+          <widget class="QWidget" name="layoutWidget">
+           <layout class="QVBoxLayout" name="Options">
+            <property name="sizeConstraint">
+             <enum>QLayout::SetDefaultConstraint</enum>
+            </property>
+            <item>
+             <widget class="QTabWidget" name="settings_tabWidget">
+              <property name="currentIndex">
+               <number>1</number>
+              </property>
+              <widget class="QWidget" name="graphSettings_tab">
+               <attribute name="title">
+                <string>Graph</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_3">
+                <item row="0" column="0">
+                 <layout class="QVBoxLayout" name="verticalLayout_2">
+                  <item>
+                   <widget class="Interactive_Graph_Toolbar" name="interactiveGraphToolbar" native="true">
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>100</height>
+                     </size>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="verticalSpacer_4">
+                    <property name="orientation">
+                     <enum>Qt::Vertical</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>20</width>
+                      <height>40</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item>
+                   <layout class="QGridLayout" name="gridLayout_2">
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="label_7">
+                      <property name="baseSize">
+                       <size>
+                        <width>80</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>Max/2 Cutoff</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_6">
+                      <property name="baseSize">
+                       <size>
+                        <width>80</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>Selected</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLineEdit" name="selectedCutoff_lineEdit">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="baseSize">
+                       <size>
+                        <width>200</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="readOnly">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="label_5">
+                      <property name="baseSize">
+                       <size>
+                        <width>80</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>Temperature</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLineEdit" name="selectedName_lineEdit">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="baseSize">
+                       <size>
+                        <width>200</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="readOnly">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLineEdit" name="selectedTemperature_lineEdit">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="baseSize">
+                       <size>
+                        <width>200</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="readOnly">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="0">
+                     <widget class="QFrame" name="frame">
+                      <property name="frameShape">
+                       <enum>QFrame::StyledPanel</enum>
+                      </property>
+                      <property name="frameShadow">
+                       <enum>QFrame::Raised</enum>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="simulated_tab">
+               <attribute name="title">
+                <string>Simulated</string>
+               </attribute>
+               <layout class="QVBoxLayout" name="verticalLayout_5">
+                <item>
+                 <widget class="QGroupBox" name="groupBox_2">
+                  <property name="title">
+                   <string>Thin Film Interference</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout">
+                   <item>
+                    <widget class="QCheckBox" name="simulationTransmissionOn_checkBox">
+                     <property name="text">
+                      <string>Transmission</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="simulationReflectionOn_checkBox">
+                     <property name="text">
+                      <string>Reflection</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="simulationAbsorptionOn_checkBox">
+                     <property name="text">
+                      <string>Absorption</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_6">
+                     <item>
+                      <widget class="QLabel" name="label">
+                       <property name="text">
+                        <string>Back Side Material:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="backsideMaterial_comboBox"/>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_2">
+                     <item>
+                      <widget class="QLabel" name="label_11">
+                       <property name="text">
+                        <string>Material</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_12">
+                       <property name="text">
+                        <string>Thickness</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_13">
+                       <property name="text">
+                        <string>Composition</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="Layer_Builder" name="simulated_listWidget">
+                     <property name="dragEnabled">
+                      <bool>true</bool>
+                     </property>
+                     <property name="dragDropMode">
+                      <enum>QAbstractItemView::InternalMove</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_7">
+                     <item>
+                      <widget class="QLabel" name="label_2">
+                       <property name="text">
+                        <string>Plot Material Index:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="plotMaterialIndex_comboBox"/>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="plotMaterialIndex_checkBox">
+                       <property name="text">
+                        <string/>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_4">
+                     <item>
+                      <widget class="QLabel" name="label_18">
+                       <property name="text">
+                        <string>Temperature</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QDoubleSpinBox" name="simulationTemperature_doubleSpinBox">
+                       <property name="suffix">
+                        <string> K</string>
+                       </property>
+                       <property name="minimum">
+                        <double>1.000000000000000</double>
+                       </property>
+                       <property name="maximum">
+                        <double>1000.000000000000000</double>
+                       </property>
+                       <property name="singleStep">
+                        <double>10.000000000000000</double>
+                       </property>
+                       <property name="value">
+                        <double>300.000000000000000</double>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="groupBox_3">
+                     <property name="title">
+                      <string>Layers File</string>
+                     </property>
+                     <layout class="QVBoxLayout" name="verticalLayout_6">
+                      <item>
+                       <widget class="QLineEdit" name="layersFile_lineEdit">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                          <horstretch>5</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_5">
+                        <item>
+                         <widget class="QPushButton" name="loadLayersFile_pushButton">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                            <horstretch>1</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>16777215</height>
+                           </size>
+                          </property>
+                          <property name="text">
+                           <string>Load</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QPushButton" name="saveLayersFile_pushButton">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                            <horstretch>1</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16777215</width>
+                            <height>16777215</height>
+                           </size>
+                          </property>
+                          <property name="text">
+                           <string>Save</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_3">
+                     <item>
+                      <widget class="QPushButton" name="fitGraph_pushButton">
+                       <property name="text">
+                        <string>Fit To Data</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="stopFitting_pushButton">
+                       <property name="text">
+                        <string>Stop Fitting</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBox">
+                  <property name="title">
+                   <string>Blackbody</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_5">
+                   <item row="2" column="0">
+                    <widget class="QLabel" name="label_15">
+                     <property name="text">
+                      <string>Temperature</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="2">
+                    <widget class="QSlider" name="blackbodyTemperature_horizontalSlider">
+                     <property name="minimum">
+                      <number>0</number>
+                     </property>
+                     <property name="maximum">
+                      <number>100000</number>
+                     </property>
+                     <property name="singleStep">
+                      <number>1</number>
+                     </property>
+                     <property name="pageStep">
+                      <number>1000</number>
+                     </property>
+                     <property name="value">
+                      <number>82000</number>
+                     </property>
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="2">
+                    <widget class="QSlider" name="blackbodyAmplitude_horizontalSlider">
+                     <property name="minimum">
+                      <number>1</number>
+                     </property>
+                     <property name="maximum">
+                      <number>100000</number>
+                     </property>
+                     <property name="singleStep">
+                      <number>1</number>
+                     </property>
+                     <property name="pageStep">
+                      <number>50</number>
+                     </property>
+                     <property name="value">
+                      <number>1000</number>
+                     </property>
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QLabel" name="label_14">
+                     <property name="text">
+                      <string>Amplitude</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QDoubleSpinBox" name="blackbodyAmplitude_doubleSpinBox">
+                     <property name="minimum">
+                      <double>0.100000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>200.000000000000000</double>
+                     </property>
+                     <property name="singleStep">
+                      <double>0.100000000000000</double>
+                     </property>
+                     <property name="value">
+                      <double>1.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QDoubleSpinBox" name="blackbodyTemperature_doubleSpinBox">
+                     <property name="maximum">
+                      <double>10000.000000000000000</double>
+                     </property>
+                     <property name="value">
+                      <double>820.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="label_16">
+                     <property name="text">
+                      <string>Activate</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QCheckBox" name="blackbodyOn_checkBox">
+                     <property name="text">
+                      <string/>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="verticalSpacer_2">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </widget>
+             </widget>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
        </layout>
+      </widget>
+      <widget class="QWidget" name="iv_tab">
+       <attribute name="title">
+        <string>I-V</string>
+       </attribute>
       </widget>
      </widget>
     </item>

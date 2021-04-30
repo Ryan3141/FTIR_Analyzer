@@ -135,6 +135,8 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 	Overall_Matrix.each_slice() = arma::eye<cx_mat>( 2, 2 );
 	cx_cube A_matrix( arma::size( Overall_Matrix ) );
 	cx_cube M_matrix( arma::size( Overall_Matrix ) );
+	double mix_amount1 = 0.1;
+	double mix_amount2 = 0.1;
 	for( const auto & layer : layers )
 	{
 		cx_vec current_ns = Get_Refraction_Index( layer.material, wavelengths, layer.parameters );
@@ -172,8 +174,8 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 		else
 		{ // Setup final A_matrix
 			auto backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, backside_material.parameters );
-			auto sum = (backside_ns + previous_ns) / (2. * backside_ns);
-			auto difference = (backside_ns - previous_ns) / (2. * backside_ns);
+			cx_vec sum = (backside_ns + previous_ns) / (2. * backside_ns);
+			cx_vec difference = (backside_ns - previous_ns) / (2. * backside_ns);
 			A_matrix.tube( 0, 0 ) = sum;
 			A_matrix.tube( 0, 1 ) = difference;
 			A_matrix.tube( 1, 0 ) = difference;
@@ -186,22 +188,23 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 	}
 	//return { arma::vec(2049, arma::fill::ones), arma::vec(2049, arma::fill::ones) };
 
-	if constexpr( false ) // Version with exit transition
+	if constexpr( true ) // Version with exit transition
 	{
 		arma::vec exit_backside_amount = [ this, &wavelengths, backside_material ]
 		{
 			auto backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, backside_material.parameters );
-			cx_cube A( 2, 2, wavelengths.n_rows );
 			auto sum = ( 1. + backside_ns ) / 2.;
 			auto difference = ( 1. - backside_ns ) / 2.;
-			auto reflection_amplitude = difference / sum;
-			return vec( real( reflection_amplitude % conj( reflection_amplitude ) ) );
+			auto transmission_amplitude = sum - difference % difference / sum;
+			return vec( real( transmission_amplitude % conj( transmission_amplitude ) ) );
+			//auto reflection_amplitude = difference / sum;
+			//return vec( real( reflection_amplitude % conj( reflection_amplitude ) ) );
 		}();
 		Debug_Print( "Overall Matrix", Overall_Matrix.slice( 0 ) );
 		auto transmission_amplitude = Overall_Matrix.tube( 0, 0 ) - Overall_Matrix.tube( 0, 1 ) % Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
-		vec transmission = ( 1.0 - exit_backside_amount ) % vec( real( transmission_amplitude % conj( transmission_amplitude ) ) );
+		vec transmission = exit_backside_amount % vec( real( transmission_amplitude % conj( transmission_amplitude ) ) );
 		auto reflection_amplitude = Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
-		vec reflection = exit_backside_amount % vec( real( reflection_amplitude % conj( reflection_amplitude ) ) );
+		vec reflection = real( reflection_amplitude % conj( reflection_amplitude ) );
 
 		return { transmission, reflection };
 	}
@@ -228,8 +231,9 @@ void Thin_Film_Interference::Get_Best_Fit( const std::vector<Material_Layer> & l
 										   Material_Layer backside_material )
 {
 	std::vector<Material_Layer> copy_layers = layers;
-	double largest_transmission = arma::max( transmissions );
-	const arma::vec scaled_transmissions = transmissions / largest_transmission;
+	//double largest_transmission = arma::max( transmissions );
+	//const arma::vec scaled_transmissions = transmissions / largest_transmission;
+	const arma::vec scaled_transmissions = transmissions / 100.0;
 	auto minimize_function = [this, &copy_layers, &wavelengths, &scaled_transmissions, &backside_material ]( const arma::vec& input_to_optimize )
 	{
 		auto fit_parameters = Get_Things_To_Fit( copy_layers );
@@ -247,13 +251,13 @@ void Thin_Film_Interference::Get_Best_Fit( const std::vector<Material_Layer> & l
 		Result_Data results = this->Get_Expected_Transmission( copy_layers, wavelengths, backside_material );
 		arma::vec difference = results.transmission - scaled_transmissions;
 
-		emit Debug_Plot( wavelengths, 100 * (difference % difference) );
+		//emit Debug_Plot( wavelengths, 100 * (difference % difference) );
 
 		double error = arma::dot( difference, difference );
 		return error;
 	};
 
-	auto show_results = [this, copy_layers, largest_transmission, backside_material]( arma::vec current_results )
+	auto show_results = [this, copy_layers, backside_material]( arma::vec current_results )
 	{
 		std::vector<Material_Layer> current_guess = copy_layers;
 		auto fit_parameters = Get_Things_To_Fit( current_guess );
@@ -264,6 +268,8 @@ void Thin_Film_Interference::Get_Best_Fit( const std::vector<Material_Layer> & l
 			i++;
 		}
 		emit Updated_Guess( current_guess );
+		QCoreApplication::processEvents();
+		return this->quit_early;
 	};
 
 	auto fit_parameters = Get_Things_To_Fit( copy_layers );
@@ -275,6 +281,11 @@ void Thin_Film_Interference::Get_Best_Fit( const std::vector<Material_Layer> & l
 		i++;
 	}
 	arma::vec solution = Minimize_Function_Starting_Point( minimize_function, initial_guess, 1000, 1.0, 1E-10, 0.2, show_results );
+}
+
+void Thin_Film_Interference::Quit_Early()
+{
+	this->quit_early = true;
 }
 
 Material_To_Refraction_Component Thin_Film_Interference::Attenuation_Coefficient{ Load_Index_Of_Refraction_Files(fs::path("./Refractive_Index"), "_k" ) };
@@ -351,13 +362,13 @@ arma::cx_vec MCT_Index( const arma::vec & wavelengths, Optional_Material_Paramet
 			auto alpha_kane = [&]() -> arma::vec
 				//if( E >= Eg )
 			{ // Kane region
-				//double beta = -1.0 + 0.083 * temperature_k + (21.0 - 0.13 * temperature_k) * x;
-				double beta = std::log( 2.109E5 * std::sqrt( (1 + x) / (81.9 + temperature_k) ) ); // Testing this version
+				double beta = -1.0 + 0.083 * temperature_k + (21.0 - 0.13 * temperature_k) * x;
+				//double beta = std::log( 2.109E5 * std::sqrt( (1 + x) / (81.9 + temperature_k) ) ); // Testing this version
 				//double log_of_alpha_g = log_of_alpha0 + sigma * (Eg - E0) / W; // When it switches from Urbach to Kane region at bandgap Eg
 				double alpha_g = -65 + 1.88 * temperature_k + (8694 - 10.31 * temperature_k) * x;
-				double log_of_alpha_g = std::log( alpha_g );
-				return arma::exp( log_of_alpha_g + arma::sqrt( beta * (E - Eg) ) );
-				//k = alpha_kane * 1E6 * wavelength / (4 * datum::pi);
+				return alpha_g * arma::exp( arma::sqrt( beta * ( E - Eg ) ) );
+				//double log_of_alpha_g = std::log( alpha_g );
+				//return arma::exp( log_of_alpha_g + arma::sqrt( beta * (E - Eg) ) );
 			}();
 			//else
 			auto alpha_urbach = [&]() -> arma::vec
@@ -366,9 +377,13 @@ arma::cx_vec MCT_Index( const arma::vec & wavelengths, Optional_Material_Paramet
 					return arma::exp( log_of_alpha0 + ( E - optional_parameters.tauts_gap_eV.value() ) / optional_parameters.urbach_energy_eV.value() );
 				else
 					return arma::exp( log_of_alpha0 + sigma * ( E - E0 ) / W );
-				//k = alpha_urbach * 1E6 * wavelength / (4 * datum::pi);
 			}();
-			return arma::min( alpha_urbach, alpha_kane ) % wavelengths * 1E6 / (4 * datum::pi);
+			//arma::vec test = arma::min( arma::vec{ arma::datum::nan, 1.0, 5 }, arma::vec{ -1.0, arma::datum::nan, -29 } );
+			//double debug1 = test[ 0 ];
+			//double debug2 = test[ 1 ];
+			//double debug3 = test[ 2 ];
+			// alpha_urbach must come first in case alpha_kane is nan
+			return arma::min( alpha_urbach, alpha_kane ) % wavelengths * 1E2 / (4 * datum::pi); // Convert wavelengths from m to cm because alphas are per cm
 		}
 		//else if constexpr( false )
 		//{

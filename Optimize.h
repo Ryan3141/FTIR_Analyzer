@@ -17,7 +17,7 @@ arma::vec Minimize_Function_Starting_Point( std::function<double( const arma::ve
 											double attenuation_coefficient = 1.0,
 											double resolution = 1E-9,
 											double biggest_step_size = 0.25E-6,
-											std::function<void( arma::vec )> iteration_finished_callback = []( arma::vec ) {} );
+											std::function<bool( arma::vec )> iteration_finished_callback = []( arma::vec ) { return false;  } );
 
 double Newtons_Method( std::function<double( double )> func,
 					   std::function<double( double )> derivative,

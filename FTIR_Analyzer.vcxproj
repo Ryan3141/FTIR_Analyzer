@@ -219,7 +219,7 @@
     <ClInclude Include="Optimize.h" />
     <ClInclude Include="rangeless_helper.hpp" />
     <ClInclude Include="SPA_File.h" />
-    <ClInclude Include="SQL_Tree_Widget.h" />
+    <QtMoc Include="SQL_Tree_Widget.h" />
     <ClInclude Include="Units.h" />
     <QtMoc Include="Thin_Film_Interference.h" />
     <QtMoc Include="SQL_Manager.h" />

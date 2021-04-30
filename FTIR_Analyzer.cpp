@@ -21,29 +21,19 @@ using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>
 
 namespace FTIR
 {
-const QStringList header_titles{ "Sample Name", "Date", "Temperature (K)", "Dewar Temp (C)", "Time of Day", "Gain", "measurement_id" };
-const QStringList what_to_collect{ "sample_name", "date(time)", "temperature_in_k", "dewar_temp_in_c", "time(time)", "gain", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
-
-const QString sql_table = "ftir_measurements";
-const QStringList raw_data_columns{ "measurement_id","wavenumber","intensity" };
-const QString raw_data_table = "ftir_raw_data";
-const QString sorting_strategy = "ORDER BY measurement_id, wavenumber ASC";
-const int columns_to_show = 5;
-const int measurement_id_column = what_to_collect.indexOf( "measurement_id" );
-
 
 static XY_Data Scale_FTIR_XY_Data( const Metadata & meta, const XY_Data & data )
 {
 	return data;
-	int gain = meta[ header_titles.indexOf( "Gain" ) ].toInt();
+	//int gain = meta[ header_titles.indexOf( "Gain" ) ].toInt();
 
-	QVector<double> scale_y_data = std::get<1>( data );
-	for( double& y : scale_y_data )
-		y /= gain;
-
+	//QVector<double> scale_y_data = std::get<1>( data );
 	//for( double& y : scale_y_data )
-	//	y *= 100;
-	return { std::get<0>( data ), std::move(scale_y_data) };
+	//	y /= gain;
+
+	////for( double& y : scale_y_data )
+	////	y *= 100;
+	//return { std::get<0>( data ), std::move(scale_y_data) };
 }
 
 static QVector<double> Find_Zero_Crossings( QVector<double> x_data, QVector<double> y_data, double offset )
@@ -61,11 +51,11 @@ static QVector<double> Find_Zero_Crossings( QVector<double> x_data, QVector<doub
 }
 
 template< typename T >
-T Info_Or_Default( const Metadata & meta, QString column, T Default )
+T Info_Or_Default( const Metadata & meta, const QStringList & lookup_column, QString column, T Default )
 {
 	if( meta.empty() )
 		return Default;
-	int index = header_titles.indexOf( column );
+	int index = lookup_column.indexOf( column );
 	if( index == -1 )
 		return Default;
 	QVariant stuff = meta[ index ];
@@ -148,7 +138,7 @@ void FTIR_Analyzer::Graph_Refractive_Index( std::string material_name, Optional_
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 );
 	x_data_meters.transform( [=]( double x ) { return Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_METERS, x ); } );
 
-	auto refractive_index = Thin_Film_Interference().Get_Refraction_Index( name_to_material[ material_name ], x_data_meters, parameters );
+	arma::cx_vec refractive_index = Thin_Film_Interference().Get_Refraction_Index( name_to_material[ material_name ], x_data_meters, parameters );
 	ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::real( refractive_index ) ), "Index (n)", "Index (n)" );
 	ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::imag( refractive_index ) ), "Index (k)", "Index (k)" );
 
@@ -201,13 +191,15 @@ void FTIR_Analyzer::Run_Fit()
 
 	std::array<double, 2> bounds = { ui.customPlot->xAxis->range().lower, ui.customPlot->xAxis->range().upper };
 	for( double & x : bounds )
-		x = Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6;
+		x = std::max( 0.0, Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6 );
+	if( bounds[ 0 ] > bounds[ 1 ] )
+		std::swap( bounds[ 0 ], bounds[ 1 ] );
 
 	auto[ x_data, y_data ] = ui.customPlot->axes.Prepare_XY_Data( selected_graph );
 	arma::vec wavelength_data = arma::conv_to< arma::vec >::from( x_data.toStdVector() );
 	arma::vec transmission_data = arma::conv_to< arma::vec >::from( y_data.toStdVector() );
 	wavelength_data.transform( [ this ]( double x ) { return Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6; } );
-	double temperature_in_k = Info_Or_Default( selected_graph.meta, "Temperature (K)", 300.0 );
+	double temperature_in_k = Info_Or_Default( selected_graph.meta, config.header_titles, "Temperature (K)", 300.0 );
 	if( temperature_in_k == 0.0 )
 		temperature_in_k = 300.0;
 	//double temperature = ui.simulationTemperature_doubleSpinBox->value();
@@ -227,7 +219,10 @@ void FTIR_Analyzer::Run_Fit()
 	const auto [ filtered_wavelength_data, filtered_transmission_data ] = fn::zip( wavelength_data, transmission_data )
 		% fn::where( [ bounds ]( auto x ) { auto[ wavelength, transmission ] = x; return wavelength >= bounds[ 0 ] && wavelength <= bounds[ 1 ]; } )
 		% fn::unzip( std::tuple < arma::vec, arma::vec >{} );
-	double transmission_max = arma::max( filtered_transmission_data );
+	if( filtered_transmission_data.size() == 0 )
+		return; // Something went wrong and none of the data is 
+	//double transmission_max = arma::max( filtered_transmission_data );
+	double transmission_max = 100.0;
 	{ // Start the thread
 		QThread* thread = new QThread;
 		this->thin_film_manager = new Thin_Film_Interference();
@@ -235,6 +230,7 @@ void FTIR_Analyzer::Run_Fit()
 		//automatically delete thread and task object when work is done:
 		connect( thread, &QThread::finished, this->thin_film_manager, &QObject::deleteLater );
 		connect( thread, &QThread::finished, thread, &QObject::deleteLater );
+		connect( ui.stopFitting_pushButton, &QPushButton::pressed, this->thin_film_manager, &Thin_Film_Interference::Quit_Early );
 		//qRegisterMetaType< std::tuple<bool,bool,bool> >();
 		auto test = connect( this->thin_film_manager, &Thin_Film_Interference::Updated_Guess, this, [ = ]( std::vector<Material_Layer> updated_layers )
 		{
@@ -255,27 +251,33 @@ void FTIR_Analyzer::Run_Fit()
 
 void FTIR_Analyzer::Initialize_Tree_Table()
 {
-	ui.treeWidget->Set_Data_To_Gather( header_titles, what_to_collect, columns_to_show );
+	config.header_titles    = QStringList{ "Sample Name", "Date", "Temperature (K)", "Dewar Temp (C)", "Time of Day", "Gain", "measurement_id" };
+	config.what_to_collect  = QStringList{ "sample_name", "date(time)", "temperature_in_k", "dewar_temp_in_c", "time(time)", "gain", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
+	config.sql_table        = "ftir_measurements";
+	config.raw_data_columns = QStringList{ "measurement_id","wavenumber","intensity" };
+	config.raw_data_table   = "ftir_raw_data";
+	config.sorting_strategy = "ORDER BY measurement_id, wavenumber ASC";
+	config.columns_to_show  = 6;
+
+	ui.treeWidget->Set_Column_Info( config.header_titles, config.what_to_collect, config.columns_to_show );
 
 	auto repoll_sql = [ this ]
 	{
 		QString user = ui.sqlUser_lineEdit->text();
 		QString filter = ui.filter_lineEdit->text();
 
-		sql_manager->Grab_All_SQL_Metadata( what_to_collect, sql_table, this, [ this, filter ]( std::vector<Metadata> data )
+		sql_manager->Grab_All_SQL_Metadata( config.what_to_collect, config.sql_table, this, [ this, filter ]( Structured_Metadata data )
 		{
 			ui.treeWidget->current_meta_data = std::move( data );
 			ui.treeWidget->Refilter( filter );
 		}, QString( " WHERE user=\"%1\"" ).arg( user ) );
 	};
 
-	connect( ui.treeWidget, &SQL_Tree_Widget::itemDoubleClicked, [this]( QTreeWidgetItem* tree_item, int column )
+	connect( ui.treeWidget, &SQL_Tree_Widget::Data_Double_Clicked, [this]( ID_To_Metadata id_and_metadata )
 	{
-		std::vector<const QTreeWidgetItem*> things_to_graph = ui.treeWidget->Get_Bottom_Children_Elements_Under( tree_item );
-
-		for( const QTreeWidgetItem* x : things_to_graph )
+		for( auto [ measurement_id, metadata ] : id_and_metadata )
 		{
-			Graph_Tree_Node( x );
+			Graph_Measurement( measurement_id, metadata );
 		}
 	} );
 
@@ -296,9 +298,9 @@ void FTIR_Analyzer::Initialize_Graph()
 	connect( ui.customPlot, &Interactive_Graph::Graph_Selected, [this]( QCPGraph* selected_graph )
 	{
 		const Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
-		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "Sample Name", "" ) );
-		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "Temperature (K)", "" ) );
-		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default<QString>( measurement.meta, "Gain", "" ) );
+		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, config.header_titles, "Sample Name", "" ) );
+		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, config.header_titles, "Temperature (K)", "" ) );
+		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default<QString>( measurement.meta, config.header_titles, "Gain", "" ) );
 
 		//	QVector<double> cutoffs = Find_Zero_Crossings( x_data, y_data, *std::max_element( y_data.constBegin(), y_data.constEnd() ) / 2 );
 		//	if( !cutoffs.isEmpty() )
@@ -358,7 +360,7 @@ void FTIR_Analyzer::Initialize_Simulation()
 		{
 			std::string material_name = ui.plotMaterialIndex_comboBox->currentText().toStdString();
 			double temperature_in_k = ui.simulationTemperature_doubleSpinBox->value();
-			Optional_Material_Parameters parameters( material_name, temperature_in_k, std::nullopt, 0.5 );
+			Optional_Material_Parameters parameters( material_name, temperature_in_k, std::nullopt, 0.221 );
 
 			this->Graph_Refractive_Index( material_name, parameters );
 		}
@@ -446,21 +448,18 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 {
 	QMenu *menu = new QMenu( this );
 	menu->setAttribute( Qt::WA_DeleteOnClose );
-	auto selected = ui.treeWidget->selectedItems();
-	auto actually_clicked = ui.treeWidget->itemAt( pos );
-	bool only_one_thing_selected = selected.size() == 1 && ui.treeWidget->Get_Bottom_Children_Elements_Under( selected[ 0 ] ).size() == 1;
+	ID_To_Metadata selected = ui.treeWidget->Selected_Data();
+	bool only_one_thing_selected = selected.size() == 1;
 	if( only_one_thing_selected ) // Only show up if only 1 thing is selected
 	{
 		menu->addAction( "Set As Background", [this, selected]
 		{
-			QTreeWidgetItem* first_selected = selected[ 0 ];
-			QString measurement_id = first_selected->text( measurement_id_column );
-			Metadata row = ui.treeWidget->Get_Metadata_For_Row( first_selected );
-			sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( raw_data_columns, raw_data_table, { measurement_id }, this, [ this, measurement_id, row ]( ID_To_XY_Data data )
+			auto [measurement_id, metadata] = *selected.begin();
+			sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this, [ this, measurement_id=measurement_id, metadata=metadata ]( ID_To_XY_Data data )
 			{
-				XY_Data background_data = Scale_FTIR_XY_Data( row, data[ measurement_id ] );
+				XY_Data background_data = Scale_FTIR_XY_Data( metadata, data[ measurement_id ] );
 				ui.customPlot->axes.Set_As_Background( std::move( background_data ) );
-			}, sorting_strategy );
+			}, config.sorting_strategy );
 		} );
 	}
 
@@ -468,56 +467,46 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 
 	menu->addAction( "Graph Selected", [this, selected]
 	{
-		for( const auto & tree_item : selected )
+		for( auto[ measurement_id, metadata ] : selected )
 		{
-			std::vector<const QTreeWidgetItem*> things_to_graph = ui.treeWidget->Get_Bottom_Children_Elements_Under( tree_item );
-
-			for( const QTreeWidgetItem* x : things_to_graph )
-			{
-				Graph_Tree_Node( x );
-			}
+			Graph_Measurement( measurement_id, metadata );
 		}
 	} );
 
 	menu->addAction( "Save to csv file", [this, selected]
 	{
-		std::vector<const QTreeWidgetItem*> all_things_to_save;
-		for( const auto & tree_item : selected )
-		{
-			std::vector<const QTreeWidgetItem*> things_to_save = ui.treeWidget->Get_Bottom_Children_Elements_Under( tree_item );
-
-			all_things_to_save.insert( all_things_to_save.end(), things_to_save.begin(), things_to_save.end() ); // Concatenate the new list of elements onto the full list
-		}
-
-		this->Save_To_CSV( all_things_to_save );
+		this->Save_To_CSV( selected );
 	} );
 
 	menu->popup( ui.treeWidget->mapToGlobal( pos ) );
 }
 
-void FTIR_Analyzer::Save_To_CSV( const std::vector<const QTreeWidgetItem*> & things_to_save )
+void FTIR_Analyzer::Save_To_CSV( const ID_To_Metadata & things_to_save )
 {
 	QFileInfo file_name = QFileDialog::getSaveFileName( this, tr( "Save Data" ), QString(), tr( "CSV File (*.csv)" ) );//;; JPG File (*.jpg);; BMP File (*.bmp);; PDF File (*.pdf)" ) );
 
 	//if( file_name.suffix().toLower() == "csv" )
 	{
-		const auto measurements_to_graph = fn::cfrom( things_to_save )
-			% fn::transform( []( const QTreeWidgetItem* tree_item ) -> QString { return tree_item->text( measurement_id_column ); } )
-			% fn::to( QStringList{} );
+		//const auto[ measurement_ids_to_graph, measurements_meta_data ] = fn::cfrom( things_to_save )
+		//const auto test = fn::cfrom( things_to_save )
+		//	% fn::transform( []( const auto[ key, value ] ) -> std::tuple<QString, Metadata> { return {key, value}; } );
+		//% fn::unzip( std::tuple< QStringList, std::vector<Metadata> >{} );
+		QStringList measurement_ids_to_graph;
+		std::vector<Metadata> measurements_meta_data;
+		for( auto[ measurement_id, metadata ] : things_to_save )
+		{
+			measurement_ids_to_graph.push_back( measurement_id );
+			measurements_meta_data.push_back( metadata );
+		}
 
-		const auto measurements_meta_data = fn::cfrom( things_to_save )
-			% fn::transform( [ this ]( const QTreeWidgetItem* tree_item ) -> Metadata { return ui.treeWidget->Get_Metadata_For_Row( tree_item ); } )
-			% fn::to( std::vector<Metadata>{} );
-
-
-		sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( raw_data_columns, raw_data_table, measurements_to_graph, this,
-															[ this, file_name, measurements_to_graph, measurements_meta_data ]( ID_To_XY_Data id_to_data )
+		sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, measurement_ids_to_graph, this,
+															[ this, file_name, measurement_ids_to_graph, measurements_meta_data ]( ID_To_XY_Data id_to_data )
 		{
 			QVector<double> repeating_x_data;
 			int longest_y_data = 0;
 			std::vector< std::vector<std::string> > data_before_transpose;
 			//for( const auto &[ measurement_id, metadata ] : measurements_to_graph % fn::zip_with( measurements_meta_data, []( const auto & x, const auto & y ) { return std::tuple<QString, Metadata>{ x, y }; } ) )
-			for( const auto [ measurement_id, metadata ] : fn::zip( measurements_to_graph, measurements_meta_data ) )
+			for( const auto [ measurement_id, metadata ] : fn::zip( measurement_ids_to_graph, measurements_meta_data ) )
 			{
 				if( id_to_data.find( measurement_id ) == id_to_data.end() )
 					continue;
@@ -576,23 +565,20 @@ void FTIR_Analyzer::Save_To_CSV( const std::vector<const QTreeWidgetItem*> & thi
 				}
 				out_file << "\n";
 			}
-		}, sorting_strategy );
+		}, config.sorting_strategy );
 	}
 
 }
 
-void FTIR_Analyzer::Graph_Tree_Node( const QTreeWidgetItem* tree_item )
+void FTIR_Analyzer::Graph_Measurement( QString measurement_id, Metadata metadata )
 {
-	QString measurement_id = tree_item->text( measurement_id_column );
-	Metadata row = ui.treeWidget->Get_Metadata_For_Row( tree_item );
-
-	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( raw_data_columns, raw_data_table, { measurement_id }, this, [ this, measurement_id, row ]( ID_To_XY_Data data )
+	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this, [ this, measurement_id, metadata ]( ID_To_XY_Data data )
 	{
-		auto[ x_data, y_data ] = Scale_FTIR_XY_Data( row, data[ measurement_id ] );
+		auto[ x_data, y_data ] = Scale_FTIR_XY_Data( metadata, data[ measurement_id ] );
 		//this->Graph( measurement_id, x_data, y_data, QString( "%1 %2 K" ).arg( row[ 0 ].toString(), row[ 2 ].toString() ), true, row );
-		ui.customPlot->Graph<X_Unit_Type::WAVE_NUMBER, Y_Unit_Type::RAW_SENSOR>( x_data, y_data, measurement_id, QString( "%1 %2 K" ).arg( row[ 0 ].toString(), row[ 2 ].toString() ), row );
+		ui.customPlot->Graph<X_Unit_Type::WAVE_NUMBER, Y_Unit_Type::RAW_SENSOR>( x_data, y_data, measurement_id, QString( "%1 %2 K" ).arg( metadata[ 0 ].toString(), metadata[ 2 ].toString() ), metadata );
 		ui.customPlot->replot();
-	}, sorting_strategy );
+	}, config.sorting_strategy );
 }
 
 //void FTIR_Analyzer::Graph( QString measurement_id, const QVector<double> & x_data, const QVector<double> & y_data, QString data_title, bool allow_y_scaling, Metadata meta )

@@ -155,7 +155,7 @@ void SQL_Manager::Grab_SQL_Metadata_From_Measurement_IDs( const QStringList & wh
 }
 
 void SQL_Manager::Grab_All_SQL_Metadata( const QStringList & what_to_collect, const QString & table_name, QObject* callback_context,
-										 std::function< void( std::vector<Metadata> ) > callback, const QString & extra_filtering ) const
+										 std::function< void( Structured_Metadata ) > callback, const QString & extra_filtering ) const
 {
 	QTimer::singleShot( 0, this, [ this, what_to_collect, table_name, callback_context, callback, extra_filtering ]
 	{
@@ -199,9 +199,9 @@ void SQL_Manager::Grab_All_SQL_Metadata( const QStringList & what_to_collect, co
 		//timer->setSingleShot( true );
 		//QObject::connect( timer, &QTimer::timeout, [ callback, all_meta_data = std::move( all_meta_data ) ]()
 		//{
-		QTimer::singleShot( 0, callback_context, [ callback, all_meta_data = std::move( all_meta_data ) ]
+		QTimer::singleShot( 0, callback_context, [ callback, what_to_collect, all_meta_data = std::move( all_meta_data ) ]
 		{
-			callback( std::move( all_meta_data ) );
+			callback( { what_to_collect, std::move( all_meta_data ) } );
 		} );
 
 		//timer->deleteLater();

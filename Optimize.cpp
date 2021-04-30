@@ -59,7 +59,7 @@ arma::vec Minimize_Function_Starting_Point( std::function<double( const arma::ve
 											double attenuation_coefficient,
 											double resolution,
 											double biggest_step_ratio,
-											std::function<void( arma::vec )> iteration_finished_callback )
+											std::function<bool( arma::vec )> iteration_finished_callback )
 {
 	arma::vec current_guess = starting_point;
 	arma::vec previous_direction = arma::zeros( current_guess.size() );
@@ -109,7 +109,8 @@ arma::vec Minimize_Function_Starting_Point( std::function<double( const arma::ve
 			std::cout << " " << x;
 		std::cout << std::endl;
 		current_guess = current_guess + move_vector;
-		iteration_finished_callback( current_guess );
+		if( iteration_finished_callback( current_guess ) ) // Check quit early
+			return current_guess;
 		//std::cout << "current_guess: " << current_guess( 0 ) << " " << current_guess( 1 ) << std::endl;
 		if( arma::dot( move_vector, move_vector ) < resolution * resolution )
 			break; // Quit out if we are barely moving anymore

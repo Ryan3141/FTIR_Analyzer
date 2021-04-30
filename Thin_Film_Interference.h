@@ -180,9 +180,12 @@ public:
 			throw "Material unavailable";
 	}
 
+	void Quit_Early();
+
 private:
 	using IndexFunction = std::function< arma::cx_vec( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) >;
 	std::map< Material, IndexFunction > all_material_indices;
+	bool quit_early = false;
 
 	static Material_To_Refraction_Component Attenuation_Coefficient;
 	static Material_To_Refraction_Component Refraction_Coefficient;
