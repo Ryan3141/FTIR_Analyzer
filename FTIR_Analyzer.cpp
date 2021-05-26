@@ -13,28 +13,10 @@
 #include "Blackbody_Radiation.h"
 //#include "Optimize.h"
 
-#include "fn.hpp"
 #include "rangeless_helper.hpp"
-
-namespace fn = rangeless::fn;
-using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>(arg))));
 
 namespace FTIR
 {
-
-static XY_Data Scale_FTIR_XY_Data( const Metadata & meta, const XY_Data & data )
-{
-	return data;
-	//int gain = meta[ header_titles.indexOf( "Gain" ) ].toInt();
-
-	//QVector<double> scale_y_data = std::get<1>( data );
-	//for( double& y : scale_y_data )
-	//	y /= gain;
-
-	////for( double& y : scale_y_data )
-	////	y *= 100;
-	//return { std::get<0>( data ), std::move(scale_y_data) };
-}
 
 static QVector<double> Find_Zero_Crossings( QVector<double> x_data, QVector<double> y_data, double offset )
 {
@@ -50,28 +32,11 @@ static QVector<double> Find_Zero_Crossings( QVector<double> x_data, QVector<doub
 	return output;
 }
 
-template< typename T >
-T Info_Or_Default( const Metadata & meta, const QStringList & lookup_column, QString column, T Default )
-{
-	if( meta.empty() )
-		return Default;
-	int index = lookup_column.indexOf( column );
-	if( index == -1 )
-		return Default;
-	QVariant stuff = meta[ index ];
-	if( stuff == QVariant::Invalid )
-		return Default;
-	return qvariant_cast<T>( meta[ index ] );
-}
-
-
 FTIR_Analyzer::FTIR_Analyzer( QWidget *parent )
-	: QMainWindow( parent )
+	: QWidget( parent )
 {
 	ui.setupUi( this );
 	QString config_filename = "configuration.ini";
-
-	Add_Mouse_Position_Label();
 
 	//connect( ui.fitGraph_pushButton, &QPushButton::clicked, [this]( bool )
 	//{
@@ -101,7 +66,7 @@ void FTIR_Analyzer::Initialize_SQL( QString config_filename )
 	ui.sqlUser_lineEdit->setText( settings.value( "SQL_Server/default_user" ).toString() );
 	QMessageBox* msgBox = new QMessageBox( this );
 
-	sql_manager = new SQL_Manager( this, config_filename );
+	sql_manager = new SQL_Manager( this, config_filename, "FTIR" );
 	connect( sql_manager, &SQL_Manager::Error_Connecting_To_SQL, this, [ config_filename ]( QSqlError error_message )
 	{
 		QMessageBox msgBox;
@@ -199,7 +164,7 @@ void FTIR_Analyzer::Run_Fit()
 	arma::vec wavelength_data = arma::conv_to< arma::vec >::from( x_data.toStdVector() );
 	arma::vec transmission_data = arma::conv_to< arma::vec >::from( y_data.toStdVector() );
 	wavelength_data.transform( [ this ]( double x ) { return Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6; } );
-	double temperature_in_k = Info_Or_Default( selected_graph.meta, config.header_titles, "Temperature (K)", 300.0 );
+	double temperature_in_k = Info_Or_Default( selected_graph.meta, "Temperature (K)", 300.0 );
 	if( temperature_in_k == 0.0 )
 		temperature_in_k = 300.0;
 	//double temperature = ui.simulationTemperature_doubleSpinBox->value();
@@ -277,7 +242,7 @@ void FTIR_Analyzer::Initialize_Tree_Table()
 	{
 		for( auto [ measurement_id, metadata ] : id_and_metadata )
 		{
-			Graph_Measurement( measurement_id, metadata );
+			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
 		}
 	} );
 
@@ -298,9 +263,9 @@ void FTIR_Analyzer::Initialize_Graph()
 	connect( ui.customPlot, &Interactive_Graph::Graph_Selected, [this]( QCPGraph* selected_graph )
 	{
 		const Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
-		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, config.header_titles, "Sample Name", "" ) );
-		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, config.header_titles, "Temperature (K)", "" ) );
-		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default<QString>( measurement.meta, config.header_titles, "Gain", "" ) );
+		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "Sample Name", "" ) );
+		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "Temperature (K)", "" ) );
+		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default<QString>( measurement.meta, "Gain", "" ) );
 
 		//	QVector<double> cutoffs = Find_Zero_Crossings( x_data, y_data, *std::max_element( y_data.constBegin(), y_data.constEnd() ) / 2 );
 		//	if( !cutoffs.isEmpty() )
@@ -457,7 +422,7 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 			auto [measurement_id, metadata] = *selected.begin();
 			sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this, [ this, measurement_id=measurement_id, metadata=metadata ]( ID_To_XY_Data data )
 			{
-				XY_Data background_data = Scale_FTIR_XY_Data( metadata, data[ measurement_id ] );
+				XY_Data background_data = data[ measurement_id ];
 				ui.customPlot->axes.Set_As_Background( std::move( background_data ) );
 			}, config.sorting_strategy );
 		} );
@@ -469,7 +434,7 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 	{
 		for( auto[ measurement_id, metadata ] : selected )
 		{
-			Graph_Measurement( measurement_id, metadata );
+			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
 		}
 	} );
 
@@ -570,13 +535,16 @@ void FTIR_Analyzer::Save_To_CSV( const ID_To_Metadata & things_to_save )
 
 }
 
-void FTIR_Analyzer::Graph_Measurement( QString measurement_id, Metadata metadata )
+// 	config.header_titles    = QStringList{ "Sample Name", "Date", "Temperature (K)", "Dewar Temp (C)", "Time of Day", "Gain", "measurement_id" };
+
+void FTIR_Analyzer::Graph_Measurement( QString measurement_id, Labeled_Metadata metadata )
 {
 	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this, [ this, measurement_id, metadata ]( ID_To_XY_Data data )
 	{
-		auto[ x_data, y_data ] = Scale_FTIR_XY_Data( metadata, data[ measurement_id ] );
+		auto & [ x_data, y_data ] = data[ measurement_id ];
+		const auto q = [ &metadata ]( const auto & i ) { return metadata.find( i )->second.toString(); };
 		//this->Graph( measurement_id, x_data, y_data, QString( "%1 %2 K" ).arg( row[ 0 ].toString(), row[ 2 ].toString() ), true, row );
-		ui.customPlot->Graph<X_Unit_Type::WAVE_NUMBER, Y_Unit_Type::RAW_SENSOR>( x_data, y_data, measurement_id, QString( "%1 %2 K" ).arg( metadata[ 0 ].toString(), metadata[ 2 ].toString() ), metadata );
+		ui.customPlot->Graph<X_Unit_Type::WAVE_NUMBER, Y_Unit_Type::RAW_SENSOR>( x_data, y_data, measurement_id, QString( "%1 %2 K" ).arg( q( "Sample Name" ), q( "Temperature (K)" ) ), metadata );
 		ui.customPlot->replot();
 	}, config.sorting_strategy );
 }
@@ -586,19 +554,5 @@ void FTIR_Analyzer::Graph_Measurement( QString measurement_id, Metadata metadata
 //	ui.customPlot->Graph( x_data, y_data, measurement_id, data_title, allow_y_scaling, meta );
 //	ui.customPlot->replot();
 //}
-
-void FTIR_Analyzer::Add_Mouse_Position_Label()
-{
-	QLabel* statusLabel = new QLabel( this );
-	statusLabel->setText( "Status Label" );
-	ui.statusBar->addPermanentWidget( statusLabel );
-	connect( ui.customPlot, &QCustomPlot::mouseMove, [this, statusLabel]( QMouseEvent *event )
-	{
-		double x = ui.customPlot->xAxis->pixelToCoord( event->pos().x() );
-		double y = ui.customPlot->yAxis->pixelToCoord( event->pos().y() );
-
-		statusLabel->setText( QString( "%1 , %2" ).arg( x ).arg( y ) );
-	} );
-}
 
 }

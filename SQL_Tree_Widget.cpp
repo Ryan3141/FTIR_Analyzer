@@ -147,7 +147,7 @@ std::vector<const QTreeWidgetItem*> SQL_Tree_Widget::Get_Bottom_Children_Element
 
 std::vector<const QTreeWidgetItem*> SQL_Tree_Widget::Get_Bottom_Children_Elements_Under( const QTreeWidgetItem* tree_item ) const
 {
-	return Get_Bottom_Children_Elements_Under( { tree_item } );
+	return Get_Bottom_Children_Elements_Under( std::vector<const QTreeWidgetItem*>{ tree_item } );
 }
 
 std::vector< Metadata > SQL_Tree_Widget::Get_Metadata_For_Rows( const std::vector<const QTreeWidgetItem*> tree_items ) const

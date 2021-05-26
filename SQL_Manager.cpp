@@ -26,7 +26,9 @@ static QString Sanitize_SQL( const QString & raw_string )
 		return raw_string;
 }
 
-SQL_Manager::SQL_Manager( QObject* parent, QFileInfo config_filename ) : config_filename_( config_filename )
+SQL_Manager::SQL_Manager( QObject* parent, QFileInfo config_filename, QString unique_name ) :
+	config_filename_( config_filename ),
+	unique_name( unique_name )
 {
 }
 
@@ -57,7 +59,7 @@ bool SQL_Manager::Initialize_DB_Connection()
 	const QString username      = settings.value( "SQL_Server/username" ).toString();
 	const QString password      = settings.value( "SQL_Server/password" ).toString();
 
-	sql_db = QSqlDatabase::addDatabase( database_type );
+	sql_db = QSqlDatabase::addDatabase( database_type, this->unique_name );
 	if( database_type == "QMYSQL" )
 		sql_db.setConnectOptions( "MYSQL_OPT_RECONNECT=1" );
 

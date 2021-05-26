@@ -1,19 +1,39 @@
-#include "FTIR_Analyzer.h"
+//#include "FTIR_Analyzer.h"
 #include <QtWidgets/QApplication>
+#include <QMainWindow>
+#include <QObject>
 
-#include <armadillo>
+#include "ui_Main.h"
 
-#include "Thin_Film_Interference.h"
+void Add_Mouse_Position_Label( QCustomPlot* graph, QLabel* statusLabel )
+{
+	statusLabel->setText( "Status Label" );
+	QObject::connect( graph, &QCustomPlot::mouseMove, [ statusLabel, graph ]( QMouseEvent *event )
+	{
+		double x = graph->xAxis->pixelToCoord( event->pos().x() );
+		double y = graph->yAxis->pixelToCoord( event->pos().y() );
+
+		statusLabel->setText( QString( "%1 , %2" ).arg( x ).arg( y ) );
+	} );
+}
 
 int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
-	FTIR::FTIR_Analyzer w;
+	QMainWindow w;
+	Ui::Main ui;
+	ui.setupUi( &w );
+	QLabel* statusLabel = new QLabel( &w );
+	ui.statusBar->addPermanentWidget( statusLabel );
+	Add_Mouse_Position_Label( ui.ftir_tab->ui.customPlot, statusLabel );
+	Add_Mouse_Position_Label( ui.iv_tab->ui.customPlot, statusLabel );
 	w.show();
 	return a.exec();
 }
 
 
+//#include <armadillo>
+//#include "Thin_Film_Interference.h"
 //int main2()
 //{
 //	auto test_func = []( const arma::vec & x )

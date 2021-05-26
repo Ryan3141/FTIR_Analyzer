@@ -8,19 +8,8 @@
 #include <QVector>
 
 #include "Units.h"
+#include "Handy_Types_And_Conversions.h"
 
-template<typename FloatType>
-constexpr QVector<FloatType> toQVec( const std::vector<FloatType> & input )
-{
-	return QVector<FloatType>::fromStdVector( input );
-}
-
-inline QVector<double> toQVec( const arma::vec & input )
-{
-	return toQVec( std::move( arma::conv_to<std::vector<double>>::from( input ) ) );
-}
-
-using Metadata = std::vector<QVariant>;
 
 struct Single_Graph
 {
@@ -29,7 +18,7 @@ struct Single_Graph
 	QVector<double> x_data;
 	QVector<double> y_data;
 	QCPGraph* graph_pointer;
-	Metadata meta;
+	Labeled_Metadata meta;
 };
 
 
@@ -93,7 +82,7 @@ public:
 	const Single_Graph & FindDataFromGraphPointer( QCPGraph* graph_pointer ) const;
 
 	template< X_Unit_Type X_Units, Y_Unit_Type Y_Units >
-	const Single_Graph & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Metadata meta = Metadata() )
+	const Single_Graph & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata() )
 	{
 		if( x_data.size() != y_data.size() )
 		{

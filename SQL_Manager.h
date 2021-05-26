@@ -17,6 +17,7 @@ using ID_To_XY_Data = std::map<QString, XY_Data>;
 using Metadata = std::vector<QVariant>;
 using ID_To_Metadata = std::map<QString, Metadata>;
 
+
 struct Structured_Metadata
 {
 	QStringList column_names;
@@ -38,7 +39,7 @@ public slots:
 	void Start_Thread();
 
 public:
-	SQL_Manager( QObject* parent, QFileInfo config_filename );
+	SQL_Manager( QObject* parent, QFileInfo config_filename, QString unique_name );
 
 
 	void Grab_SQL_XY_Data_From_Measurement_IDs(  const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* callback_context,
@@ -53,6 +54,7 @@ private:
 	QSqlDatabase sql_db;
 	QFileInfo config_filename_;
 	QThread* worker_thread = nullptr;
+	QString unique_name;
 };
 
 //class SQL_Buffered_Manager
