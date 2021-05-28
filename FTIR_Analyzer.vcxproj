@@ -192,8 +192,8 @@
   <ItemGroup>
     <ClCompile Include="CV_Theoretical.cpp" />
     <ClCompile Include="Fit_DoubleSpinBox.cpp" />
+    <ClCompile Include="FTIR_Graph.cpp" />
     <ClCompile Include="III_V_Materials.cpp" />
-    <ClCompile Include="Interactive_Graph.cpp" />
     <ClCompile Include="Interactive_Graph_Toolbar.cpp" />
     <ClCompile Include="IV_Interactive_Graph.cpp" />
     <ClCompile Include="IV_Plotter.cpp" />
@@ -219,11 +219,13 @@
   <ItemGroup>
     <ClInclude Include="Blackbody_Radiation.h" />
     <QtMoc Include="Fit_DoubleSpinBox.h" />
+    <ClInclude Include="FTIR_Graph.h" />
     <ClInclude Include="Handy_Types_And_Conversions.h" />
     <ClInclude Include="CV_Theoretical.h" />
     <ClInclude Include="fn.hpp" />
     <ClInclude Include="III_V_Materials.h" />
-    <QtMoc Include="IV_Interactive_Graph.h" />
+    <ClInclude Include="Interactive_Graph.cpp" />
+    <ClInclude Include="IV_Interactive_Graph.h" />
     <QtMoc Include="IV_Plotter.h" />
     <ClInclude Include="Optimize.h" />
     <ClInclude Include="rangeless_helper.hpp" />
@@ -236,7 +238,7 @@
     <QtMoc Include="qcustomplot.h" />
     <QtMoc Include="Material_Layer_Widget.h" />
     <QtMoc Include="Layer_Builder.h" />
-    <QtMoc Include="Interactive_Graph_Toolbar.h" />
+    <ClInclude Include="Interactive_Graph_Toolbar.h" />
     <QtMoc Include="Interactive_Graph.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

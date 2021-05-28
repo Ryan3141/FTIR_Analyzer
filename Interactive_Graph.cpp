@@ -1,4 +1,5 @@
-﻿#include "Interactive_Graph.h"
+﻿#pragma once
+#include "Interactive_Graph.h"
 
 #include <array>
 #include <algorithm>
@@ -6,30 +7,19 @@
 #include <functional>
 
 
-#include "boost/algorithm/string.hpp"
-#include "fn.hpp"
 #include "rangeless_helper.hpp"
-namespace fn = rangeless::fn;
-using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>(arg))));
 
 
-static QString X_Unit_Names[ 3 ] = { "Wave Number (cm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + ")",
-							"Wavelength (" + QString( QChar( 0x03BC ) ) + "m)",
-							"Photon Energy (eV)" };
-
-static QString Y_Unit_Names[ 4 ] = { "Raw Sensor Data (arbitrary units)",
-							"Transmission %",
-							"Absorption %",
-							"Absorption Derivative" };
-
-Interactive_Graph::Interactive_Graph( QWidget *parent ) :
-	QCustomPlot( parent ),
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::Interactive_Graph( QWidget *parent ) :
+	Interactive_Graph_QObject_Adapter( parent ),
 	axes( [ this ]() { this->RegraphAll(); } )
 {
 	Initialize_Graph();
 }
 
-void Interactive_Graph::Initialize_Graph()
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::Initialize_Graph()
 {
 	this->setOpenGl( true );
 	this->setInteractions( QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes |
@@ -42,8 +32,8 @@ void Interactive_Graph::Initialize_Graph()
 	//QCPTextElement *title = new QCPTextElement( this, "Transmission", QFont( "sans", 17, QFont::Bold ) );
 	//this->plotLayout()->addElement( 0, 0, title );
 
-	this->xAxis->setLabel( X_Unit_Names[ int( X_Unit_Type::WAVELENGTH_MICRONS ) ] );
-	this->yAxis->setLabel( Y_Unit_Names[ int( Y_Unit_Type::RAW_SENSOR ) ] );
+	this->xAxis->setLabel( Axes_Scales::X_Unit_Names[ int( Axes_Scales::default_x_units ) ] );
+	this->yAxis->setLabel( Axes_Scales::Y_Unit_Names[ int( Axes_Scales::default_y_units ) ] );
 	this->legend->setVisible( true );
 	{ // Set up fonts
 		QFont legendFont = font();
@@ -59,94 +49,41 @@ void Interactive_Graph::Initialize_Graph()
 	this->setAntialiasedElements( QCP::aeAll );
 
 																	 // connect slot that ties some axis selections together (especially opposite axes):
-	connect( this, &QWidget::customContextMenuRequested, this, &Interactive_Graph::graphContextMenuRequest );
-	connect( this, &QCustomPlot::selectionChangedByUser, this, &Interactive_Graph::selectionChanged );
+	connect( this, &QWidget::customContextMenuRequested, this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::graphContextMenuRequest );
+	connect( this, &QCustomPlot::selectionChangedByUser, this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::selectionChanged );
 	// connect slots that takes care that when an axis is selected, only that direction can be dragged and zoomed:
-	connect( this, &QCustomPlot::mousePress, this, &Interactive_Graph::mousePress );
-	connect( this, &QCustomPlot::mouseWheel, this, &Interactive_Graph::mouseWheel );
+	connect( this, &QCustomPlot::mousePress, this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::mousePress );
+	connect( this, &QCustomPlot::mouseWheel, this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::mouseWheel );
 
-	connect( this, &QCustomPlot::mouseDoubleClick, this, &Interactive_Graph::refitGraphs );
+	connect( this, &QCustomPlot::mouseDoubleClick, this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::refitGraphs );
 
 	// make bottom and left axes transfer their ranges to top and right axes:
 	connect( this->xAxis, SIGNAL( rangeChanged( QCPRange ) ), this->xAxis2, SLOT( setRange( QCPRange ) ) );
 	connect( this->yAxis, SIGNAL( rangeChanged( QCPRange ) ), this->yAxis2, SLOT( setRange( QCPRange ) ) );
 
 	// connect some interaction slots:
-	connect( this, &QCustomPlot::axisDoubleClick, this, &Interactive_Graph::axisLabelDoubleClick );
-	connect( this, &QCustomPlot::legendDoubleClick, this, &Interactive_Graph::legendDoubleClick );
-	//connect( title, &QCPTextElement::doubleClicked, this, &Interactive_Graph::titleDoubleClick );
+	connect( this, &QCustomPlot::axisDoubleClick, this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::axisLabelDoubleClick );
+	connect( this, &QCustomPlot::legendDoubleClick, this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::legendDoubleClick );
+	//connect( title, &QCPTextElement::doubleClicked, this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::titleDoubleClick );
 
 	//// connect slot that shows a message in the status bar when a graph is clicked:
 	//connect( this, SIGNAL( plottableClick( QCPAbstractPlottable*, int, QMouseEvent* ) ), this, SLOT( graphClicked( QCPAbstractPlottable*, int ) ) );
 
 	// setup policy and connect slot for context menu popup:
 	this->setContextMenuPolicy( Qt::CustomContextMenu );
-
-	this->x_axis_menu_functions.push_back( [ this ]( Interactive_Graph* graph, QMenu* menu, QPoint pos )
-	{
-		auto Fix_X_Range = [ graph, this ]( X_Unit_Type new_type )
-		{
-			std::array<double, 2> bounds = { xAxis->range().lower, xAxis->range().upper };
-			for( double & x : bounds )
-				x = Convert_X_Units( this->axes.x_units, new_type, x );
-			xAxis->setRange( std::min( bounds[ 0 ], bounds[ 1 ] ), std::max( bounds[ 0 ], bounds[ 1 ] ) );
-			graph->xAxis->setLabel( X_Unit_Names[ int( new_type ) ] );
-			this->axes.Set_X_Units( new_type );
-			emit X_Units_Changed( new_type );
-		};
-		menu->addAction( "Change to Wavelength", [ this, Fix_X_Range ]
-		{
-			Fix_X_Range( X_Unit_Type::WAVELENGTH_MICRONS );
-		} );
-		menu->addAction( "Change to Wave Number", [ this, Fix_X_Range ]
-		{
-			Fix_X_Range( X_Unit_Type::WAVE_NUMBER );
-		} );
-		menu->addAction( "Change to Energy", [ this, Fix_X_Range ]
-		{
-			Fix_X_Range( X_Unit_Type::ENERGY_EV );
-		} );
-	} );
-	this->y_axis_menu_functions.push_back( [ this ]( Interactive_Graph* graph, QMenu* menu, QPoint pos )
-	{
-		auto Fix_Y_Range = [ graph, this ]( Y_Unit_Type new_type )
-		{
-			graph->yAxis->setLabel( Y_Unit_Names[ int( new_type ) ] );
-			this->axes.Set_Y_Units( new_type );
-			emit Y_Units_Changed( new_type );
-		};
-		menu->addAction( "Change to Raw Sensor Data", [ this, Fix_Y_Range ]
-		{
-			Fix_Y_Range( Y_Unit_Type::RAW_SENSOR );
-		} );
-		menu->addAction( "Change to Transmission", [ this, Fix_Y_Range ]
-		{
-			if( this->axes.y_units == Y_Unit_Type::RAW_SENSOR )
-				yAxis->setRange( 0.0, 100.0 );
-			Fix_Y_Range( Y_Unit_Type::TRANSMISSION );
-		} );
-		menu->addAction( "Change to Absorption", [ this, Fix_Y_Range ]
-		{
-			if( this->axes.y_units == Y_Unit_Type::RAW_SENSOR )
-				yAxis->setRange( 0.0, 100.0 );
-			Fix_Y_Range( Y_Unit_Type::ABSORPTION );
-		} );
-		menu->addAction( "Change to Derivative", [ this, Fix_Y_Range ]
-		{
-			Fix_Y_Range( Y_Unit_Type::ABSORPTION_DERIVATIVE );
-		} );
-	} );
 }
 
-void Interactive_Graph::mouseDoubleClickEvent( QMouseEvent* event )
-{
-	QCustomPlot::mouseDoubleClickEvent( event );
+//template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+//void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::mouseDoubleClickEvent( QMouseEvent* event )
+//{
+//	QCustomPlot::mouseDoubleClickEvent( event );
+//
+//	//if( !event->isAccepted() )
+//	//	this->refitGraphs( event );
+//}
 
-	if( !event->isAccepted() )
-		this->refitGraphs( event );
-}
-
-void Interactive_Graph::titleDoubleClick( QMouseEvent* event )
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::titleDoubleClick( QMouseEvent* event )
 {
 	Q_UNUSED( event )
 		if( QCPTextElement *title = qobject_cast<QCPTextElement*>(sender()) )
@@ -163,7 +100,8 @@ void Interactive_Graph::titleDoubleClick( QMouseEvent* event )
 		}
 }
 
-void Interactive_Graph::axisLabelDoubleClick( QCPAxis *axis, QCPAxis::SelectablePart part, QMouseEvent * event )
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::axisLabelDoubleClick( QCPAxis *axis, QCPAxis::SelectablePart part, QMouseEvent * event )
 {
 	// Set an axis label by double clicking on it
 	if( part == QCPAxis::spAxisLabel ) // only react when the actual axis label is clicked, not tick label or axis backbone
@@ -179,7 +117,8 @@ void Interactive_Graph::axisLabelDoubleClick( QCPAxis *axis, QCPAxis::Selectable
 	}
 }
 
-void Interactive_Graph::legendDoubleClick( QCPLegend *legend, QCPAbstractLegendItem *item, QMouseEvent * event )
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::legendDoubleClick( QCPLegend *legend, QCPAbstractLegendItem *item, QMouseEvent * event )
 {
 	// Rename a graph by double clicking on its legend item
 	Q_UNUSED( legend )
@@ -197,7 +136,8 @@ void Interactive_Graph::legendDoubleClick( QCPLegend *legend, QCPAbstractLegendI
 		}
 }
 
-void Interactive_Graph::selectionChanged()
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::selectionChanged()
 {
 	/*
 	normally, axis base line, axis tick labels and axis labels are selectable separately, but we want
@@ -241,7 +181,8 @@ void Interactive_Graph::selectionChanged()
 	}
 }
 
-void Interactive_Graph::mousePress()
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::mousePress()
 {
 	// if an axis is selected, only allow the direction of that axis to be dragged
 	// if no axis is selected, both directions may be dragged
@@ -254,7 +195,8 @@ void Interactive_Graph::mousePress()
 		this->axisRect()->setRangeDrag( Qt::Horizontal | Qt::Vertical );
 }
 
-void Interactive_Graph::mouseWheel()
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::mouseWheel()
 {
 	// if an axis is selected, only allow the direction of that axis to be zoomed
 	// if no axis is selected, both directions may be zoomed
@@ -267,22 +209,24 @@ void Interactive_Graph::mouseWheel()
 		this->axisRect()->setRangeZoom( Qt::Horizontal | Qt::Vertical );
 }
 
-void Interactive_Graph::refitGraphs( QMouseEvent* event )
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::refitGraphs( QMouseEvent* event )
 {
 	event->accept();
 	this->rescaleAxes( true );
-	this->yAxis->setRangeLower( 0 );
+	//this->yAxis->setRangeLower( 0 );
 	//this->yAxis->setRange( -10, 110 );
 	this->replot();
 }
 
-void Interactive_Graph::removeSelectedGraph()
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeSelectedGraph()
 {
 	if( this->selectedGraphs().size() == 0 )
 		return;
 
 	QCPGraph* selected_graph = this->selectedGraphs().first();
-	for( std::map< QString, Single_Graph >::iterator element = remembered_graphs.begin();
+	for( std::map< QString, Single_Graph< X_Unit_Type, Y_Unit_Type > >::iterator element = remembered_graphs.begin();
 			element != remembered_graphs.end(); ++element )
 	{
 		if( element->second.graph_pointer == selected_graph )
@@ -295,14 +239,16 @@ void Interactive_Graph::removeSelectedGraph()
 	this->replot();
 }
 
-void Interactive_Graph::removeAllGraphs()
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeAllGraphs()
 {
 	this->clearGraphs();
 	this->remembered_graphs.clear();
 	this->replot();
 }
 
-void Interactive_Graph::graphContextMenuRequest( QPoint pos )
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::graphContextMenuRequest( QPoint pos )
 {
 	QMenu *menu = new QMenu( this );
 	menu->setAttribute( Qt::WA_DeleteOnClose );
@@ -313,11 +259,11 @@ void Interactive_Graph::graphContextMenuRequest( QPoint pos )
 
 	if( selected_legend ) // context menu on legend requested
 	{
-		menu->addAction( "Move to top left", this, &Interactive_Graph::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignLeft) );
-		menu->addAction( "Move to top center", this, &Interactive_Graph::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignHCenter) );
-		menu->addAction( "Move to top right", this, &Interactive_Graph::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignRight) );
-		menu->addAction( "Move to bottom right", this, &Interactive_Graph::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignRight) );
-		menu->addAction( "Move to bottom left", this, &Interactive_Graph::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignLeft) );
+		menu->addAction( "Move to top left", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignLeft) );
+		menu->addAction( "Move to top center", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignHCenter) );
+		menu->addAction( "Move to top right", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignRight) );
+		menu->addAction( "Move to bottom right", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignRight) );
+		menu->addAction( "Move to bottom left", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignLeft) );
 		menu->addAction( "Turn Legend Off", [this]
 		{
 			this->legend->setVisible( false );
@@ -334,44 +280,28 @@ void Interactive_Graph::graphContextMenuRequest( QPoint pos )
 			this->replot();
 		} );
 		if( this->selectedGraphs().size() > 0 )
-			menu->addAction( "Remove selected graph", this, &Interactive_Graph::removeSelectedGraph );
+			menu->addAction( "Remove selected graph", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeSelectedGraph );
 		if( this->graphCount() > 0 )
-			menu->addAction( "Remove all graphs", this, &Interactive_Graph::removeAllGraphs );
-		menu->addAction( "Save current graph", this, &Interactive_Graph::saveCurrentGraph );
-		menu->addAction( "Clear Background", this, [ this ] { axes.Set_Y_Units( Y_Unit_Type::RAW_SENSOR ); } );
+			menu->addAction( "Remove all graphs", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeAllGraphs );
+		menu->addAction( "Save current graph", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::saveCurrentGraph );
 
-		menu->addAction( "Paste From Clipboard", [this]
-		{
-			const QClipboard *clipboard = QApplication::clipboard();
-			const QMimeData *mimeData = clipboard->mimeData();
-
-			if( mimeData->hasText() )
-			{
-				auto [x_data, y_data] = Load_XY_CSV_Data( mimeData->text().toStdString(), ",\t" );
-				this->Graph<X_Unit_Type::WAVELENGTH_MICRONS, Y_Unit_Type::TRANSMISSION>( toQVec( x_data ),
-							 toQVec( arma::vec( y_data ) * 100.0 ), "Clipboard Data", "Clipboard Data" );
-				this->replot();
-			}
-			else
-			{
-				//setText( tr( "Cannot display data" ) );
-				return;
-			}
-		} );
+		for( const auto & menu_function : this->general_menu_functions )
+			menu_function( this, menu, pos );
 	}
 
 	if( selected_x_axis )
-		for( auto menu_function : this->x_axis_menu_functions )
+		for( const auto & menu_function : this->x_axis_menu_functions )
 			menu_function( this, menu, pos );
 
 	if( selected_y_axis )
-		for( auto menu_function : this->y_axis_menu_functions )
+		for( const auto & menu_function : this->y_axis_menu_functions )
 			menu_function( this, menu, pos );
 
 	menu->popup( this->mapToGlobal( pos ) );
 }
 
-void Interactive_Graph::moveLegend()
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::moveLegend()
 {
 	if( QAction* contextAction = qobject_cast<QAction*>(sender()) ) // make sure this slot is really called by a context menu action, so it carries the data we need
 	{
@@ -385,7 +315,8 @@ void Interactive_Graph::moveLegend()
 	}
 }
 
-void Interactive_Graph::graphClicked( QCPAbstractPlottable *plottable, int dataIndex )
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::graphClicked( QCPAbstractPlottable *plottable, int dataIndex )
 {
 	//// since we know we only have QCPGraphs in the plot, we can immediately access interface1D()
 	//// usually it's better to first check whether interface1D() returns non-zero, and only then use it.
@@ -394,13 +325,14 @@ void Interactive_Graph::graphClicked( QCPAbstractPlottable *plottable, int dataI
 	//ui.statusBar->showMessage( message, 2500 );
 }
 
-void Interactive_Graph::Hide_Graph( QString graph_name )
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::Hide_Graph( QString graph_name )
 {
 	auto existing_graph = remembered_graphs.find( graph_name );
 	if( existing_graph == remembered_graphs.end() )
 		return;
 
-	Single_Graph & current_info = existing_graph->second;
+	Single_Graph< X_Unit_Type, Y_Unit_Type > & current_info = existing_graph->second;
 	if( !current_info.graph_pointer->visible() ) // Already invisible, nothing to do
 		return;
 	current_info.graph_pointer->setVisible( false );
@@ -408,7 +340,8 @@ void Interactive_Graph::Hide_Graph( QString graph_name )
 	replot();
 }
 
-void Interactive_Graph::RegraphAll()
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::RegraphAll()
 {
 	for( const auto &[ name, graph ] : remembered_graphs )
 	{
@@ -424,7 +357,7 @@ void Interactive_Graph::RegraphAll()
 	this->replot();
 }
 
-//void Interactive_Graph::RegraphAll()
+//void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::RegraphAll()
 //{
 //	for( int i = 0; i < this->graphCount(); i++ )
 //	{
@@ -432,7 +365,8 @@ void Interactive_Graph::RegraphAll()
 //	}
 //}
 //
-void Interactive_Graph::saveCurrentGraph()
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::saveCurrentGraph()
 {
 	QFileInfo file_name = QFileDialog::getSaveFileName( this,
 														tr( "Save Graph" ), QString(), tr( "JPG File (*.jpg);; PNG File (*.png);; BMP File (*.bmp);; PDF File (*.pdf)" ) );
@@ -455,7 +389,8 @@ void Interactive_Graph::saveCurrentGraph()
 }
 
 
-void Interactive_Graph::UpdateGraph( QCPGraph* existing_graph, QVector<double> x_data, QVector<double> y_data )
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::UpdateGraph( QCPGraph* existing_graph, QVector<double> x_data, QVector<double> y_data )
 {
 	//double previous_upper_limit = this->yAxis->range().upper;
 	existing_graph->setData( x_data, y_data );
@@ -468,9 +403,10 @@ void Interactive_Graph::UpdateGraph( QCPGraph* existing_graph, QVector<double> x
 	this->replot();
 }
 
-const Single_Graph & Interactive_Graph::GetSelectedGraphData() const
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+const Single_Graph< X_Unit_Type, Y_Unit_Type > & Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::GetSelectedGraphData() const
 {
-	static Single_Graph nothing_selected;
+	static Single_Graph< X_Unit_Type, Y_Unit_Type > nothing_selected;
 	QList<QCPGraph*> selection = this->selectedGraphs();
 	if( selection.size() == 0 )
 		return nothing_selected;
@@ -478,9 +414,10 @@ const Single_Graph & Interactive_Graph::GetSelectedGraphData() const
 		return FindDataFromGraphPointer( selection[ 0 ] );
 }
 
-const Single_Graph & Interactive_Graph::FindDataFromGraphPointer( QCPGraph* graph_pointer ) const
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+const Single_Graph< X_Unit_Type, Y_Unit_Type > & Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::FindDataFromGraphPointer( QCPGraph* graph_pointer ) const
 {
-	static Single_Graph nothing_selected;
+	static Single_Graph< X_Unit_Type, Y_Unit_Type > nothing_selected;
 	auto result = std::find_if(
 		this->remembered_graphs.begin(),
 		this->remembered_graphs.end(),
@@ -493,242 +430,97 @@ const Single_Graph & Interactive_Graph::FindDataFromGraphPointer( QCPGraph* grap
 		return nothing_selected;
 }
 
-std::tuple< std::vector<double>, std::vector<double> > Load_XY_CSV_Data( const std::string & data_to_parse, const char* delimiter )
+
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+template< X_Unit_Type X_Units, Y_Unit_Type Y_Units >
+const Single_Graph< X_Unit_Type, Y_Unit_Type > & Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title, Labeled_Metadata meta )
 {
-	//if constexpr (false)
+	if( x_data.size() != y_data.size() )
 	{
-		using namespace std;
-		using namespace boost;
-
-		std::vector< std::string > split_by_line;
-		boost::split( split_by_line, data_to_parse, boost::is_any_of( "\r\n" ), boost::algorithm::token_compress_on ); // this works for \r or \n file endings
-		std::vector< std::tuple<double, double> > unsorted;
-		unsorted.reserve( split_by_line.size() );
-		for( const auto &[ line_number, one_line ] : split_by_line % fn::transform( fn::get::enumerated{} ) )
-		{
-			if( one_line.size() == 0 )
-				continue; // Ignore blank lines
-
-			std::vector< std::string > split_by_commas;
-			split( split_by_commas, one_line, is_any_of( delimiter ) );
-			if( split_by_commas.size() != 2 )
-			{
-				std::cerr << "Invalid formatting in data at line " + std::to_string( line_number + 1 ); // Line numbers usually start at 1 not zero
-				continue;
-			}
-
-			unsorted.emplace_back( stod( split_by_commas[ 0 ] ), stod( split_by_commas[ 1 ] ) );
-		}
-
-		std::vector<double> x_data;
-		std::vector<double> y_data;
-		x_data.reserve( split_by_line.size() );
-		y_data.reserve( split_by_line.size() );
-		for( const auto &[ x, y ] : unsorted % fn::sort_by( []( const auto & data ) { return std::get<0>( data ); } ) )
-		{
-			x_data.push_back( x );
-			y_data.push_back( y );
-		}
-
-		////auto test = meta::transpose(output);
-		//const auto how_to_sort = make_sort_permutation( std::get<0>( output ) );
-		//apply_permutation_in_place( std::get<0>( output ), how_to_sort );
-		//apply_permutation_in_place( std::get<1>( output ), how_to_sort );
-
-		return { x_data, y_data };
+		std::cerr << "Incompatible sizes being graphed, size(x) = " << x_data.size() << " size(y) = " << y_data.size() << "\n";
+		if( x_data.size() > y_data.size() )
+			x_data.resize( y_data.size() );
+		else
+			y_data.resize( x_data.size() );
 	}
-	//{
-	//	std::cin;
-	//	using namespace ::ranges;
 
-	//	std::ifstream data_file(file_name);
-	//	//auto file_stream = istream_view<char>(data_file);
-	//	//auto test = views::split([](char c) { return c == '\n' || c == '\r'; });
-	//	//auto result = istream_view<char>(data_file) | views::split( [](auto const& c) { return c == '\n' || c == '\r'; } );
-	//	std::vector< std::vector<double> > values_by_row_first = views::all(getlines(data_file)) | views::transform([](const auto line)
-	//		{
-	//			auto split_by_comma = line | views::split(',');
-	//			auto change_to_doubles = views::all(split_by_comma)
-	//				| views::transform([](auto s)
-	//					{ return std::stod(s | to<std::string>); });
-	//			return change_to_doubles | to<std::vector<double>>;
-	//		}) | to<std::vector< std::vector<double> >>;
+	//for( auto & x : x_data )
+	//	if( !std::isnormal( x ) )
+	//		x = qQNaN();
+	//for( auto & y : y_data )
+	//	if( !std::isfinite( y ) || y > 1.0E4 )
+	//		y = qQNaN();
 
-	//	auto values_by_column_first = meta::transpose(values_by_row_first);
-	//}
-
-	//std::ifstream in(file_name);
-	//if (!in.is_open())
-	//	return {};
-	//
-	//std::vector<char> test4 = fn::from( std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>{ /* end */ } ) % fn::to( std::vector<char>{} );
-
-	//auto how_to_split_lines = []( const char ch )
-	//{
-	//	return ch != '\n' && ch != '\r';
-	//};
-	//auto split_by_line = fn::from( std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>{ /* end */ } )
-	//	% fn::group_adjacent_by( how_to_split_lines )
-	//	% fn::foldl_d( [&]( std::vector<double> out, const std::string& w )
-	//		{
-	//			if( out.size() >= 2 )
-	//				return std::move( out );
-	//		} );
-	//	//% fn::where( []( const auto ch ) { return ch != "\n" && ch != "\r"; } );
-	//auto test2 = split_by_line
-	//	% fn::transform([](auto one_line) -> std::array<double, 2>
-	//		{
-	//			//auto split_by_commas = std::move( one_line )
-	//			//	% fn::group_adjacent_by( []( const char ch ) { return ch != ','; } )
-	//			//	% fn::where( []( const auto ch ) { return ch != ","; } )
-	//			//	% fn::transform( []( auto one_entry ) -> double
-	//			//		{
-	//			//			return std::stod( one_entry );
-	//			//		} );
-	//			//if( test.size() < 2 )
-	//				return std::array<double, 2>{};
-	//			//else
-	//			//	return { one_line[ 0 ], one_line[ 1 ] };
-	//		} );
-	//auto values_by_row_first = test2 % fn::to( std::vector< std::string >{} );
-	//auto values_by_row_first = test2 % fn::to_vector() % fn::to( std::vector< std::array<double, 2> >{} );
-	//% fn::to_vector();
-	//	% fn::for_each([this](const auto& line_of_elements)
-	//		{
-	//			if (line_of_elements.size() >= 2)
-	//				Add_New_Material(QString::fromStdString(line_of_elements[0]),
-	//					std::stod(line_of_elements[1]) * 1E6,
-	//					std::stod(line_of_elements[2]));
-	//		});
-				//std::vector< std::array<double,2> > test = fn::from( mimeData->text().toStdString() )
-			//	% fn::group_adjacent_by( []( const char ch ) { return ch != '\n' && ch != '\r'; } )
-			//	% fn::where( []( const auto ch ) { return ch != "\n" && ch != "\r"; } )
-			//	% fn::transform( []( auto one_line )
-			//		{
-			//			return std::move( one_line ) % fn::group_adjacent_by( []( const char ch ) { return ch != ','; } )
-			//				% fn::where( []( const auto ch ) { return ch != ","; } );
-			//		} )
-			//	% fn::transform( [this]( const auto & line_of_elements )
-			//		{
-			//			if( line_of_elements.size() >= 2 )
-			//				return std::array<double, 2>{
-			//					std::stod( line_of_elements[ 0 ] ),
-			//					std::stod( line_of_elements[ 1 ] ) };
-			//			else
-			//				return std::array<double, 2>{};
-			//		} )
-			//	% fn::transform( [this]( const auto & line_of_elements )
-			//		{
-			//			if( line_of_elements.size() >= 2 )
-			//				return std::array<double, 2>{
-			//					std::stod( line_of_elements[ 0 ] ),
-			//					std::stod( line_of_elements[ 1 ] ) };
-			//			else
-			//				return std::array<double, 2>{};
-			//		} )
-			//	% fn::to_vector();
-
-			//using namespace ranges;
-			////auto test = mimeData->text().toStdString() | views::split( '_' );
-			//auto const s = std::string{ "feel_the_force" };
-			//auto words = s | views::split('_'); // [[f,e,e,l],[t,h,e],[f,o,r,c,e]]
-			//ui.customPlot->Graph( x_data, y_data, "Clipboard Data", "Clipboard Data" );
-
-}
-
-void Axes_Scales::Set_X_Units( X_Unit_Type units )
-{
-	if( units == x_units )
-		return;
-
-	x_units = units;
-
-	graph_function();
-}
-
-void Axes_Scales::Set_Y_Units( Y_Unit_Type units )
-{
-	if( units == y_units )
-		return;
-
-	y_units = units;
-
-	graph_function();
-}
-
-void Axes_Scales::Set_As_Background( XY_Data xy )
-{
-	background_x_data = std::get<0>( xy );
-	background_y_data = std::get<1>( xy );
-
-	graph_function();
-}
-
-std::tuple< QVector<double>, QVector<double> > Axes_Scales::Prepare_XY_Data( const Single_Graph & graph_data ) const
-{
-	const QVector<double> x_data = [ &graph_data, this ] {
-		if( this->x_units == graph_data.x_units )
-			return graph_data.x_data;
-
-		QVector<double> x_data = graph_data.x_data;
-		for( double & x : x_data )
-			x = Convert_X_Units( graph_data.x_units, this->x_units, x );
-		return x_data;
-	}();
-
-	const QVector<double> y_data = [ &graph_data, this ] {
-		if( this->y_units == graph_data.y_units || graph_data.y_units == Y_Unit_Type::DONT_CHANGE )
-			return graph_data.y_data;
-
-		if( graph_data.y_units == Y_Unit_Type::RAW_SENSOR )
+	auto existing_graph = remembered_graphs.find( measurement_name );
+	if( existing_graph != remembered_graphs.end() )
+	{
+		auto & current_info = existing_graph->second;
+		//if( current_info.x_data.size() == x_data.size() &&
+		//	current_info.y_data.size() == y_data.size() )
 		{
-			QVector<double> transmission_data( graph_data.y_data.size() );
-			//auto y_data_min_element = std::min_element( y_data.constBegin(), y_data.constEnd(), []( double a, double b ) { return std::abs( a ) < std::abs( b ); } );
-			//double y_data_min = std::min( 0.0004, std::abs( *y_data_min_element ) );
-			//auto background_min_element = std::min_element( y_data.constBegin(), y_data.constEnd(), []( double a, double b ) { return std::abs( a ) < std::abs( b ); } );
-			//double background_min = std::min( 0.0004, std::abs( *background_min_element ) );
+			current_info.x_data = x_data;
+			current_info.y_data = y_data;
+			auto[ adjusted_x_data, adjusted_y_data ] = axes.Prepare_XY_Data( current_info );
+			current_info.graph_pointer->setData( adjusted_x_data, adjusted_y_data );
+			current_info.graph_pointer->setVisible( true );
+			current_info.graph_pointer->addToLegend();
 
-			auto cleanup_low_resolution_input = [ & ]( double y )
-			{
-				const double minimum_reliable_reading = 0.003;
-				if( std::abs( y ) < minimum_reliable_reading )
-					return 0.0;
-				return std::pow( std::abs( ( std::abs( y ) - minimum_reliable_reading ) / y ), 1 );
-			};
-			for( auto[ transmission, x, y ] : fn::zip( transmission_data, graph_data.x_data, graph_data.y_data ) )
-			{
-				int i = std::distance( background_x_data.begin(), std::lower_bound( background_x_data.begin(), background_x_data.end(), x ) );
-				i = std::min( background_y_data.size() - 1, i );
-				transmission = 100 * y / background_y_data[ i ] * cleanup_low_resolution_input( y ) * cleanup_low_resolution_input( background_y_data[ i ] );
-			}
-
-			if( this->y_units == Y_Unit_Type::ABSORPTION )
-			{
-				double max_transmission = *std::max_element( transmission_data.constBegin(), transmission_data.constEnd() );
-				QVector<double> & absorption_data = transmission_data;
-				for( double & y : absorption_data )
-					y = max_transmission - y;
-				return absorption_data;
-			}
-			else
-				return transmission_data;
 		}
 
-		if( ( this->y_units == Y_Unit_Type::TRANSMISSION && graph_data.y_units == Y_Unit_Type::ABSORPTION ) ||
-			( this->y_units == Y_Unit_Type::ABSORPTION   && graph_data.y_units == Y_Unit_Type::TRANSMISSION ) )
-		{
-			QVector<double> y_data = graph_data.y_data;
-			for( double & y : y_data )
-				y = 100.0 - y;
-			return y_data;
-		}
+		if( !meta.empty() )
+			current_info.meta = meta;
+		//this->replot();
+		return current_info;
+	}
 
-		if( ( this->y_units == Y_Unit_Type::RAW_SENSOR && graph_data.y_units == Y_Unit_Type::ABSORPTION ) ||
-			( this->y_units == Y_Unit_Type::RAW_SENSOR && graph_data.y_units == Y_Unit_Type::TRANSMISSION ) )
-			return graph_data.y_data;
+	// Add graph
+	{
+		//double previous_upper_limit = this->yAxis->range().upper;
+		static int color_index = 0;
+		bool this_is_the_first_graph = this->graphCount() == 0;
+		QCPGraph* current_graph = this->addGraph();
 
-		throw "Didn't consider this condition in " __FILE__ " in function " __FUNCTION__;
-	}();
+		if( graph_title.isEmpty() )
+			current_graph->setName( measurement_name );
+		else
+			current_graph->setName( graph_title );
 
-	return { std::move( x_data ), std::move( y_data ) };
+		// Remember data before changing it at all
+		remembered_graphs[ measurement_name ] = Single_Graph< X_Unit_Type, Y_Unit_Type >{ X_Units, Y_Units, std::move( x_data ), std::move( y_data ), current_graph, meta };
+		auto[ adjusted_x_data, adjusted_y_data ] = axes.Prepare_XY_Data( remembered_graphs[ measurement_name ] );
+		this->graph()->setData( adjusted_x_data, adjusted_y_data );
+		this->graph()->setLineStyle( QCPGraph::lsLine );// (QCPGraph::LineStyle)(rand() % 5 + 1) );
+																 //if( rand() % 100 > 50 )
+																 //	this->graph()->setScatterStyle( QCPScatterStyle( (QCPScatterStyle::ScatterShape)(rand() % 14 + 1) ) );
+		QPen graphPen;
+		//QCPColorGradient gradient( QCPColorGradient::gpPolar );
+		QCPColorGradient gradient( QCPColorGradient::gpSpectrum );
+		gradient.setPeriodic( true );
+		//gradient.setLevelCount( 10 );
+		const QVector< Qt::PenStyle > patterns = { Qt::SolidLine, Qt::DotLine, Qt::DashLine, Qt::DashDotDotLine, Qt::DashDotLine };
+		graphPen.setColor( gradient.color( color_index / 10.0, QCPRange( 0.0, 1.0 ) ) );
+		graphPen.setStyle( patterns[ color_index % patterns.size() ] );
+		//graphPen.setWidthF( 2 ); Changing width currently causes massive performance issues
+		color_index++;
+		//graphPen.setColor( QColor::fromHslF( (color_index++)/10.0*0.8, 0.95, 0.5) );
+		//graphPen.setColor( QColor::fromHsv( rand() % 255, 255, 255 ) );
+		//graphPen.setWidthF( rand() / (double)RAND_MAX * 2 + 1 );
+		this->graph()->setPen( graphPen );
+		//if( this_is_the_first_graph )
+		//{
+		//	//this->rescaleAxes();
+		//	this->yAxis->rescale();
+		//	this->yAxis->setRangeLower( 0 );
+		//	double upper = this->yAxis->range().upper;
+		//	//this->yAxis->setRangeUpper( std::max( previous_upper_limit, std::min( upper, 1. ) ) );
+		//	if( allow_y_scaling )
+		//		this->yAxis->setRangeUpper( std::min( upper, 100. ) );
+		//	else
+		//		this->yAxis->setRangeUpper( upper );
+		//}
+		//this->yAxis->setRange( -10, 110 );
+		//this->replot();
+
+		return remembered_graphs[ measurement_name ];
+	}
 }

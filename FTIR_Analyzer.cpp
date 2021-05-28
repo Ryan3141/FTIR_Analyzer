@@ -12,6 +12,7 @@
 #include "SPA_File.h"
 #include "Blackbody_Radiation.h"
 //#include "Optimize.h"
+#include "FTIR_Graph.h"
 
 #include "rangeless_helper.hpp"
 
@@ -89,10 +90,10 @@ void FTIR_Analyzer::Graph_Blackbody( double temperature_in_k, double amplitude )
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
 	double upper_bound = std::max( 0.0, ui.customPlot->xAxis->range().upper );
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 );
-	x_data_meters.transform( [=]( double x ) { return Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_METERS, x ); } );
+	x_data_meters.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR_X_Units::WAVELENGTH_METERS, x ); } );
 	arma::vec y_blackbody = Blackbody_Radiation( x_data_meters, temperature_in_k, amplitude );
 
-	ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( y_blackbody ), "Black Body", "Black Body" );
+	ui.customPlot->Graph<FTIR_X_Units::WAVELENGTH_METERS, FTIR_Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( y_blackbody ), "Black Body", "Black Body" );
 	ui.customPlot->replot();
 }
 
@@ -101,11 +102,11 @@ void FTIR_Analyzer::Graph_Refractive_Index( std::string material_name, Optional_
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
 	double upper_bound = std::max( 0.00000001, ui.customPlot->xAxis->range().upper );
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 );
-	x_data_meters.transform( [=]( double x ) { return Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_METERS, x ); } );
+	x_data_meters.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR_X_Units::WAVELENGTH_METERS, x ); } );
 
 	arma::cx_vec refractive_index = Thin_Film_Interference().Get_Refraction_Index( name_to_material[ material_name ], x_data_meters, parameters );
-	ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::real( refractive_index ) ), "Index (n)", "Index (n)" );
-	ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::imag( refractive_index ) ), "Index (k)", "Index (k)" );
+	ui.customPlot->Graph<FTIR_X_Units::WAVELENGTH_METERS, FTIR_Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::real( refractive_index ) ), "Index (n)", "Index (n)" );
+	ui.customPlot->Graph<FTIR_X_Units::WAVELENGTH_METERS, FTIR_Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::imag( refractive_index ) ), "Index (k)", "Index (k)" );
 
 	ui.customPlot->replot();
 
@@ -116,7 +117,7 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, std::t
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
 	double upper_bound = std::max( 0.00000001, ui.customPlot->xAxis->range().upper );
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 ); // Remove zero x value (to avoid divide by zero type errors)
-	x_data_meters.transform( [=]( double x ) { return Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6; } );
+	x_data_meters.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR_X_Units::WAVELENGTH_MICRONS, x ) * 1E-6; } );
 
 	Thin_Film_Interference tfi;
 	try
@@ -126,11 +127,11 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, std::t
 		reflection *= largest_transmission;
 
 		if( std::get<0>( what_to_plot ) )
-			ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( transmission ), "Transmission Simulation", "Transmission Simulation" );
+			ui.customPlot->Graph<FTIR_X_Units::WAVELENGTH_METERS, FTIR_Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( transmission ), "Transmission Simulation", "Transmission Simulation" );
 		if( std::get<1>( what_to_plot ) )
-			ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( reflection ), "Reflection Simulation", "Reflection Simulation" );
+			ui.customPlot->Graph<FTIR_X_Units::WAVELENGTH_METERS, FTIR_Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( reflection ), "Reflection Simulation", "Reflection Simulation" );
 		if( std::get<2>( what_to_plot ) )
-			ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( 100.0 - transmission - reflection ), "Absorption Simulation", "Absorption Simulation" );
+			ui.customPlot->Graph<FTIR_X_Units::WAVELENGTH_METERS, FTIR_Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( 100.0 - transmission - reflection ), "Absorption Simulation", "Absorption Simulation" );
 		ui.customPlot->replot();
 	}
 	catch( ... )
@@ -150,20 +151,20 @@ Material_Layer FTIR_Analyzer::Get_Backside_Material( double temperature_in_k )
 
 void FTIR_Analyzer::Run_Fit()
 {
-	const Single_Graph & selected_graph = ui.customPlot->GetSelectedGraphData();
+	const auto & selected_graph = ui.customPlot->GetSelectedGraphData();
 	if( selected_graph.graph_pointer == nullptr )
 		return;
 
 	std::array<double, 2> bounds = { ui.customPlot->xAxis->range().lower, ui.customPlot->xAxis->range().upper };
 	for( double & x : bounds )
-		x = std::max( 0.0, Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6 );
+		x = std::max( 0.0, Convert_Units( ui.customPlot->axes.x_units, FTIR_X_Units::WAVELENGTH_MICRONS, x ) * 1E-6 );
 	if( bounds[ 0 ] > bounds[ 1 ] )
 		std::swap( bounds[ 0 ], bounds[ 1 ] );
 
 	auto[ x_data, y_data ] = ui.customPlot->axes.Prepare_XY_Data( selected_graph );
 	arma::vec wavelength_data = arma::conv_to< arma::vec >::from( x_data.toStdVector() );
 	arma::vec transmission_data = arma::conv_to< arma::vec >::from( y_data.toStdVector() );
-	wavelength_data.transform( [ this ]( double x ) { return Convert_X_Units( ui.customPlot->axes.x_units, X_Unit_Type::WAVELENGTH_MICRONS, x ) * 1E-6; } );
+	wavelength_data.transform( [ this ]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR_X_Units::WAVELENGTH_MICRONS, x ) * 1E-6; } );
 	double temperature_in_k = Info_Or_Default( selected_graph.meta, "Temperature (K)", 300.0 );
 	if( temperature_in_k == 0.0 )
 		temperature_in_k = 300.0;
@@ -205,7 +206,7 @@ void FTIR_Analyzer::Run_Fit()
 		auto test2 = connect( thread, &QThread::started, this->thin_film_manager, [ = ] { this->thin_film_manager->Get_Best_Fit( copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material ); } );
 		auto test3 = connect( this->thin_film_manager, &Thin_Film_Interference::Debug_Plot, [ this ]( arma::vec wavelengths_m, arma::vec y_data )
 		{
-			ui.customPlot->Graph<X_Unit_Type::WAVELENGTH_METERS, Y_Unit_Type::DONT_CHANGE>( toQVec( std::move( wavelengths_m ) ), toQVec( std::move( y_data ) ), "Debug", "Debug" );
+			ui.customPlot->Graph<FTIR_X_Units::WAVELENGTH_METERS, FTIR_Y_Units::DONT_CHANGE>( toQVec( std::move( wavelengths_m ) ), toQVec( std::move( y_data ) ), "Debug", "Debug" );
 		} );
 		this->thin_film_manager->moveToThread( thread );
 		thread->start();
@@ -260,9 +261,9 @@ void FTIR_Analyzer::Initialize_Tree_Table()
 void FTIR_Analyzer::Initialize_Graph()
 {
 	ui.interactiveGraphToolbar->Connect_To_Graph( ui.customPlot );
-	connect( ui.customPlot, &Interactive_Graph::Graph_Selected, [this]( QCPGraph* selected_graph )
+	connect( ui.customPlot, &FTIR_Graph::Graph_Selected, [this]( QCPGraph* selected_graph )
 	{
-		const Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+		const auto & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
 		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "Sample Name", "" ) );
 		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "Temperature (K)", "" ) );
 		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default<QString>( measurement.meta, "Gain", "" ) );
@@ -428,7 +429,7 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 		} );
 	}
 
-	menu->addAction( "Clear Background", ui.customPlot, [ this ] { ui.customPlot->axes.Set_Y_Units( Y_Unit_Type::RAW_SENSOR ); } );
+	menu->addAction( "Clear Background", ui.customPlot, [ this ] { ui.customPlot->axes.Set_Y_Units( FTIR_Y_Units::RAW_SENSOR ); } );
 
 	menu->addAction( "Graph Selected", [this, selected]
 	{
@@ -544,7 +545,7 @@ void FTIR_Analyzer::Graph_Measurement( QString measurement_id, Labeled_Metadata 
 		auto & [ x_data, y_data ] = data[ measurement_id ];
 		const auto q = [ &metadata ]( const auto & i ) { return metadata.find( i )->second.toString(); };
 		//this->Graph( measurement_id, x_data, y_data, QString( "%1 %2 K" ).arg( row[ 0 ].toString(), row[ 2 ].toString() ), true, row );
-		ui.customPlot->Graph<X_Unit_Type::WAVE_NUMBER, Y_Unit_Type::RAW_SENSOR>( x_data, y_data, measurement_id, QString( "%1 %2 K" ).arg( q( "Sample Name" ), q( "Temperature (K)" ) ), metadata );
+		ui.customPlot->Graph<FTIR_X_Units::WAVE_NUMBER, FTIR_Y_Units::RAW_SENSOR>( x_data, y_data, measurement_id, QString( "%1 %2 K" ).arg( q( "Sample Name" ), q( "Temperature (K)" ) ), metadata );
 		ui.customPlot->replot();
 	}, config.sorting_strategy );
 }

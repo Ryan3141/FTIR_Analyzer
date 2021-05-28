@@ -6,9 +6,10 @@
 
 #include "boost/algorithm/string.hpp"
 
+#include <QCoreApplication>
+
 #include "III_V_Materials.h"
 #include "Optimize.h"
-#include "Interactive_Graph.h"
 
 //#ifdef _WIN32
 //namespace fs = std::experimental::filesystem;

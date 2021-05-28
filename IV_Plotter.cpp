@@ -41,7 +41,7 @@ IV_Plotter::IV_Plotter( QWidget *parent )
 	Initialize_Graph();
 	Initialize_Rule07();
 	Update_Preview_Graph();
-	ui.customPlot->refitGraphs();
+	//ui.customPlot->refitGraphs();
 
 	//auto test = u8"This is a Unicode Character: μ\u2018.";
 	//std::cerr << test;
@@ -128,10 +128,9 @@ void IV_Plotter::Initialize_Graph()
 {
 	ui.interactiveGraphToolbar->Connect_To_Graph( ui.customPlot );
 
-	connect( ui.customPlot, &QWidget::customContextMenuRequested, ui.customPlot, &Interactive_Graph::graphContextMenuRequest );
 	connect( ui.customPlot, &Interactive_Graph::Graph_Selected, [ this ]( QCPGraph* selected_graph )
 	{
-		const Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+		const auto & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
 		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "Sample Name", "" ) );
 		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "Temperature (K)", "" ) );
 	} );
@@ -268,7 +267,7 @@ void IV_Plotter::Graph_Rule07( double temperature_in_k, double cutoff_wavelength
 	double lower_bound = ui.customPlot->xAxis->range().lower;
 	double upper_bound = ui.customPlot->xAxis->range().upper;
 	double rule_07 = Rule_07( temperature_in_k, cutoff_wavelength );
-	ui.customPlot->Graph( QVector<double>( { lower_bound, upper_bound } ), QVector<double>( { rule_07, rule_07 } ), "Rule 07", Label_Metadata( { "Rule 07", "", 1E4, temperature_in_k, "", "", "" }, config.header_titles ), false );
+	ui.customPlot->Graph<IV_X_Units::VOLTAGE_V, IV_Y_Units::CURRENT_A>( QVector<double>( { lower_bound, upper_bound } ), QVector<double>( { rule_07, rule_07 } ), "Rule 07", "Rule 07", Label_Metadata( { "Rule 07", "", 1E4, temperature_in_k, "", "", "" }, config.header_titles ) );
 	ui.customPlot->replot();
 }
 
@@ -300,12 +299,15 @@ void IV_Plotter::Graph_Measurement( QString measurement_id, Labeled_Metadata met
 	{
 		auto[ x_data, y_data ] = data[ measurement_id ];
 		const auto q = [ &metadata ]( const auto & i ) { return metadata.find( i )->second.toString(); };
-		ui.customPlot->Graph( x_data, y_data, measurement_id, metadata,
-					 //QString("%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3").arg( row[0].toString(), row[2].toString(), row[3].toString(), QString::number(int(std::sqrt(row[4].toInt()))) ) );
-					 QString( "%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3" ).arg( q( "Sample Name" ),
-																						 q( "Temperature (K)" ),
-																						 q( "Location" ),
-																						 q( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" ) ) );
+		ui.customPlot->Graph<IV_X_Units::VOLTAGE_V, IV_Y_Units::CURRENT_A>(
+			x_data, y_data, measurement_id,
+			//QString("%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3").arg( row[0].toString(), row[2].toString(), row[3].toString(), QString::number(int(std::sqrt(row[4].toInt()))) ) );
+			QString( "%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3" ).arg(
+				q( "Sample Name" ),
+				q( "Temperature (K)" ),
+				q( "Location" ),
+				q( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" ) ),
+			metadata );
 		ui.customPlot->replot();
 	}, config.sorting_strategy );
 }

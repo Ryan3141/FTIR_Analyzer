@@ -459,5 +459,151 @@ unzip_gen< Iterable1, Iterable2 > unzip( std::tuple<Iterable1, Iterable2> )
 //};
 }
 
+
 namespace fn = rangeless::fn;
 using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>(arg))));
+
+
+#include "boost/algorithm/string.hpp"
+inline std::tuple< std::vector<double>, std::vector<double> > Load_XY_CSV_Data( const std::string & data_to_parse, const char* delimiter = "," )
+{
+	//if constexpr (false)
+	{
+		using namespace std;
+		using namespace boost;
+
+		std::vector< std::string > split_by_line;
+		boost::split( split_by_line, data_to_parse, boost::is_any_of( "\r\n" ), boost::algorithm::token_compress_on ); // this works for \r or \n file endings
+		std::vector< std::tuple<double, double> > unsorted;
+		unsorted.reserve( split_by_line.size() );
+		for( const auto &[ line_number, one_line ] : split_by_line % fn::transform( fn::get::enumerated{} ) )
+		{
+			if( one_line.size() == 0 )
+				continue; // Ignore blank lines
+
+			std::vector< std::string > split_by_commas;
+			split( split_by_commas, one_line, is_any_of( delimiter ) );
+			if( split_by_commas.size() != 2 )
+			{
+				std::cerr << "Invalid formatting in data at line " + std::to_string( line_number + 1 ); // Line numbers usually start at 1 not zero
+				continue;
+			}
+
+			unsorted.emplace_back( stod( split_by_commas[ 0 ] ), stod( split_by_commas[ 1 ] ) );
+		}
+
+		std::vector<double> x_data;
+		std::vector<double> y_data;
+		x_data.reserve( split_by_line.size() );
+		y_data.reserve( split_by_line.size() );
+		for( const auto &[ x, y ] : unsorted % fn::sort_by( []( const auto & data ) { return std::get<0>( data ); } ) )
+		{
+			x_data.push_back( x );
+			y_data.push_back( y );
+		}
+
+		////auto test = meta::transpose(output);
+		//const auto how_to_sort = make_sort_permutation( std::get<0>( output ) );
+		//apply_permutation_in_place( std::get<0>( output ), how_to_sort );
+		//apply_permutation_in_place( std::get<1>( output ), how_to_sort );
+
+		return { x_data, y_data };
+	}
+	//{
+	//	std::cin;
+	//	using namespace ::ranges;
+
+	//	std::ifstream data_file(file_name);
+	//	//auto file_stream = istream_view<char>(data_file);
+	//	//auto test = views::split([](char c) { return c == '\n' || c == '\r'; });
+	//	//auto result = istream_view<char>(data_file) | views::split( [](auto const& c) { return c == '\n' || c == '\r'; } );
+	//	std::vector< std::vector<double> > values_by_row_first = views::all(getlines(data_file)) | views::transform([](const auto line)
+	//		{
+	//			auto split_by_comma = line | views::split(',');
+	//			auto change_to_doubles = views::all(split_by_comma)
+	//				| views::transform([](auto s)
+	//					{ return std::stod(s | to<std::string>); });
+	//			return change_to_doubles | to<std::vector<double>>;
+	//		}) | to<std::vector< std::vector<double> >>;
+
+	//	auto values_by_column_first = meta::transpose(values_by_row_first);
+	//}
+
+	//std::ifstream in(file_name);
+	//if (!in.is_open())
+	//	return {};
+	//
+	//std::vector<char> test4 = fn::from( std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>{ /* end */ } ) % fn::to( std::vector<char>{} );
+
+	//auto how_to_split_lines = []( const char ch )
+	//{
+	//	return ch != '\n' && ch != '\r';
+	//};
+	//auto split_by_line = fn::from( std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>{ /* end */ } )
+	//	% fn::group_adjacent_by( how_to_split_lines )
+	//	% fn::foldl_d( [&]( std::vector<double> out, const std::string& w )
+	//		{
+	//			if( out.size() >= 2 )
+	//				return std::move( out );
+	//		} );
+	//	//% fn::where( []( const auto ch ) { return ch != "\n" && ch != "\r"; } );
+	//auto test2 = split_by_line
+	//	% fn::transform([](auto one_line) -> std::array<double, 2>
+	//		{
+	//			//auto split_by_commas = std::move( one_line )
+	//			//	% fn::group_adjacent_by( []( const char ch ) { return ch != ','; } )
+	//			//	% fn::where( []( const auto ch ) { return ch != ","; } )
+	//			//	% fn::transform( []( auto one_entry ) -> double
+	//			//		{
+	//			//			return std::stod( one_entry );
+	//			//		} );
+	//			//if( test.size() < 2 )
+	//				return std::array<double, 2>{};
+	//			//else
+	//			//	return { one_line[ 0 ], one_line[ 1 ] };
+	//		} );
+	//auto values_by_row_first = test2 % fn::to( std::vector< std::string >{} );
+	//auto values_by_row_first = test2 % fn::to_vector() % fn::to( std::vector< std::array<double, 2> >{} );
+	//% fn::to_vector();
+	//	% fn::for_each([this](const auto& line_of_elements)
+	//		{
+	//			if (line_of_elements.size() >= 2)
+	//				Add_New_Material(QString::fromStdString(line_of_elements[0]),
+	//					std::stod(line_of_elements[1]) * 1E6,
+	//					std::stod(line_of_elements[2]));
+	//		});
+				//std::vector< std::array<double,2> > test = fn::from( mimeData->text().toStdString() )
+			//	% fn::group_adjacent_by( []( const char ch ) { return ch != '\n' && ch != '\r'; } )
+			//	% fn::where( []( const auto ch ) { return ch != "\n" && ch != "\r"; } )
+			//	% fn::transform( []( auto one_line )
+			//		{
+			//			return std::move( one_line ) % fn::group_adjacent_by( []( const char ch ) { return ch != ','; } )
+			//				% fn::where( []( const auto ch ) { return ch != ","; } );
+			//		} )
+			//	% fn::transform( [this]( const auto & line_of_elements )
+			//		{
+			//			if( line_of_elements.size() >= 2 )
+			//				return std::array<double, 2>{
+			//					std::stod( line_of_elements[ 0 ] ),
+			//					std::stod( line_of_elements[ 1 ] ) };
+			//			else
+			//				return std::array<double, 2>{};
+			//		} )
+			//	% fn::transform( [this]( const auto & line_of_elements )
+			//		{
+			//			if( line_of_elements.size() >= 2 )
+			//				return std::array<double, 2>{
+			//					std::stod( line_of_elements[ 0 ] ),
+			//					std::stod( line_of_elements[ 1 ] ) };
+			//			else
+			//				return std::array<double, 2>{};
+			//		} )
+			//	% fn::to_vector();
+
+			//using namespace ranges;
+			////auto test = mimeData->text().toStdString() | views::split( '_' );
+			//auto const s = std::string{ "feel_the_force" };
+			//auto words = s | views::split('_'); // [[f,e,e,l],[t,h,e],[f,o,r,c,e]]
+			//ui.customPlot->Graph( x_data, y_data, "Clipboard Data", "Clipboard Data" );
+
+}
