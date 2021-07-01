@@ -32,37 +32,40 @@ namespace IV
 //};
 //if( current_info.x_data.size() == x_data.size() &&
 //	current_info.y_data.size() == y_data.size() )
-struct IV_Axes
+struct Axes
 {
-	inline std::tuple< QVector<double>, QVector<double> > Prepare_XY_Data( const Single_Graph< IV_X_Units, IV_Y_Units > & graph )
+	inline std::tuple< QVector<double>, QVector<double> > Prepare_XY_Data( const Single_Graph< X_Units, Y_Units > & graph )
 	{
 		arma::vec x_data = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
 		arma::vec y_data = arma::conv_to<arma::vec>::from( graph.y_data.toStdVector() );
 		switch( this->y_units )
 		{
-			case IV_Y_Units::CURRENT_A:
+			case Y_Units::CURRENT_A:
 			break;
-			case IV_Y_Units::CURRENT_A_PER_AREA_CM:
+			case Y_Units::CURRENT_A_PER_AREA_CM:
 			{
 				double side_cm = graph.meta.find( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" )->second.toDouble() * 1E-4;
 				y_data /= side_cm * side_cm;
 			}
 			break;
-			case IV_Y_Units::LOG_CURRENT_A:
+			case Y_Units::LOG_CURRENT_A:
 			{
-				y_data = arma::log10( arma::abs( y_data ) );
+				//y_data = arma::log10( arma::abs( y_data ) );
+				y_data = arma::abs( y_data );
 			}
 			break;
-			case IV_Y_Units::LOG_CURRENT_A_PER_AREA_CM:
+			case Y_Units::LOG_CURRENT_A_PER_AREA_CM:
 			{
 				double side_cm = graph.meta.find( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" )->second.toDouble() * 1E-4;
-				y_data = arma::log10( arma::abs( y_data / (side_cm * side_cm) ) );
+				//y_data = arma::log10( arma::abs( y_data / ( side_cm * side_cm ) ) );
+				y_data = arma::abs( y_data / ( side_cm * side_cm ) );
 			}
 			break;
-			case IV_Y_Units::ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM:
+			case Y_Units::ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM:
 			{
 				double side_cm = graph.meta.find( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" )->second.toDouble() * 1E-4;
-				y_data = arma::log10( arma::abs( y_data / (side_cm * side_cm) ) );
+				//y_data = arma::log10( arma::abs( y_data / ( side_cm * side_cm ) ) );
+				y_data = arma::abs( y_data / ( side_cm * side_cm ) );
 				x_data = arma::abs( x_data );
 			}
 			break;
@@ -70,13 +73,13 @@ struct IV_Axes
 		return { toQVec( x_data ), toQVec( y_data ) };
 	}
 
-	const static IV_X_Units default_x_units = IV_X_Units::VOLTAGE_V;
-	const static IV_Y_Units default_y_units = IV_Y_Units::CURRENT_A;
-	IV_X_Units x_units = default_x_units;
-	IV_Y_Units y_units = default_y_units;
+	const static X_Units default_x_units = X_Units::VOLTAGE_V;
+	const static Y_Units default_y_units = Y_Units::CURRENT_A;
+	X_Units x_units = default_x_units;
+	Y_Units y_units = default_y_units;
 	std::function<void()> graph_function;
 
-	IV_Axes( std::function<void()> regraph_function ) : graph_function( regraph_function )
+	Axes( std::function<void()> regraph_function ) : graph_function( regraph_function )
 	{
 	}
 
@@ -91,10 +94,14 @@ struct IV_Axes
 };
 
 class Interactive_Graph :
-	public ::Interactive_Graph<IV_X_Units, IV_Y_Units, IV_Axes>
+	public ::Interactive_Graph<X_Units, Y_Units, Axes>
 {
 public:
 	Interactive_Graph( QWidget *parent = nullptr );
+
+private:
+	QSharedPointer<QCPAxisTicker> linearTicker;
+	QSharedPointer<QCPAxisTickerLog> logTicker;
 };
 //class Interactive_Graph :
 //	public ::Interactive_Graph

@@ -1,15 +1,7 @@
 ﻿#include "IV_Plotter.h"
-#include "CV_Theoretical.h"
 #include "Interactive_Graph_Toolbar.h"
 
 using namespace std;
-
-//const QStringList header_titles{ "Sample Name", "Date", "Temperature (K)", "Location", "Device Area", "Time of Day", "Sweep Direction", "measurement_id" };
-//const QStringList what_to_collect{ "sample_name", "date(time)", "temperature_in_k", "device_location", "device_area_in_um2", "time(time)", "sweep_direction", "measurement_id" };
-//const QString sql_table = "cv_measurements";
-//const QStringList raw_data_columns{ "measurement_id","voltage_v","capacitance_f" };
-//const QString raw_data_table = "cv_raw_data";
-//const int columns_to_show = 6;
 
 
 namespace IV
@@ -31,7 +23,7 @@ double Rule_07( double temperature, double cutoff_wavelength )
 	return J_0 * std::exp( C * 1.24 * ee / ( k_B * lambda_e * temperature ) );
 }
 
-IV_Plotter::IV_Plotter( QWidget *parent )
+Plotter::Plotter( QWidget *parent )
 	: QWidget( parent )
 {
 	this->ui.setupUi( this );
@@ -40,7 +32,6 @@ IV_Plotter::IV_Plotter( QWidget *parent )
 	Initialize_Tree_Table(); // sql_manager must be initialized first
 	Initialize_Graph();
 	Initialize_Rule07();
-	Update_Preview_Graph();
 	//ui.customPlot->refitGraphs();
 
 	//auto test = u8"This is a Unicode Character: μ\u2018.";
@@ -57,7 +48,7 @@ IV_Plotter::IV_Plotter( QWidget *parent )
 	//ui.webEngineView->show();
 }
 
-void IV_Plotter::Initialize_SQL( QString config_filename )
+void Plotter::Initialize_SQL( QString config_filename )
 {
 	QSettings settings( config_filename, QSettings::IniFormat, this );
 	ui.sqlUser_lineEdit->setText( settings.value( "SQL_Server/default_user" ).toString() );
@@ -81,7 +72,7 @@ void IV_Plotter::Initialize_SQL( QString config_filename )
 	sql_manager->Start_Thread();
 }
 
-void IV_Plotter::Initialize_Tree_Table()
+void Plotter::Initialize_Tree_Table()
 {
 	config.header_titles    = QStringList{ "Sample Name", "Location", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Temperature (K)", "Date", "Time of Day", "measurement_id" };
 	config.what_to_collect  = QStringList{ "sample_name", "device_location", "device_area_in_um2", "temperature_in_k", "date(time)", "time(time)", "measurement_id" };
@@ -115,7 +106,7 @@ void IV_Plotter::Initialize_Tree_Table()
 
 	// setup policy and connect slot for context menu popup:
 	ui.treeWidget->setContextMenuPolicy( Qt::CustomContextMenu );
-	connect( ui.treeWidget, &QWidget::customContextMenuRequested, this, &IV_Plotter::treeContextMenuRequest );
+	connect( ui.treeWidget, &QWidget::customContextMenuRequested, this, &Plotter::treeContextMenuRequest );
 
 	connect( ui.refresh_commandLinkButton, &QCommandLinkButton::clicked, repoll_sql );
 	connect( ui.sqlUser_lineEdit, &QLineEdit::returnPressed, repoll_sql );
@@ -124,7 +115,7 @@ void IV_Plotter::Initialize_Tree_Table()
 	repoll_sql();
 }
 
-void IV_Plotter::Initialize_Graph()
+void Plotter::Initialize_Graph()
 {
 	ui.interactiveGraphToolbar->Connect_To_Graph( ui.customPlot );
 
@@ -134,110 +125,9 @@ void IV_Plotter::Initialize_Graph()
 		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "Sample Name", "" ) );
 		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "Temperature (K)", "" ) );
 	} );
-	connect( ui.semiconductorType_comboBox, &QComboBox::currentTextChanged, [ this ]( const QString & ) { this->Update_Preview_Graph(); } );
-	connect( ui.alloyComposition_doubleSpinBox, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), [ this ]( double ) { this->Update_Preview_Graph(); } );
-	connect( ui.semiconductorDoping_lineEdit, &QLineEdit::editingFinished, [ this ]() { this->Update_Preview_Graph(); } );
-	connect( ui.insulatorType_comboBox, &QComboBox::currentTextChanged, [ this ]( const QString & ) { this->Update_Preview_Graph(); } );
-	connect( ui.insulatorThickness_doubleSpinBox, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), [ this ]( double ) { this->Update_Preview_Graph(); } );
-	connect( ui.interfaceCharge_lineEdit, &QLineEdit::editingFinished, [ this ]() { this->Update_Preview_Graph(); } );
-	connect( ui.simulatedTemperature_doubleSpinBox, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), [ this ]( double ) { this->Update_Preview_Graph(); } );
-	connect( ui.metalType_comboBox, &QComboBox::currentTextChanged, [ this ]( const QString & ) { this->Update_Preview_Graph(); } );
-	connect( ui.displayHFPreview_checkBox, &QCheckBox::stateChanged, [ this ]( int ) { this->Update_Preview_Graph(); } );
-	connect( ui.displayLFPreview_checkBox, &QCheckBox::stateChanged, [ this ]( int ) { this->Update_Preview_Graph(); } );
-	connect( ui.addGraph_pushButton, &QPushButton::pressed, [ this ]
-	{
-		this->simulated_graph_number++;
-		this->Update_Preview_Graph();
-	} );
-
-	connect( ui.customPlot->xAxis, qOverload<const QCPRange &>( &QCPAxis::rangeChanged ), [ this ]( const QCPRange & ) { this->Update_Preview_Graph(); } );
 }
 
-void IV_Plotter::Update_Preview_Graph()
-{
-	using namespace CV_Measurements;
-	if( !ui.displayHFPreview_checkBox->isChecked() )
-	{
-		ui.customPlot->Hide_Graph( "HF Simulation" + QString::number( this->simulated_graph_number ) );
-		//ui.customPlot->replot();
-		//return;
-	}
-
-	if( !ui.displayLFPreview_checkBox->isChecked() )
-	{
-		ui.customPlot->Hide_Graph( "LF Simulation" + QString::number( this->simulated_graph_number ) );
-		//ui.customPlot->replot();
-		//return;
-	}
-
-	// Get data from text entries
-	std::string semiconductor_selected = ui.semiconductorType_comboBox->currentText().toStdString();
-	double semiconductor_alloy_composition = ui.alloyComposition_doubleSpinBox->value();
-	bool properly_formatted = false;
-	double semiconductor_doping = ui.semiconductorDoping_lineEdit->text().toDouble( &properly_formatted );
-	if( !properly_formatted )
-		return;
-	std::string insulator_selected = ui.insulatorType_comboBox->currentText().toStdString();
-	double insulator_thickness = 1E-9 * ui.insulatorThickness_doubleSpinBox->value(); // Convert from nm to meters
-	double temperature_in_k = ui.simulatedTemperature_doubleSpinBox->value();
-	double interface_charge = ui.interfaceCharge_lineEdit->text().toDouble( &properly_formatted );
-	std::string metal_selected = ui.metalType_comboBox->currentText().toStdString();
-
-	std::map<std::string, std::function< Semiconductor()> > semiconductors = {
-		{ "HgCdTe", [ = ] { return Semiconductor( HgCdTe( semiconductor_alloy_composition, temperature_in_k ), semiconductor_doping, temperature_in_k ); } }
-	};
-	std::map<std::string, std::function< Insulator()> > insulators = {
-		{ "ZnS",  [ = ] { return Insulator( ZnS,                      insulator_thickness, interface_charge ); } },
-		{ "CdTe", [ = ] { return Insulator( CdTe( temperature_in_k ), insulator_thickness, interface_charge ); } },
-		{ "ZnO",  [ = ] { return Insulator( ZnO,                      insulator_thickness, interface_charge ); } },
-		{ "Al2O3",[ = ] { return Insulator( Al2O3,                    insulator_thickness, interface_charge ); } }
-	};
-	std::map<std::string, std::function< Metal()> > metals = {
-		{ "Aluminum"  , [ = ] { return Aluminum; } },
-		{ "Chromium"  , [ = ] { return Chromium; } },
-		{ "Gold"      , [ = ] { return Gold;       } },
-		{ "Indium"    , [ = ] { return Indium;     } },
-		{ "Molybdenum", [ = ] { return Molybdenum; } },
-		{ "Nickel"    , [ = ] { return Nickel;     } },
-		{ "Platinum"  , [ = ] { return Platinum;   } },
-		{ "Titanium"  , [ = ] { return Titanium;   } },
-	};
-	Semiconductor semiconductor = semiconductors[ semiconductor_selected ]();
-	Insulator insulator = insulators[ insulator_selected ]();
-	Metal metal = metals[ metal_selected ]();
-
-	// Output calculated material values
-	ui.intrinsicCarrierConcentration_lineEdit->setText( QString::number( semiconductor.n_i, 'E', 2 ) + " cm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B3 ) ) );
-	ui.dielectricConstant_lineEdit->setText( QString::number( semiconductor.eps_s, 'G', 4 ) );
-	ui.bandgap_lineEdit->setText( QString::number( semiconductor.bandgap, 'G', 4 ) + " eV" );
-	ui.wavelength_lineEdit->setText( QString::number( 1.23984198406 / semiconductor.bandgap, 'G', 4 ) + " " + QString( QChar( 0x03BC ) ) + "m" );
-	ui.semiconductorAffinity_lineEdit->setText( QString::number( semiconductor.affinity, 'G', 4 ) + " eV" );
-	ui.semiconductorWorkFunction_lineEdit->setText( QString::number( semiconductor.work_function, 'G', 4 ) + " eV" );
-	ui.metalWorkFunction_lineEdit->setText( QString::number( metal.work_function, 'G', 4 ) + " eV" );
-
-	//double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
-	//double upper_bound = std::max( 0.0, ui.customPlot->xAxis->range().upper );
-	if( ui.displayHFPreview_checkBox->isChecked() )
-	{
-		auto[ voltages, capacitances ] = Get_MOS_Capacitance( semiconductor, insulator, metal, temperature_in_k, ui.customPlot->xAxis->range().lower, ui.customPlot->xAxis->range().upper, 1000.0 );
-		capacitances /= insulator.capacitance;
-		//ui.customPlot->Graph( toQVec( voltages ), toQVec( capacitances ), "HF Simulation" + QString::number( this->simulated_graph_number ),
-		//							QString( "HF %1, t=%2 nm, T=%3 K" ).arg( ui.insulatorType_comboBox->currentText(), QString::number( insulator_thickness * 1E9, 'f', 2 ),
-		//												QString::number( temperature_in_k, 'f', 2 ) ), true );
-	}
-	if( ui.displayLFPreview_checkBox->isChecked() )
-	{
-		auto[ voltages, capacitances ] = Get_MOS_Capacitance( semiconductor, insulator, metal, temperature_in_k, ui.customPlot->xAxis->range().lower, ui.customPlot->xAxis->range().upper, 0.0 );
-		capacitances /= insulator.capacitance;
-		//ui.customPlot->Graph( toQVec( voltages ), toQVec( capacitances ), "LF Simulation" + QString::number( this->simulated_graph_number ),
-		//							QString( "LF %1, t=%2 nm, T=%3 K" ).arg( ui.insulatorType_comboBox->currentText(), QString::number( insulator_thickness * 1E9, 'f', 2 ),
-		//												QString::number( temperature_in_k, 'f', 2 ) ), true );
-	}
-
-	ui.customPlot->replot();
-}
-
-void IV_Plotter::treeContextMenuRequest( QPoint pos )
+void Plotter::treeContextMenuRequest( QPoint pos )
 {
 	QMenu *menu = new QMenu( this );
 	menu->setAttribute( Qt::WA_DeleteOnClose );
@@ -261,17 +151,17 @@ void IV_Plotter::treeContextMenuRequest( QPoint pos )
 }
 
 
-void IV_Plotter::Graph_Rule07( double temperature_in_k, double cutoff_wavelength )
+void Plotter::Graph_Rule07( double temperature_in_k, double cutoff_wavelength )
 {
 	// "Sample Name", "Location", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Temperature (K)", "Date", "Time of Day", "measurement_id"
 	double lower_bound = ui.customPlot->xAxis->range().lower;
 	double upper_bound = ui.customPlot->xAxis->range().upper;
 	double rule_07 = Rule_07( temperature_in_k, cutoff_wavelength );
-	ui.customPlot->Graph<IV_X_Units::VOLTAGE_V, IV_Y_Units::CURRENT_A>( QVector<double>( { lower_bound, upper_bound } ), QVector<double>( { rule_07, rule_07 } ), "Rule 07", "Rule 07", Label_Metadata( { "Rule 07", "", 1E4, temperature_in_k, "", "", "" }, config.header_titles ) );
+	ui.customPlot->Graph<X_Units::VOLTAGE_V, Y_Units::CURRENT_A>( QVector<double>( { lower_bound, upper_bound } ), QVector<double>( { rule_07, rule_07 } ), "Rule 07", "Rule 07", Label_Metadata( { "Rule 07", "", 1E4, temperature_in_k, "", "", "" }, config.header_titles ) );
 	ui.customPlot->replot();
 }
 
-void IV_Plotter::Initialize_Rule07()
+void Plotter::Initialize_Rule07()
 {
 	auto replot_rule07 = [ this ]
 	{
@@ -293,13 +183,13 @@ void IV_Plotter::Initialize_Rule07()
 
 }
 //const QStringList header_titles{ "Sample Name", "Date", "Temperature (K)", "Location", "Side Length", "Time of Day", "Sweep Direction", "measurement_id" };
-void IV_Plotter::Graph_Measurement( QString measurement_id, Labeled_Metadata metadata )
+void Plotter::Graph_Measurement( QString measurement_id, Labeled_Metadata metadata )
 {
 	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this, [ this, measurement_id, metadata ]( ID_To_XY_Data data )
 	{
 		auto[ x_data, y_data ] = data[ measurement_id ];
 		const auto q = [ &metadata ]( const auto & i ) { return metadata.find( i )->second.toString(); };
-		ui.customPlot->Graph<IV_X_Units::VOLTAGE_V, IV_Y_Units::CURRENT_A>(
+		ui.customPlot->Graph<X_Units::VOLTAGE_V, Y_Units::CURRENT_A>(
 			x_data, y_data, measurement_id,
 			//QString("%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3").arg( row[0].toString(), row[2].toString(), row[3].toString(), QString::number(int(std::sqrt(row[4].toInt()))) ) );
 			QString( "%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3" ).arg(

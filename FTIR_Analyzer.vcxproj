@@ -190,9 +190,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CV_Interactive_Graph.cpp" />
+    <ClCompile Include="CV_Plotter.cpp" />
     <ClCompile Include="CV_Theoretical.cpp" />
     <ClCompile Include="Fit_DoubleSpinBox.cpp" />
-    <ClCompile Include="FTIR_Graph.cpp" />
+    <ClCompile Include="FTIR_Interactive_Graph.cpp" />
     <ClCompile Include="III_V_Materials.cpp" />
     <ClCompile Include="Interactive_Graph_Toolbar.cpp" />
     <ClCompile Include="IV_Interactive_Graph.cpp" />
@@ -205,6 +207,7 @@
     <ClCompile Include="SQL_Tree_Widget.cpp" />
     <ClCompile Include="Thin_Film_Interference.cpp" />
     <QtRcc Include="FTIR_Analyzer.qrc" />
+    <QtUic Include="CV_Plotter.ui" />
     <QtUic Include="FTIR_Analyzer.ui" />
     <QtUic Include="IV_Plotter.ui" />
     <QtUic Include="skip_Fit_DoubleSpinBox.ui" />
@@ -219,7 +222,9 @@
   <ItemGroup>
     <ClInclude Include="Blackbody_Radiation.h" />
     <QtMoc Include="Fit_DoubleSpinBox.h" />
-    <ClInclude Include="FTIR_Graph.h" />
+    <ClInclude Include="CV_Interactive_Graph.h" />
+    <QtMoc Include="CV_Plotter.h" />
+    <ClInclude Include="FTIR_Interactive_Graph.h" />
     <ClInclude Include="Handy_Types_And_Conversions.h" />
     <ClInclude Include="CV_Theoretical.h" />
     <ClInclude Include="fn.hpp" />

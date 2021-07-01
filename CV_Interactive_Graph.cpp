@@ -1,4 +1,4 @@
-﻿#include "IV_Interactive_Graph.h"
+﻿#include "CV_Interactive_Graph.h"
 
 #include <algorithm>
 #include <armadillo>
@@ -13,18 +13,14 @@ using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>
 //							"Wavelength (" + QString( QChar( 0x03BC ) ) + "m)",
 //							"Photon Energy (eV)" };
 
-namespace IV
+namespace CV
 {
 
 using Graph_Base = ::Interactive_Graph<X_Units, Y_Units, Axes>;
 
 Interactive_Graph::Interactive_Graph( QWidget* parent ) :
-	Graph_Base( parent ),
-	linearTicker( new QCPAxisTicker ),
-	logTicker( new QCPAxisTickerLog )
+	Graph_Base( parent )
 {
-	this->yAxis->setTicker( linearTicker );
-	this->yAxis2->setTicker( linearTicker );
 	this->y_axis_menu_functions.emplace_back( [this]( Graph_Base* graph, QMenu* menu, QPoint pos )
 	{
 		if( graph->yAxis->selectTest( pos, false ) >= 0 ) // general context menu on graphs requested
@@ -36,35 +32,35 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 			//	ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM = 4
 
 			//menu->addAction( "Add random graph", this, SLOT( addRandomGraph() ) );
-			for( size_t index = 0; index < sizeof( Axes::Y_Unit_Names ) / sizeof( Axes::Y_Unit_Names[0] ); index++ )
-			{
-				QString axis_name = Axes::Y_Unit_Names[ index ];
-				menu->addAction( "Change to " + axis_name, [graph, index, axis_name, this]
-				{
-					graph->axes.y_units = Y_Units( index );
-					if( Y_Units::LOG_CURRENT_A == graph->axes.y_units ||
-						Y_Units::LOG_CURRENT_A_PER_AREA_CM == graph->axes.y_units )
-					{
-						graph->yAxis->setScaleType( QCPAxis::stLogarithmic );
-						this->yAxis->setTicker( logTicker );
-						this->yAxis2->setTicker( logTicker );
-					}
-					else
-					{
-						this->yAxis->setTicker( linearTicker );
-						this->yAxis2->setTicker( linearTicker );
-						graph->yAxis->setScaleType( QCPAxis::stLinear );
-					}
-					graph->yAxis->setLabel( axis_name );
-					graph->RegraphAll();
-				} );
-			}
+			//for( size_t index = 0; index < sizeof( Axes::Y_Unit_Names ) / sizeof( Axes::Y_Unit_Names[0] ); index++ )
+			//{
+			//	QString axis_name = Axes::Y_Unit_Names[ index ];
+			//	menu->addAction( "Change to " + axis_name, [graph, index, axis_name, this]
+			//	{
+			//		graph->axes.y_units = Y_Units( index );
+			//		graph->yAxis->setLabel( axis_name );
+			//		graph->RegraphAll();
+			//	} );
+			//}
 		}
 	} );
 }
 
+
+Axes::Axes( std::function<void()> regraph_function ) : graph_function( regraph_function )
+{
+}
+
+std::tuple< QVector<double>, QVector<double> > Axes::Prepare_XY_Data( const Single_Graph< X_Units, Y_Units > & graph )
+{
+	arma::vec x_data = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
+	arma::vec y_data = arma::conv_to<arma::vec>::from( graph.y_data.toStdVector() );
+	return { toQVec( x_data ), toQVec( y_data ) };
+}
+
+
 const QString Axes::X_Unit_Names[ 1 ] = { "Voltage (V)" };
-const QString Axes::Y_Unit_Names[ 5 ] = { "Current (A)",
+const QString Axes::Y_Unit_Names[ 5 ] = { "Capacitance (F)",
 								QString::fromWCharArray( L"Current (A/cm\u00B2)" ),
 								QString::fromWCharArray( L"Current (log\u2081\u2080(|A|))" ),
 								QString::fromWCharArray( L"Current (log\u2081\u2080(|A|/cm\u00B2))" ),

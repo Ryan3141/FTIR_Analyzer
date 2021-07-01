@@ -11,12 +11,14 @@
 //	CURRENT_NA = 3
 //};
 
-enum class IV_X_Units
+namespace IV
+{
+enum class X_Units
 {
 	VOLTAGE_V = 0
 };
 
-enum class IV_Y_Units
+enum class Y_Units
 {
 	CURRENT_A = 0,
 	CURRENT_A_PER_AREA_CM = 1,
@@ -24,7 +26,24 @@ enum class IV_Y_Units
 	LOG_CURRENT_A_PER_AREA_CM = 3,
 	ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM = 4
 };
+}
 
+namespace CV
+{
+enum class X_Units
+{
+	VOLTAGE_V = 0
+};
+
+enum class Y_Units
+{
+	CAPACITANCE_F = 0,
+	CURRENT_A_PER_AREA_CM = 1,
+	LOG_CURRENT_A = 2,
+	LOG_CURRENT_A_PER_AREA_CM = 3,
+	ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM = 4
+};
+}
 
 #include <ratio>
 

@@ -1,12 +1,12 @@
 #pragma once
 
 #include <QtWidgets/QMainWindow>
-#include "ui_IV_Plotter.h"
+#include "ui_CV_Plotter.h"
 #include "SQL_Manager.h"
 
 #include "Handy_Types_And_Conversions.h"
 
-namespace IV
+namespace CV
 {
 
 class Plotter : public QWidget
@@ -15,16 +15,14 @@ class Plotter : public QWidget
 
 public:
 	Plotter( QWidget *parent = Q_NULLPTR );
-	Ui::IV_Plotter ui;
+	Ui::CV_Plotter ui;
 
 private:
 	void Initialize_SQL( QString config_filename );
 	void Initialize_Tree_Table();
 	void Initialize_Graph();
-	void Initialize_Rule07();
 	void Graph_Measurement( QString measurement_id, Labeled_Metadata metadata );
 	void treeContextMenuRequest( QPoint pos );
-	void Graph_Rule07( double temperature_in_k, double amplitude );
 
 	void Update_Preview_Graph();
 

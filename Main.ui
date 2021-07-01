@@ -42,9 +42,14 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="0" column="0">
-         <widget class="IV::IV_Plotter" name="iv_tab" native="true"/>
+         <widget class="IV::Plotter" name="iv_tab" native="true"/>
         </item>
        </layout>
+      </widget>
+      <widget class="CV::Plotter" name="tab">
+       <attribute name="title">
+        <string>C-V</string>
+       </attribute>
       </widget>
      </widget>
     </item>
@@ -79,7 +84,13 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>IV::IV_Plotter</class>
+   <class>CV::Plotter</class>
+   <extends>QWidget</extends>
+   <header>CV_Plotter.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>IV::Plotter</class>
    <extends>QWidget</extends>
    <header>IV_Plotter.h</header>
    <container>1</container>

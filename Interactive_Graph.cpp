@@ -271,7 +271,7 @@ void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::graphContextMenuR
 		} );
 	}
 
-	if( !selected_x_axis && !selected_y_axis && !selected_legend )
+	if( !selected_x_axis && !selected_y_axis )
 	{
 		if( !this->legend->visible() )
 			menu->addAction( "Turn Legend On", [this]
@@ -281,8 +281,6 @@ void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::graphContextMenuR
 		} );
 		if( this->selectedGraphs().size() > 0 )
 			menu->addAction( "Remove selected graph", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeSelectedGraph );
-		if( this->graphCount() > 0 )
-			menu->addAction( "Remove all graphs", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeAllGraphs );
 		menu->addAction( "Save current graph", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::saveCurrentGraph );
 
 		for( const auto & menu_function : this->general_menu_functions )
@@ -296,6 +294,11 @@ void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::graphContextMenuR
 	if( selected_y_axis )
 		for( const auto & menu_function : this->y_axis_menu_functions )
 			menu_function( this, menu, pos );
+
+	// Put Remove all graphs last to minimize accidental clicking
+	if( !selected_x_axis && !selected_y_axis && !selected_legend )
+		if( this->graphCount() > 0 )
+			menu->addAction( "Remove all graphs", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeAllGraphs );
 
 	menu->popup( this->mapToGlobal( pos ) );
 }
@@ -497,7 +500,8 @@ const Single_Graph< X_Unit_Type, Y_Unit_Type > & Interactive_Graph<X_Unit_Type, 
 		QCPColorGradient gradient( QCPColorGradient::gpSpectrum );
 		gradient.setPeriodic( true );
 		//gradient.setLevelCount( 10 );
-		const QVector< Qt::PenStyle > patterns = { Qt::SolidLine, Qt::DotLine, Qt::DashLine, Qt::DashDotDotLine, Qt::DashDotLine };
+		//const QVector< Qt::PenStyle > patterns = { Qt::SolidLine, Qt::DotLine, Qt::DashLine, Qt::DashDotDotLine, Qt::DashDotLine };
+		const QVector< Qt::PenStyle > patterns = { Qt::SolidLine };
 		graphPen.setColor( gradient.color( color_index / 10.0, QCPRange( 0.0, 1.0 ) ) );
 		graphPen.setStyle( patterns[ color_index % patterns.size() ] );
 		//graphPen.setWidthF( 2 ); Changing width currently causes massive performance issues
