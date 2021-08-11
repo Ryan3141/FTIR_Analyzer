@@ -75,7 +75,7 @@ void Plotter::Initialize_SQL( QString config_filename )
 void Plotter::Initialize_Tree_Table()
 {
 	config.header_titles    = QStringList{ "Sample Name", "Location", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Temperature (K)", "Date", "Time of Day", "measurement_id" };
-	config.what_to_collect  = QStringList{ "sample_name", "device_location", "device_area_in_um2", "temperature_in_k", "date(time)", "time(time)", "measurement_id" };
+	config.what_to_collect  = QStringList{ "sample_name", "device_location", "device_side_length_in_um", "temperature_in_k", "date(time)", "time(time)", "measurement_id" };
 	config.sql_table        = "iv_measurements";
 	config.raw_data_columns = QStringList{ "measurement_id","voltage_v","current_a" };
 	config.raw_data_table   = "iv_raw_data";
@@ -142,10 +142,10 @@ void Plotter::treeContextMenuRequest( QPoint pos )
 		}
 	} );
 
-	//menu->addAction( "Save to csv file", [this, selected]
-	//{
-	//	this->Save_To_CSV( selected );
-	//} );
+	menu->addAction( "Save to csv file", [this, selected]
+	{
+		this->Save_To_CSV( selected );
+	} );
 
 	menu->popup( ui.treeWidget->mapToGlobal( pos ) );
 }
@@ -202,4 +202,93 @@ void Plotter::Graph_Measurement( QString measurement_id, Labeled_Metadata metada
 	}, config.sorting_strategy );
 }
 
+void Plotter::Save_To_CSV( const ID_To_Metadata & things_to_save )
+{
+	QFileInfo file_name = QFileDialog::getSaveFileName( this, tr( "Save Data" ), QString(), tr( "CSV File (*.csv)" ) );//;; JPG File (*.jpg);; BMP File (*.bmp);; PDF File (*.pdf)" ) );
+
+	//if( file_name.suffix().toLower() == "csv" )
+	{
+		//const auto[ measurement_ids_to_graph, measurements_meta_data ] = fn::cfrom( things_to_save )
+		//const auto test = fn::cfrom( things_to_save )
+		//	% fn::transform( []( const auto[ key, value ] ) -> std::tuple<QString, Metadata> { return {key, value}; } );
+		//% fn::unzip( std::tuple< QStringList, std::vector<Metadata> >{} );
+		QStringList measurement_ids_to_graph;
+		std::vector<Metadata> measurements_meta_data;
+		for( auto[ measurement_id, metadata ] : things_to_save )
+		{
+			measurement_ids_to_graph.push_back( measurement_id );
+			measurements_meta_data.push_back( metadata );
+		}
+
+		sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, measurement_ids_to_graph, this,
+															[ this, file_name, measurement_ids_to_graph, measurements_meta_data ]( ID_To_XY_Data id_to_data )
+		{
+			QVector<double> repeating_x_data;
+			int longest_y_data = 0;
+			std::vector< std::vector<std::string> > data_before_transpose;
+			//for( const auto &[ measurement_id, metadata ] : measurements_to_graph % fn::zip_with( measurements_meta_data, []( const auto & x, const auto & y ) { return std::tuple<QString, Metadata>{ x, y }; } ) )
+			for( const auto[ measurement_id, metadata ] : fn::zip( measurement_ids_to_graph, measurements_meta_data ) )
+			{
+				if( id_to_data.find( measurement_id ) == id_to_data.end() )
+					continue;
+
+				const XY_Data & data = id_to_data[ measurement_id ];
+				auto[ x_data, y_data ] = data; // Output the raw data without adjusting for gain
+				//auto[ x_data, y_data ] = Scale_FTIR_XY_Data( meta_data, data );
+
+				bool x_data_is_repeating = repeating_x_data.size() == x_data.size();
+				if( x_data_is_repeating )
+				{
+					for( int i = 0; i < x_data.size(); i++ )
+					{
+						if( repeating_x_data[ i ] != x_data[ i ] )
+						{
+							x_data_is_repeating = false;
+							repeating_x_data = x_data;
+							break;
+						}
+					}
+				}
+				else
+					repeating_x_data = x_data;
+
+
+				if( !x_data_is_repeating )
+				{
+					data_before_transpose.resize( data_before_transpose.size() + 1 );
+					std::vector<std::string> & current_line = data_before_transpose.back();
+					current_line.push_back( "Voltage (V)" );
+					for( double x : x_data )
+						current_line.push_back( std::to_string( x ) );
+				}
+
+				{
+					data_before_transpose.resize( data_before_transpose.size() + 1 );
+					std::vector<std::string> & current_line = data_before_transpose.back();
+					// "Sample Name", "Location", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Temperature (K)", "Date", "Time of Day", "measurement_id"
+					QString info = metadata[ 0 ].toString() + " " + metadata[ 1 ].toString() + " " + metadata[ 3 ].toString() + "K";
+					current_line.push_back( info.toStdString() );
+					longest_y_data = std::max( longest_y_data, y_data.size() );
+					for( int i = 0; i < y_data.size(); i++ )
+						current_line.push_back( std::to_string( y_data[ i ] ) );
+				}
+
+			}
+
+			std::ofstream out_file( file_name.absoluteFilePath().toStdString() );
+			//data_before_transpose % fn::transpose2D();
+			for( int j = 0; j < longest_y_data; j++ )
+			{
+				for( const auto & data_group : data_before_transpose )
+				{
+					if( data_group.size() > j )
+						out_file << data_group[ j ];
+					out_file << ",";
+				}
+				out_file << "\n";
+			}
+		}, config.sorting_strategy );
+	}
+
+}
 }

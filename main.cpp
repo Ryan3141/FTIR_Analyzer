@@ -19,6 +19,37 @@ void Add_Mouse_Position_Label( QCustomPlot* graph, QLabel* statusLabel )
 
 int main(int argc, char *argv[])
 {
+	if constexpr( false )
+	{
+		QApplication a( argc, argv );
+
+		Data_Configuration config;
+		//config.header_titles = QStringList{ "Sample Name", "Date", "Temperature (K)", "Dewar Temp (C)", "Time of Day", "Gain", "Bias (V)", "measurement_id" };
+		//config.what_to_collect = QStringList{ "sample_name", "date(time)", "temperature_in_k", "dewar_temp_in_c", "time(time)", "gain", "bias_in_v", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
+		config.header_titles = QStringList{ "Sample Name", "Temperature (K)", "Dewar Temp (C)", "Gain", "Bias (V)", "measurement_id" };
+		config.what_to_collect = QStringList{ "sample_name", "temperature_in_k", "dewar_temp_in_c", "gain", "bias_in_v", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
+		config.sql_table = "ftir_measurements";
+		config.raw_data_columns = QStringList{ "measurement_id","wavenumber","intensity" };
+		config.raw_data_table = "ftir_raw_data";
+		config.sorting_strategy = "ORDER BY measurement_id, wavenumber ASC";
+		config.columns_to_show = 7;
+
+		QString config_filename = "configuration.ini";
+		SQL_Manager test( nullptr, config_filename, "Test", "Local_SQL_Cache" );
+		//ID_To_Metadata data;
+		//data[ "99998" ] = { 1, 2, 3, 4, 5, 6, 7, 99998 };
+		//data[ "99999" ] = { 1, 2, 3, 4, 5, 6, 7, 99999 };
+		//data[ "99998" ] = { 1, 2, 3, 4, 5, 99998 };
+		//data[ "99990" ] = { 1, 2, 3, 4, 5, 99990 };
+		ID_To_XY_Data data;
+		data[ "99998" ] = { {1}, {2} };
+		data[ "99990" ] = { {2, 3, 4}, {3, 4, 5} };
+		test.Start_Thread();
+		//test.Write_SQL_Metadata( data, config.what_to_collect, config.sql_table );
+		test.Write_SQL_XY_Data( data, config.raw_data_columns, config.raw_data_table );
+		return a.exec();
+	}
+
 	QApplication a(argc, argv);
 	QMainWindow w;
 	Ui::Main ui;

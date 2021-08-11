@@ -25,6 +25,8 @@ private:
 	void Graph_Measurement( QString measurement_id, Labeled_Metadata metadata );
 	void treeContextMenuRequest( QPoint pos );
 	void Graph_Rule07( double temperature_in_k, double amplitude );
+	void Save_To_CSV( const ID_To_Metadata & things_to_save );
+
 
 	void Update_Preview_Graph();
 

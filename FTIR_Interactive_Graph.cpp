@@ -116,7 +116,7 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 			for( double & x : bounds )
 				x = Convert_Units( this->axes.x_units, new_type, x );
 			xAxis->setRange( std::min( bounds[ 0 ], bounds[ 1 ] ), std::max( bounds[ 0 ], bounds[ 1 ] ) );
-			graph->xAxis->setLabel( Axes_Scales::Y_Unit_Names[ int( new_type ) ] );
+			graph->xAxis->setLabel( Axes_Scales::X_Unit_Names[ int( new_type ) ] );
 			this->axes.Set_X_Units( new_type );
 			emit X_Units_Changed();
 		};

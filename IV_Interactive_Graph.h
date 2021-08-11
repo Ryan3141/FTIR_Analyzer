@@ -69,6 +69,19 @@ struct Axes
 				x_data = arma::abs( x_data );
 			}
 			break;
+			case Y_Units::RESISTANCE_OHM:
+			{
+				y_data = arma::diff( x_data ) / arma::diff( y_data );
+				x_data = x_data( arma::span( 0, x_data.size() - 1 ) );
+			}
+			break;
+			case Y_Units::RESISTANCE_OHM_PER_AREA_CM:
+			{
+				double side_cm = graph.meta.find( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" )->second.toDouble() * 1E-4;
+				y_data = ( arma::diff( x_data ) / arma::diff( y_data ) ) / ( side_cm * side_cm );
+				x_data = x_data( arma::span( 0, x_data.size() - 1 ) );
+			}
+			break;
 		}
 		return { toQVec( x_data ), toQVec( y_data ) };
 	}
@@ -84,7 +97,8 @@ struct Axes
 	}
 
 	const static QString X_Unit_Names[ 1 ];
-	const static QString Y_Unit_Names[ 5 ];
+	const static QString Y_Unit_Names[ 7 ];
+	const static QString Change_To_Y_Unit_Names[ 7 ];
 
 	//const static QString X_Unit_Names[ 4 ] = { "Current (A)",
 	//						"Current (mA)",

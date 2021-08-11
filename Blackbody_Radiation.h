@@ -16,19 +16,20 @@ inline arma::vec Blackbody_Radiation( arma::vec wavelengths, double temperature_
 {
 	auto frequencies = c / wavelengths;
 	const double A = h / (k_B * temperature_in_k);
-	if( adjust_height == 0 )
-		adjust_height = 2 * pi / c2 * h;
+	if( adjust_height == 0.0 )
+		adjust_height = 2 * pi * h / c2;
 	else
 	{
-		auto find_maximum = [A]( double f ) { return -(3 - f * A - 3 * std::exp( -A * f )); };
+		//auto find_maximum = [A]( double f ) { return -(3 - f * A - 3 * std::exp( -A * f )); };
 		//double frequency_of_maximum = Binary_Search( find_maximum, 0.0, 1E20, 1.0, 512 );
 		//adjust_height = 1.0 / ( std::pow( frequency_of_maximum, 3 ) / (std::exp( A * frequency_of_maximum ) - 1) );
 
-		double frequency_of_maximum = (boost::math::lambert_w0( -3 / std::pow( arma::datum::e, 3 ) ) + 3) / A;
-		double test1 = find_maximum( frequency_of_maximum );
-		double test2 = find_maximum( frequency_of_maximum+1 );
-		double test3 = find_maximum( frequency_of_maximum-1 );
-		adjust_height = adjust_height / ( std::pow( frequency_of_maximum, 3 ) / (std::exp( A * frequency_of_maximum ) - 1) );
+		// https://www.wolframalpha.com/input/?i=%28derivative+of+x%5E5+%2F+%28exp%28+A+*+x+%29+-+1%29%29+%3D+0
+		double frequency_of_maximum = (boost::math::lambert_w0( -5 / std::pow( arma::datum::e, 5 ) ) + 5) / A;
+		//double test1 = find_maximum( frequency_of_maximum );
+		//double test2 = find_maximum( frequency_of_maximum+1 );
+		//double test3 = find_maximum( frequency_of_maximum-1 );
+		adjust_height = adjust_height / ( std::pow( frequency_of_maximum, 5 ) / (std::exp( A * frequency_of_maximum ) - 1) );
 	}
-	return adjust_height * arma::pow( frequencies, 3 ) / (arma::exp( A * frequencies ) - 1);
+	return adjust_height * arma::pow( frequencies, 5 ) / (arma::exp( A * frequencies ) - 1);
 }

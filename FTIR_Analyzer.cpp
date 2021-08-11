@@ -67,8 +67,8 @@ void FTIR_Analyzer::Initialize_SQL( QString config_filename )
 	ui.sqlUser_lineEdit->setText( settings.value( "SQL_Server/default_user" ).toString() );
 	QMessageBox* msgBox = new QMessageBox( this );
 
-	sql_manager = new SQL_Manager( this, config_filename, "FTIR" );
-	connect( sql_manager, &SQL_Manager::Error_Connecting_To_SQL, this, [ config_filename ]( QSqlError error_message )
+	sql_manager = new SQL_Manager_With_Local_Cache( this, config_filename, "FTIR" );
+	connect( sql_manager, &SQL_Manager_With_Local_Cache::Error_Connecting_To_SQL, this, [ config_filename ]( QSqlError error_message )
 	{
 		QMessageBox msgBox;
 		msgBox.setText( "Error Opening SQL" );
@@ -510,7 +510,7 @@ void FTIR_Analyzer::Save_To_CSV( const ID_To_Metadata & things_to_save )
 				{
 					data_before_transpose.resize( data_before_transpose.size() + 1 );
 					std::vector<std::string> & current_line = data_before_transpose.back();
-					QString info = metadata[ 0 ].toString() + " " + metadata[ 2 ].toString() + "K";
+					QString info = metadata[ 0 ].toString() + " " + metadata[ 2 ].toString() + "K " + metadata[ 6 ].toString() + "V";
 					current_line.push_back( info.toStdString() );
 					longest_y_data = std::max( longest_y_data, y_data.size() );
 					for( int i = 0; i < y_data.size(); i++ )
@@ -544,8 +544,12 @@ void FTIR_Analyzer::Graph_Measurement( QString measurement_id, Labeled_Metadata 
 	{
 		auto & [ x_data, y_data ] = data[ measurement_id ];
 		const auto q = [ &metadata ]( const auto & i ) { return metadata.find( i )->second.toString(); };
+		const auto f = [ &metadata ]( const auto & i ) { return metadata.find( i )->second; };
 		//this->Graph( measurement_id, x_data, y_data, QString( "%1 %2 K" ).arg( row[ 0 ].toString(), row[ 2 ].toString() ), true, row );
-		ui.customPlot->Graph<FTIR::X_Units::WAVE_NUMBER, FTIR::Y_Units::RAW_SENSOR>( x_data, y_data, measurement_id, QString( "%1 %2 K" ).arg( q( "Sample Name" ), q( "Temperature (K)" ) ), metadata );
+		QString legend_label = ( f( "Bias (V)" ).isNull() ) ?
+			QString( "%1 %2 K" ).arg( q( "Sample Name" ), q( "Temperature (K)" ) ) :
+			QString( "%1 %2 K at %3 mV" ).arg( q( "Sample Name" ), q( "Temperature (K)" ), QString::number( std::round( f( "Bias (V)" ).toFloat() * 1.0E3 ) ) );
+		ui.customPlot->Graph<FTIR::X_Units::WAVE_NUMBER, FTIR::Y_Units::RAW_SENSOR>( x_data, y_data, measurement_id, legend_label, metadata );
 		ui.customPlot->replot();
 	}, config.sorting_strategy );
 }

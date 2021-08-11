@@ -638,7 +638,7 @@
                  <number>0</number>
                 </property>
                 <property name="maximum">
-                 <number>100000</number>
+                 <number>1000000</number>
                 </property>
                 <property name="singleStep">
                  <number>1</number>
@@ -702,7 +702,7 @@
               <item row="2" column="1">
                <widget class="QDoubleSpinBox" name="blackbodyTemperature_doubleSpinBox">
                 <property name="maximum">
-                 <double>10000.000000000000000</double>
+                 <double>100000.000000000000000</double>
                 </property>
                 <property name="value">
                  <double>820.000000000000000</double>

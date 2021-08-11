@@ -54,7 +54,7 @@ private:
 	Data_Configuration config;
 	QLabel* statusLabel;
 	Thin_Film_Interference* thin_film_manager;
-	SQL_Manager* sql_manager;
+	SQL_Manager_With_Local_Cache* sql_manager;
 };
 
 }

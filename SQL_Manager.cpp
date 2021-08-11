@@ -1,5 +1,9 @@
 #include "SQL_Manager.h"
 
+#include <algorithm>
+#include <set>
+#include <iterator>
+
 #include <QString>
 #include <QSettings>
 #include <QFileDialog>
@@ -7,6 +11,8 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QtSql>
+
+#include "rangeless_helper.hpp"
 
 using namespace std;
 
@@ -26,10 +32,15 @@ static QString Sanitize_SQL( const QString & raw_string )
 		return raw_string;
 }
 
-SQL_Manager::SQL_Manager( QObject* parent, QFileInfo config_filename, QString unique_name ) :
-	config_filename_( config_filename ),
+SQL_Manager::SQL_Manager( QObject* parent, QFileInfo config_filename, QString unique_name, QString config_category ) :
 	unique_name( unique_name )
 {
+	QSettings settings( config_filename.filePath(), QSettings::IniFormat, this );
+	database_type = settings.value( config_category + "/database_type" ).toString();
+	host_location = settings.value( config_category + "/host_location" ).toString();
+	database_name = settings.value( config_category + "/database_name" ).toString();
+	username      = settings.value( config_category + "/username" ).toString();
+	password      = settings.value( config_category + "/password" ).toString();
 }
 
 void SQL_Manager::Start_Thread()
@@ -52,13 +63,6 @@ void SQL_Manager::Start_Thread()
 
 bool SQL_Manager::Initialize_DB_Connection()
 {
-	QSettings settings( config_filename_.filePath(), QSettings::IniFormat, this );
-	const QString database_type = settings.value( "SQL_Server/database_type" ).toString();
-	const QString host_location = settings.value( "SQL_Server/host_location" ).toString();
-	const QString database_name = settings.value( "SQL_Server/database_name" ).toString();
-	const QString username      = settings.value( "SQL_Server/username" ).toString();
-	const QString password      = settings.value( "SQL_Server/password" ).toString();
-
 	sql_db = QSqlDatabase::addDatabase( database_type, this->unique_name );
 	if( database_type == "QMYSQL" )
 		sql_db.setConnectOptions( "MYSQL_OPT_RECONNECT=1" );
@@ -195,20 +199,287 @@ void SQL_Manager::Grab_All_SQL_Metadata( const QStringList & what_to_collect, co
 			}
 		}
 
-		//QTimer* timer = new QTimer();
-		////timer->moveToThread( qApp->thread() );
-		//timer->moveToThread( callback_context->thread() );
-		//timer->setSingleShot( true );
-		//QObject::connect( timer, &QTimer::timeout, [ callback, all_meta_data = std::move( all_meta_data ) ]()
-		//{
 		QTimer::singleShot( 0, callback_context, [ callback, what_to_collect, all_meta_data = std::move( all_meta_data ) ]
 		{
 			callback( { what_to_collect, std::move( all_meta_data ) } );
 		} );
-
-		//timer->deleteLater();
 	} );
+}
 
-	//QMetaObject::invokeMethod( timer, "start", Qt::QueuedConnection, Q_ARG( int, 0 ) );
+void SQL_Manager::Write_SQL_Metadata( const ID_To_Metadata & meta_data, const QStringList & what_to_write, const QString & table_name,
+									  QObject* callback_context, std::function< void() > callback )
+{
+	if( meta_data.empty() )
+		return;
+	QTimer::singleShot( 0, this, [ this, meta_data, what_to_write, table_name, callback_context, callback ]
+	{
+		QSqlQuery query( this->sql_db );
+		std::vector<QVariantList> data_to_write = what_to_write
+			% fn::transform( fn::get::enumerated{} )
+			% fn::transform( [ &meta_data ]( const auto & thing_to_write ) -> QVariantList
+				{
+					const auto &[ index, header ] = thing_to_write;
+					QVariantList one_column;
+					for( const auto & [measurement_id, row] : meta_data )
+						one_column.push_back( row[ index ] );
+					return one_column;
+				} );
+		QStringList dont_put_duplicates = what_to_write
+			% fn::transform( []( const QString & s ) { return QString( s + "=?" ); } )
+			% fn::to( QStringList{} );
+
+		QString question_marks = QStringList::fromVector(
+			QVector<QString>::fromStdVector(
+				std::vector<QString>( what_to_write.size(), "?" )
+			) ).join( ',' );
+		query.prepare( QString( "INSERT INTO %1 (%2) SELECT %3 EXCEPT SELECT %2 FROM %1 WHERE %4;" )
+					   .arg( table_name,
+							 what_to_write.join( ',' ),
+							 question_marks,
+							 dont_put_duplicates.join( " AND " ) ) );
+		// Bind values twice, once for insert values, once to filter out duplicates
+		for( int i = 0; i < 2; i++ )
+			for( const auto & one_column : data_to_write )
+				query.addBindValue( one_column );
+
+		if( !query.execBatch() )
+		{
+			qDebug() << "Error writing data to " << table_name << ":\n"
+				<< query.lastError();
+			return;
+		}
+
+		if( callback_context != nullptr )
+			QTimer::singleShot( 0, callback_context, callback );
+	} );
+}
+void SQL_Manager::Write_SQL_XY_Data_No_Duplicates( const ID_To_XY_Data & data, const QStringList & what_to_write, const QString & table_name,
+									 QObject* callback_context, std::function< void() > callback )
+{
+	if( data.empty() )
+		return;
+	QTimer::singleShot( 0, this, [ this, data, what_to_write, table_name, callback_context, callback ]
+	{
+		QSqlQuery query( this->sql_db );
+		// Write each set of xy_data one measurement_id at a time
+		for( const auto &[ measurement_id, xy_data ] : data )
+		{
+			QStringList dont_put_duplicates = what_to_write
+				% fn::transform( []( const QString & s ) { return QString( s + "=?" ); } )
+				% fn::to( QStringList{} );
+
+			QString question_marks = QStringList::fromVector(
+				QVector<QString>::fromStdVector(
+					std::vector<QString>( what_to_write.size(), "?" )
+				) ).join( ',' );
+			query.prepare( QString( "INSERT INTO %1 (%2) SELECT %3 EXCEPT SELECT %2 FROM %1 WHERE %4;" )
+						   .arg( table_name,
+								 what_to_write.join( ',' ),
+								 question_marks,
+								 dont_put_duplicates.join( " AND " ) ) );
+			auto to_variant_list = []( const auto & xy_data ) -> std::tuple<QVariantList, QVariantList>
+			{
+				QVariantList output1;
+				for( const auto & x : std::get<0>( xy_data ) )
+					output1.push_back( x );
+				QVariantList output2;
+				for( const auto & y : std::get<1>( xy_data ) )
+					output2.push_back( y );
+				return { std::move( output1 ), std::move( output2 ) };
+			};
+			const auto [ x_data, y_data ] = to_variant_list( xy_data );
+			QVariantList measurement_id_copies = QVariantList::fromVector(
+				QVector<QVariant>::fromStdVector(
+					std::vector<QVariant>( x_data.size(), measurement_id.toInt() )
+				) );
+
+			for( int i = 0; i < 2; i++ )
+			{
+				query.addBindValue( measurement_id_copies );
+				query.addBindValue( x_data );
+				query.addBindValue( y_data );
+			}
+
+			if( !query.execBatch() )
+			{
+				qDebug() << "Error writing data to " << table_name << ":\n"
+					<< query.lastError();
+			}
+			else
+			{
+				qDebug() << "Successfully wrote data to " << table_name << ":\n"
+					<< query.executedQuery();
+			}
+		}
+
+		if( callback_context != nullptr )
+			QTimer::singleShot( 0, callback_context, callback );
+	} );
+}
+
+void SQL_Manager::Write_SQL_XY_Data( const ID_To_XY_Data & data, const QStringList & what_to_write, const QString & table_name,
+									 QObject* callback_context, std::function< void() > callback )
+{
+	if( data.empty() )
+		return;
+	QTimer::singleShot( 0, this, [ this, data, what_to_write, table_name, callback_context, callback ]
+	{
+		QSqlQuery query( this->sql_db );
+		// Write each set of xy_data one measurement_id at a time
+		for( const auto &[ measurement_id, xy_data ] : data )
+		{
+			QString question_marks = QStringList::fromVector(
+				QVector<QString>::fromStdVector(
+					std::vector<QString>( what_to_write.size(), "?" )
+				) ).join( ',' );
+			query.prepare( QString( "INSERT INTO %1 (%2) SELECT %3;" )
+						   .arg( table_name,
+								 what_to_write.join( ',' ),
+								 question_marks ) );
+			auto to_variant_list = []( const auto & xy_data ) -> std::tuple<QVariantList, QVariantList>
+			{
+				QVariantList output1;
+				for( const auto & x : std::get<0>( xy_data ) )
+					output1.push_back( x );
+				QVariantList output2;
+				for( const auto & y : std::get<1>( xy_data ) )
+					output2.push_back( y );
+				return { std::move( output1 ), std::move( output2 ) };
+			};
+			const auto[ x_data, y_data ] = to_variant_list( xy_data );
+			QVariantList measurement_id_copies = QVariantList::fromVector(
+				QVector<QVariant>::fromStdVector(
+					std::vector<QVariant>( x_data.size(), measurement_id.toInt() )
+				) );
+
+			{
+				query.addBindValue( measurement_id_copies );
+				query.addBindValue( x_data );
+				query.addBindValue( y_data );
+			}
+
+			if( !query.execBatch() )
+			{
+				qDebug() << "Error writing data to " << table_name << ":\n"
+					<< query.lastError();
+			}
+			else
+			{
+				//qDebug() << "Successfully wrote data to " << table_name << ":\n"
+				//	<< query.executedQuery();
+			}
+		}
+
+		if( callback_context != nullptr )
+			QTimer::singleShot( 0, callback_context, callback );
+	} );
+}
+
+SQL_Manager_With_Local_Cache::SQL_Manager_With_Local_Cache( QObject* parent, QFileInfo config_filename, QString unique_name, QString config_category ) :
+	remote_sql( this, config_filename, unique_name, config_category ),
+	local_sql(  this, config_filename, unique_name + "_local", "Local_SQL_Cache" )
+{
+}
+
+void SQL_Manager_With_Local_Cache::Start_Thread()
+{
+	local_sql.Start_Thread();
+	remote_sql.Start_Thread();
+}
+
+void SQL_Manager_With_Local_Cache::Grab_SQL_XY_Data_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name,
+																		  const QStringList & measurement_ids, QObject* callback_context,
+																		  std::function< void( ID_To_XY_Data ) > callback, const QString & extra_filtering )
+{
+	local_sql.Grab_SQL_XY_Data_From_Measurement_IDs( what_to_collect, table_name, measurement_ids, this,
+		[ this, what_to_collect, table_name, measurement_ids, callback_context, callback, extra_filtering ]( ID_To_XY_Data data )
+		{
+			const auto measurement_ids_missing = [ &measurement_ids, &data ]
+			{
+				QStringList copy_of_measurement_ids = measurement_ids;
+				std::vector<QString> found_ids;
+				for( const auto &[ id, xy_data ] : data )
+					found_ids.push_back( id );
+				// Need to sort lists before use so that set_difference works
+				std::sort( found_ids.begin(), found_ids.end() );
+				std::sort( copy_of_measurement_ids.begin(), copy_of_measurement_ids.end() );
+				QStringList measurement_ids_missing;
+				std::set_difference( copy_of_measurement_ids.begin(), copy_of_measurement_ids.end(), found_ids.begin(), found_ids.end(),
+									 std::back_inserter( measurement_ids_missing ) );
+				return measurement_ids_missing;
+			}();
+			if( measurement_ids_missing.size() > 0 ) // Need to lookup data from remote source
+			{
+				remote_sql.Grab_SQL_XY_Data_From_Measurement_IDs( what_to_collect, table_name, measurement_ids_missing, this,
+					[ this, callback_context, callback, what_to_collect, table_name, data ]( ID_To_XY_Data remaining_data )
+					{
+						local_sql.Write_SQL_XY_Data( remaining_data, what_to_collect, table_name );
+						remaining_data.insert( data.begin(), data.end() );
+						QTimer::singleShot( 0, callback_context, [ callback, remaining_data = std::move( remaining_data ) ] { callback( remaining_data ); } );
+					}, extra_filtering );
+			}
+			else
+				QTimer::singleShot( 0, callback_context, [ callback, data ]{ callback( data ); } );
+		}, extra_filtering );
+}
+
+void SQL_Manager_With_Local_Cache::Grab_SQL_Metadata_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name,
+																		   const QStringList & measurement_ids, QObject* callback_context,
+																		   std::function< void( ID_To_Metadata ) > callback, const QString & extra_filtering )
+{
+	remote_sql.Grab_SQL_Metadata_From_Measurement_IDs( what_to_collect, table_name, measurement_ids, callback_context, callback, extra_filtering );
+
+	//local_sql.Grab_SQL_Metadata_From_Measurement_IDs( what_to_collect, table_name, measurement_ids, this,
+	//	[ this, what_to_collect, table_name, measurement_ids, callback_context, callback, extra_filtering ]( ID_To_Metadata data )
+	//	{
+	//		const auto measurement_ids_missing = [ &measurement_ids, &data ]
+	//		{
+	//			QStringList copy_of_measurement_ids = measurement_ids;
+	//			std::vector<QString> found_ids;
+	//			for( const auto &[ id, xy_data ] : data )
+	//				found_ids.push_back( id );
+	//			// Need to sort lists before use so that set_difference works
+	//			std::sort( found_ids.begin(), found_ids.end() );
+	//			std::sort( copy_of_measurement_ids.begin(), copy_of_measurement_ids.end() );
+	//			std::set<QString> measurement_ids_missing;
+	//			std::set_difference( found_ids.begin(), found_ids.end(), copy_of_measurement_ids.begin(), copy_of_measurement_ids.end(),
+	//								 std::inserter( measurement_ids_missing, measurement_ids_missing.end() ) );
+	//			return measurement_ids_missing;
+	//		}();
+	//		if( measurement_ids_missing.size() > 0 ) // Need to lookup data from remote source
+	//		{
+	//			remote_sql.Grab_SQL_Metadata_From_Measurement_IDs( what_to_collect, table_name, measurement_ids, this,
+	//				[ this, callback_context, callback, what_to_collect, table_name ]( ID_To_Metadata data )
+	//				{
+	//					local_sql.Write_SQL_Metadata( data, what_to_collect, table_name );
+	//					QTimer::singleShot( 0, callback_context, [ callback, data = std::move( data ) ]{ callback( data ); } );
+	//				}, extra_filtering );
+	//		}
+	//		else
+	//			QTimer::singleShot( 0, callback_context, [ callback, data ] { callback( data ); } );
+	//}, extra_filtering );
+}
+
+
+void SQL_Manager_With_Local_Cache::Grab_All_SQL_Metadata( const QStringList & what_to_collect, const QString & table_name, QObject* callback_context,
+														  std::function< void( Structured_Metadata ) > callback, const QString & extra_filtering )
+{
+	remote_sql.Grab_All_SQL_Metadata( what_to_collect, table_name, callback_context, callback, extra_filtering );
+
+	//remote_sql.Grab_All_SQL_Metadata( what_to_collect, table_name, &local_sql, [ this, callback_context, callback, what_to_collect, table_name ]( Structured_Metadata data )
+	//{
+	//	QTimer::singleShot( 0, callback_context, [ callback, data ] { callback( data ); } );
+
+	//	int measurement_id_index = data.column_names.indexOf( "measurement_id" );
+	//	if( measurement_id_index == -1 )
+	//		return;
+	//	ID_To_Metadata converted_data;
+	//	for( auto one_measurement : data.data )
+	//	{
+	//		const QString & measurement_id = one_measurement[ measurement_id_index ].toString();
+	//		converted_data[ measurement_id ] = one_measurement;
+	//	}
+	//	local_sql.Write_SQL_Metadata( std::move( converted_data ), what_to_collect, table_name );
+	//}, extra_filtering );
 }
 
