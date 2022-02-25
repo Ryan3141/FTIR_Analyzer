@@ -4,6 +4,7 @@
 #include <vector>
 #include <functional>
 #include <map>
+#include <optional>
 
 #include <QVector>
 
@@ -20,6 +21,7 @@ struct Single_Graph
 	QVector<double> y_data;
 	QCPGraph* graph_pointer;
 	Labeled_Metadata meta;
+	std::optional<double> x_location_for_y_alignment;
 };
 
 class Interactive_Graph_QObject_Adapter :
@@ -67,14 +69,16 @@ public:
 	void UpdateGraph( QCPGraph* existing_graph, QVector<double> x_data, QVector<double> y_data );
 	const Single_Graph< X_Unit_Type, Y_Unit_Type > & GetSelectedGraphData() const;
 	const Single_Graph< X_Unit_Type, Y_Unit_Type > & FindDataFromGraphPointer( QCPGraph* graph_pointer ) const;
+	void Recolor_Graphs( QCPColorGradient::GradientPreset gradient );
 
 	template< X_Unit_Type X_Units, Y_Unit_Type Y_Units >
-	const Single_Graph< X_Unit_Type, Y_Unit_Type > & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata() );
+	const Single_Graph< X_Unit_Type, Y_Unit_Type > & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata{} );
 
 	Axes_Scales axes;
 
 protected:
 	std::map< QString, Single_Graph< X_Unit_Type, Y_Unit_Type > > remembered_graphs;
+	std::vector< Single_Graph< X_Unit_Type, Y_Unit_Type >* > graphs_in_order;
 	std::vector< std::function<void( base_type*, QMenu*, QPoint )> > x_axis_menu_functions;
 	std::vector< std::function<void( base_type*, QMenu*, QPoint )> > y_axis_menu_functions;
 	std::vector< std::function<void( base_type*, QMenu*, QPoint )> > general_menu_functions;

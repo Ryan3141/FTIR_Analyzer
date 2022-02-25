@@ -15,22 +15,6 @@ using namespace std;
 namespace CV
 {
 
-double Rule_07( double temperature, double cutoff_wavelength )
-{
-	double J_0 = 8367.000019;
-	double Pwr = 0.544071282;
-	double C = -1.162972237;
-	double lambda_scale = 0.200847413;
-	double lambda_threshold = 4.635136423;
-	double k_B = 1.3806503e-23;
-	double ee = 1.60217646e-19;
-
-	double lambda_e = ( cutoff_wavelength >= lambda_threshold ) ? cutoff_wavelength :
-		cutoff_wavelength / ( 1 - std::pow( lambda_scale / cutoff_wavelength - lambda_scale / lambda_threshold, Pwr ) );
-
-	return J_0 * std::exp( C * 1.24 * ee / ( k_B * lambda_e * temperature ) );
-}
-
 Plotter::Plotter( QWidget *parent )
 	: QWidget( parent )
 {
@@ -69,12 +53,12 @@ void Plotter::Initialize_SQL( QString config_filename )
 
 void Plotter::Initialize_Tree_Table()
 {
-	config.header_titles    = QStringList{ "Sample Name", "Date", "Temperature (K)", "Location", "Device Area", "Time of Day", "Sweep Direction", "measurement_id" };
-	config.what_to_collect  = QStringList{ "sample_name", "date(time)", "temperature_in_k", "device_location", "device_area_in_um2", "time(time)", "sweep_direction", "measurement_id" };
+	config.header_titles    = QStringList{ "Sample Name", "Date", "Temperature (K)", "Location", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Time of Day", "AC Frequency (Hz)", "AC Amplitude (V)", "Sweep Direction", "measurement_id" };
+	config.what_to_collect  = QStringList{ "sample_name", "date(time)", "temperature_in_k", "device_location", "device_side_length_in_um", "time(time)", "ac_frequency_hz", "ac_amplitude_v", "sweep_direction", "measurement_id" };
 	config.sql_table        = "cv_measurements";
 	config.raw_data_columns = QStringList{ "measurement_id","voltage_v","capacitance_f" };
 	config.raw_data_table   = "cv_raw_data";
-	config.columns_to_show  = 6;
+	config.columns_to_show  = 8;
 
 	ui.treeWidget->Set_Column_Info( config.header_titles, config.what_to_collect, config.columns_to_show );
 
@@ -205,18 +189,22 @@ void Plotter::Update_Preview_Graph()
 	if( ui.displayHFPreview_checkBox->isChecked() )
 	{
 		auto[ voltages, capacitances ] = Get_MOS_Capacitance( semiconductor, insulator, metal, temperature_in_k, ui.customPlot->xAxis->range().lower, ui.customPlot->xAxis->range().upper, 1000.0 );
-		capacitances /= insulator.capacitance;
-		//ui.customPlot->Graph( toQVec( voltages ), toQVec( capacitances ), "HF Simulation" + QString::number( this->simulated_graph_number ),
-		//							QString( "HF %1, t=%2 nm, T=%3 K" ).arg( ui.insulatorType_comboBox->currentText(), QString::number( insulator_thickness * 1E9, 'f', 2 ),
-		//												QString::number( temperature_in_k, 'f', 2 ) ), true );
+		//capacitances /= insulator.capacitance;
+		ui.customPlot->Graph<X_Units::VOLTAGE_V, Y_Units::CAPACITANCE_F>( toQVec( voltages ), toQVec( capacitances ),
+																		  "HF Simulation" + QString::number( this->simulated_graph_number ),
+																		  QString( "HF %1, t=%2 nm, T=%3 K" ).arg( ui.insulatorType_comboBox->currentText(),
+																												   QString::number( insulator_thickness * 1E9, 'f', 2 ),
+																												   QString::number( temperature_in_k, 'f', 2 ) ) );
 	}
 	if( ui.displayLFPreview_checkBox->isChecked() )
 	{
 		auto[ voltages, capacitances ] = Get_MOS_Capacitance( semiconductor, insulator, metal, temperature_in_k, ui.customPlot->xAxis->range().lower, ui.customPlot->xAxis->range().upper, 0.0 );
-		capacitances /= insulator.capacitance;
-		//ui.customPlot->Graph( toQVec( voltages ), toQVec( capacitances ), "LF Simulation" + QString::number( this->simulated_graph_number ),
-		//							QString( "LF %1, t=%2 nm, T=%3 K" ).arg( ui.insulatorType_comboBox->currentText(), QString::number( insulator_thickness * 1E9, 'f', 2 ),
-		//												QString::number( temperature_in_k, 'f', 2 ) ), true );
+		//capacitances /= insulator.capacitance;
+		ui.customPlot->Graph<X_Units::VOLTAGE_V, Y_Units::CAPACITANCE_F>( toQVec( voltages ), toQVec( capacitances ),
+																		  "LF Simulation" + QString::number( this->simulated_graph_number ),
+																		  QString( "LF %1, t=%2 nm, T=%3 K" ).arg( ui.insulatorType_comboBox->currentText(),
+																												   QString::number( insulator_thickness * 1E9, 'f', 2 ),
+																												   QString::number( temperature_in_k, 'f', 2 ) ) );
 	}
 
 	ui.customPlot->replot();
@@ -229,12 +217,22 @@ void Plotter::treeContextMenuRequest( QPoint pos )
 	ID_To_Metadata selected = ui.treeWidget->Selected_Data();
 	bool only_one_thing_selected = selected.size() == 1;
 
-	menu->addAction( "Graph Selected", [this, selected]
+	menu->addAction( "Graph Selected", [ this, selected ]
 	{
 		for( auto[ measurement_id, metadata ] : selected )
 		{
 			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
 		}
+	} );
+
+	menu->addAction( "Copy Measurement IDs", [ this, selected ]
+	{
+		const auto measurement_ids = selected
+			% fn::transform( []( const auto & x ) { const auto &[ measurement_id, metadata ] = x; return measurement_id; } )
+			% fn::to( QStringList{} );
+
+		QClipboard *clipboard = QApplication::clipboard();
+		clipboard->setText( measurement_ids.join( '\n' ) );
 	} );
 
 	//menu->addAction( "Save to csv file", [this, selected]
@@ -259,7 +257,7 @@ void Plotter::Graph_Measurement( QString measurement_id, Labeled_Metadata metada
 				q( "Sample Name" ),
 				q( "Temperature (K)" ),
 				q( "Location" ),
-				q( "Device Area" ) ),
+				q( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" ) ),
 			metadata );
 		ui.customPlot->replot();
 	}, config.sorting_strategy );

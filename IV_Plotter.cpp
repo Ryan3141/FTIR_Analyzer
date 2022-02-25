@@ -54,8 +54,8 @@ void Plotter::Initialize_SQL( QString config_filename )
 	ui.sqlUser_lineEdit->setText( settings.value( "SQL_Server/default_user" ).toString() );
 	QMessageBox* msgBox = new QMessageBox( this );
 
-	sql_manager = new SQL_Manager( this, config_filename, "IV" );
-	connect( sql_manager, &SQL_Manager::Error_Connecting_To_SQL, this, [ config_filename ]( QSqlError error_message )
+	sql_manager = new SQL_Manager_With_Local_Cache( this, config_filename, "IV" );
+	connect( sql_manager, &SQL_Manager_With_Local_Cache::Error_Connecting_To_SQL, this, [ config_filename ]( QSqlError error_message )
 	{
 		QMessageBox msgBox;
 		msgBox.setText( "Error Opening SQL" );
@@ -145,6 +145,16 @@ void Plotter::treeContextMenuRequest( QPoint pos )
 	menu->addAction( "Save to csv file", [this, selected]
 	{
 		this->Save_To_CSV( selected );
+	} );
+
+	menu->addAction( "Copy Measurement IDs", [ this, selected ]
+	{
+		const auto measurement_ids = selected
+			% fn::transform( []( const auto & x ) { const auto &[ measurement_id, metadata ] = x; return measurement_id; } )
+			% fn::to( QStringList{} );
+
+		QClipboard *clipboard = QApplication::clipboard();
+		clipboard->setText( measurement_ids.join( '\n' ) );
 	} );
 
 	menu->popup( ui.treeWidget->mapToGlobal( pos ) );

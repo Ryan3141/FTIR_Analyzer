@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QtWidgets/QMainWindow>
+#include <QWidget>
 #include "ui_CV_Plotter.h"
 #include "SQL_Manager.h"
 

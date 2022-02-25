@@ -83,6 +83,7 @@ bool SQL_Manager::Initialize_DB_Connection()
 		const QSqlError & problem = sql_db.lastError();
 		qCritical() << "Error with SQL Connection: " << problem;
 		emit Error_Connecting_To_SQL( std::move( problem ) );
+		QTimer::singleShot( 10000, this, &SQL_Manager::Initialize_DB_Connection ); // Try again in 10 seconds if it failed
 	}
 
 	return sql_worked;
@@ -99,7 +100,7 @@ void SQL_Manager::Grab_SQL_XY_Data_From_Measurement_IDs( const QStringList & wha
 
 		QSqlQuery query( sql_db );
 		query.prepare( QString( "SELECT %1 FROM %2 WHERE measurement_id=\"%3\" %4" )
-					   .arg( what_to_collect.join( ',' ), table_name, measurement_ids.join( "\" OR measurement_id=\"" ), extra_filtering ) );
+					   .arg( what_to_collect.join( ',' ), table_name, measurement_ids.join( "\" OR measurement_id=\"" ), Sanitize_SQL(extra_filtering) ) );
 		if( !query.exec() )
 		{
 			qDebug() << "Error pulling data from ftir_measurments: "
@@ -135,7 +136,7 @@ void SQL_Manager::Grab_SQL_Metadata_From_Measurement_IDs( const QStringList & wh
 		QSqlQuery query( this->sql_db );
 		//QStringList what_to_collect{ "sample_name", "time", "temperature_in_k", "bias_in_v" };
 		query.prepare( QString( "SELECT %1 FROM %2 WHERE measurement_id=\"%3\" %4" )
-						.arg( what_to_collect.join( ',' ), table_name, measurement_ids.join( "\" OR measurement_id=\"" ), extra_filtering ) );
+						.arg( what_to_collect.join( ',' ), table_name, measurement_ids.join( "\" OR measurement_id=\"" ), Sanitize_SQL(extra_filtering) ) );
 		if( !query.exec() )
 		{
 			qDebug() << "Error pulling data from " << table_name << ":\n"

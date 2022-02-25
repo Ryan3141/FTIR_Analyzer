@@ -27,6 +27,7 @@ public:
 
 	//void Exact_Selected_Row( QPoint pos );
 	ID_To_Metadata Selected_Data();
+	Structured_Metadata Selected_Data_Order();
 
 	Structured_Metadata current_meta_data;
 

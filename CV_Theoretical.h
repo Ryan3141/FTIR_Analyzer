@@ -81,7 +81,7 @@ constexpr Electron_Volts HgCdTe_Bandgap_eV( double cdte_fraction, double tempera
 	double x_2 = x * x;
 	double x_3 = x_2 * x;
 
-	double bandgap = -0.302 + 1.93 * x - 0.813 * x_2 + 0.832 * x_3
+	double bandgap = -0.302 + 1.93 * x - 0.810 * x_2 + 0.832 * x_3
 		+ 5.35E-4 * (1 - 2 * x) * (-1882.0 + T_3) / (255.2 + T_2);
 	return Electron_Volts( bandgap );
 }

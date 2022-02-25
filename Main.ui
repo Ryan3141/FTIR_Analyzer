@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1279</width>
-    <height>1080</height>
+    <height>955</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -24,7 +24,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="main_tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="ftir_tab_layout">
        <attribute name="title">
@@ -49,6 +49,11 @@
       <widget class="CV::Plotter" name="tab">
        <attribute name="title">
         <string>C-V</string>
+       </attribute>
+      </widget>
+      <widget class="Report::Report_Plots" name="report_tab_layout">
+       <attribute name="title">
+        <string>Report</string>
        </attribute>
       </widget>
      </widget>
@@ -93,6 +98,12 @@
    <class>IV::Plotter</class>
    <extends>QWidget</extends>
    <header>IV_Plotter.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>Report::Report_Plots</class>
+   <extends>QWidget</extends>
+   <header>Report_Plots.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

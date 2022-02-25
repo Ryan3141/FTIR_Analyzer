@@ -28,13 +28,13 @@ constexpr QVector<FloatType> toQVec( const std::vector<FloatType> & input )
 
 inline QVector<double> toQVec( const arma::vec & input )
 {
-	return toQVec( std::move( arma::conv_to<std::vector<double>>::from( input ) ) );
+	return toQVec( arma::conv_to<std::vector<double>>::from( input ) );
 }
 
 template< typename T >
 T Info_Or_Default( const Labeled_Metadata & meta, QString column, T Default )
 {
-	auto stuff = meta.find( "device_area_in_um2" );
+	auto stuff = meta.find( column );
 	if( stuff == meta.end() || stuff->second == QVariant::Invalid )
 		return Default;
 	return qvariant_cast<T>( stuff->second );

@@ -122,15 +122,16 @@ void Debug_Print( std::string name, arma::cx_mat out )
 	cx_double debug10 = out( 1, 0 );
 	cx_double debug01 = out( 0, 1 );
 	cx_double debug11 = out( 1, 1 );
-	//if( !debug_file.is_open() )
-	//	return;
-	//debug_file << name << "\n";
-	//debug_file << "[ " << debug00 << ", " << debug01 << "\n";
-	//debug_file << "  " << debug10 << ", " << debug11 << "]\n";
+	if( !debug_file.is_open() )
+		return;
+	debug_file << name << "\n";
+	debug_file << "[ " << debug00 << ", " << debug01 << "\n";
+	debug_file << "  " << debug10 << ", " << debug11 << "]\n";
 }
 
 Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, Material_Layer backside_material ) const
 {
+	debug_file << "Here -1\n";
 	cx_vec previous_ns( arma::size( wavelengths ), arma::fill::ones );// , { 1, 0 }; // Air
 	cx_cube Overall_Matrix( 2, 2, wavelengths.n_rows );
 	Overall_Matrix.each_slice() = arma::eye<cx_mat>( 2, 2 );
@@ -138,6 +139,7 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 	cx_cube M_matrix( arma::size( Overall_Matrix ) );
 	double mix_amount1 = 0.1;
 	double mix_amount2 = 0.1;
+	debug_file << "Here 0\n";
 	for( const auto & layer : layers )
 	{
 		cx_vec current_ns = Get_Refraction_Index( layer.material, wavelengths, layer.parameters );
@@ -169,6 +171,7 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 			Overall_Matrix.slice( i ) = M_matrix.slice( i ) * A_matrix.slice( i ) * Overall_Matrix.slice( i );
 		previous_ns = std::move( current_ns );
 	}
+	debug_file << "Here 1\n";
 	{
 		if( backside_material.material == Material::Mirror )
 			A_matrix.fill( cx_double( 1 / 2., 0 ) );
@@ -187,6 +190,7 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 		for( auto i = 0; i < Overall_Matrix.n_slices; i++ )
 			Overall_Matrix.slice( i ) = A_matrix.slice( i ) * Overall_Matrix.slice( i );
 	}
+	debug_file << "Here 2\n";
 	//return { arma::vec(2049, arma::fill::ones), arma::vec(2049, arma::fill::ones) };
 
 	if constexpr( true ) // Version with exit transition
@@ -196,7 +200,9 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 			auto backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, backside_material.parameters );
 			auto sum = ( 1. + backside_ns ) / 2.;
 			auto difference = ( 1. - backside_ns ) / 2.;
-			auto transmission_amplitude = sum - difference % difference / sum;
+			arma::cx_vec difference2 = difference % difference;
+			auto transmission_amplitude = sum - difference2 / sum;
+			//auto transmission_amplitude = sum - difference % difference / sum; // sum - difference % difference seems to break release build
 			return vec( real( transmission_amplitude % conj( transmission_amplitude ) ) );
 			//auto reflection_amplitude = difference / sum;
 			//return vec( real( reflection_amplitude % conj( reflection_amplitude ) ) );

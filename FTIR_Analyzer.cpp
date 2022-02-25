@@ -125,7 +125,6 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, std::t
 		auto[ transmission, reflection ] = tfi.Get_Expected_Transmission( layers, x_data_meters, backside_material );
 		transmission *= largest_transmission;
 		reflection *= largest_transmission;
-
 		if( std::get<0>( what_to_plot ) )
 			ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( transmission ), "Transmission Simulation", "Transmission Simulation" );
 		if( std::get<1>( what_to_plot ) )
@@ -217,13 +216,13 @@ void FTIR_Analyzer::Run_Fit()
 
 void FTIR_Analyzer::Initialize_Tree_Table()
 {
-	config.header_titles    = QStringList{ "Sample Name", "Date", "Temperature (K)", "Dewar Temp (C)", "Time of Day", "Gain", "Bias (V)", "measurement_id" };
-	config.what_to_collect  = QStringList{ "sample_name", "date(time)", "temperature_in_k", "dewar_temp_in_c", "time(time)", "gain", "bias_in_v", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
+	config.header_titles    = QStringList{ "Date", "Sample Name", "Temperature (K)", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Location", "Bias (V)", "Dewar Temp (C)", "Time of Day", "Gain", "measurement_id" };
+	config.what_to_collect  = QStringList{ "date(time)", "sample_name", "temperature_in_k", "device_side_length_in_um", "device_location", "bias_in_v", "dewar_temp_in_c", "time(time)", "gain", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
 	config.sql_table        = "ftir_measurements";
 	config.raw_data_columns = QStringList{ "measurement_id","wavenumber","intensity" };
 	config.raw_data_table   = "ftir_raw_data";
 	config.sorting_strategy = "ORDER BY measurement_id, wavenumber ASC";
-	config.columns_to_show  = 7;
+	config.columns_to_show  = 8;
 
 	ui.treeWidget->Set_Column_Info( config.header_titles, config.what_to_collect, config.columns_to_show );
 
@@ -415,6 +414,16 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 	QMenu *menu = new QMenu( this );
 	menu->setAttribute( Qt::WA_DeleteOnClose );
 	ID_To_Metadata selected = ui.treeWidget->Selected_Data();
+
+	if( !selected.empty() )
+		menu->addAction( "Graph Selected", [ this, selected ]
+		{
+			for( auto[ measurement_id, metadata ] : selected )
+			{
+				Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
+			}
+		} );
+
 	bool only_one_thing_selected = selected.size() == 1;
 	if( only_one_thing_selected ) // Only show up if only 1 thing is selected
 	{
@@ -431,17 +440,19 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 
 	menu->addAction( "Clear Background", ui.customPlot, [ this ] { ui.customPlot->axes.Set_Y_Units( FTIR::Y_Units::RAW_SENSOR ); } );
 
-	menu->addAction( "Graph Selected", [this, selected]
-	{
-		for( auto[ measurement_id, metadata ] : selected )
-		{
-			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
-		}
-	} );
-
 	menu->addAction( "Save to csv file", [this, selected]
 	{
 		this->Save_To_CSV( selected );
+	} );
+
+	menu->addAction( "Copy Measurement IDs", [ this, selected ]
+	{
+		const auto measurement_ids = selected
+			% fn::transform( []( const auto & x ) { const auto &[ measurement_id, metadata ] = x; return measurement_id; } )
+			% fn::to( QStringList{} );
+
+		QClipboard *clipboard = QApplication::clipboard();
+		clipboard->setText( measurement_ids.join( '\n' ) );
 	} );
 
 	menu->popup( ui.treeWidget->mapToGlobal( pos ) );
@@ -546,9 +557,11 @@ void FTIR_Analyzer::Graph_Measurement( QString measurement_id, Labeled_Metadata 
 		const auto q = [ &metadata ]( const auto & i ) { return metadata.find( i )->second.toString(); };
 		const auto f = [ &metadata ]( const auto & i ) { return metadata.find( i )->second; };
 		//this->Graph( measurement_id, x_data, y_data, QString( "%1 %2 K" ).arg( row[ 0 ].toString(), row[ 2 ].toString() ), true, row );
-		QString legend_label = ( f( "Bias (V)" ).isNull() ) ?
-			QString( "%1 %2 K" ).arg( q( "Sample Name" ), q( "Temperature (K)" ) ) :
-			QString( "%1 %2 K at %3 mV" ).arg( q( "Sample Name" ), q( "Temperature (K)" ), QString::number( std::round( f( "Bias (V)" ).toFloat() * 1.0E3 ) ) );
+		// Please clean this code
+		QString bias_label   = f( "Bias (V)" ).isNull() ? "" : ( QString::number( std::round( f( "Bias (V)" ).toFloat() * 1.0E3 ) ) + " mV " );
+		QString device_label = f( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" ).isNull() ? ""
+			: ( q( "Location" ) + " " + QString::number( std::round( f( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" ).toFloat() ) ) + QString( QChar( 0x03BC ) ) + "m" );
+		QString legend_label = QString( "%4%1 %2 %3" ).arg( device_label, q( "Sample Name" ), q( "Temperature (K)" ) + " K", bias_label );
 		ui.customPlot->Graph<FTIR::X_Units::WAVE_NUMBER, FTIR::Y_Units::RAW_SENSOR>( x_data, y_data, measurement_id, legend_label, metadata );
 		ui.customPlot->replot();
 	}, config.sorting_strategy );

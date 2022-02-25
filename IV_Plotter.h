@@ -31,7 +31,7 @@ private:
 	void Update_Preview_Graph();
 
 	int simulated_graph_number = 0;
-	SQL_Manager* sql_manager;
+	SQL_Manager_With_Local_Cache* sql_manager;
 	Data_Configuration config;
 
 	using XY_Data = std::tuple< QVector<double>, QVector<double> >;

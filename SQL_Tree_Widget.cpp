@@ -199,3 +199,18 @@ ID_To_Metadata SQL_Tree_Widget::Selected_Data()
 
 	return output;
 }
+
+Structured_Metadata SQL_Tree_Widget::Selected_Data_Order()
+{
+	//auto actually_clicked = this->itemAt( pos );
+	std::vector<const QTreeWidgetItem*> selected_stuff = this->Get_Bottom_Children_Elements_Under( this->selectedItems() % fn::to( std::vector<const QTreeWidgetItem*>{} ) );
+
+	const std::vector<int> displayed_index_to_original = Get_Displayed_Column_Headers()
+		% fn::transform( [ this ]( const auto & new_header ) -> int { return header_titles.indexOf( new_header ); } )
+		% fn::to_vector();
+	Structured_Metadata output = { this->current_meta_data.column_names, {} };
+	for( const QTreeWidgetItem* tree_item : selected_stuff )
+		output.data.push_back( this->Get_Metadata_For_Row( tree_item, displayed_index_to_original ) );
+
+	return output;
+}

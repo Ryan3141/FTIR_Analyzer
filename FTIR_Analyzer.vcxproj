@@ -86,7 +86,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-10.7.3\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -106,12 +106,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-10.7.3\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>C:\Code\armadillo-8.600.0\examples\lib_win64;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>blas_win64_MT.lib;lapack_win64_MT.lib;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Code\armadillo-10.7.3\examples\lib_win64;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libopenblas.lib;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
@@ -197,11 +197,13 @@
     <ClCompile Include="FTIR_Interactive_Graph.cpp" />
     <ClCompile Include="III_V_Materials.cpp" />
     <ClCompile Include="Interactive_Graph_Toolbar.cpp" />
+    <ClCompile Include="IV_By_Device_Size_Plot.cpp" />
     <ClCompile Include="IV_Interactive_Graph.cpp" />
     <ClCompile Include="IV_Plotter.cpp" />
     <ClCompile Include="Material_Layer_Widget.cpp" />
     <ClCompile Include="Optimize.cpp" />
     <ClCompile Include="qcustomplot.cpp" />
+    <ClCompile Include="Report_Plots.cpp" />
     <ClCompile Include="SPA_File.cpp" />
     <ClCompile Include="SQL_Manager.cpp" />
     <ClCompile Include="SQL_Tree_Widget.cpp" />
@@ -210,6 +212,7 @@
     <QtUic Include="CV_Plotter.ui" />
     <QtUic Include="FTIR_Analyzer.ui" />
     <QtUic Include="IV_Plotter.ui" />
+    <QtUic Include="Report_Plots.ui" />
     <QtUic Include="skip_Fit_DoubleSpinBox.ui" />
     <QtUic Include="Main.ui" />
     <QtMoc Include="FTIR_Analyzer.h" />
@@ -230,11 +233,13 @@
     <ClInclude Include="fn.hpp" />
     <ClInclude Include="III_V_Materials.h" />
     <ClInclude Include="Interactive_Graph.cpp" />
+    <ClInclude Include="IV_By_Device_Size_Plot.h" />
     <ClInclude Include="IV_Interactive_Graph.h" />
     <QtMoc Include="IV_Plotter.h" />
     <ClInclude Include="Optimize.h" />
     <ClInclude Include="rangeless_helper.hpp" />
     <ClInclude Include="Rational.h" />
+    <QtMoc Include="Report_Plots.h" />
     <ClInclude Include="SPA_File.h" />
     <QtMoc Include="SQL_Tree_Widget.h" />
     <ClInclude Include="Units.h" />

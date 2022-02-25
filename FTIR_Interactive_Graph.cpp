@@ -63,7 +63,8 @@ std::tuple< QVector<double>, QVector<double> > Axes_Scales::Prepare_XY_Data( con
 				const double minimum_reliable_reading = 0.003;
 				if( std::abs( y ) < minimum_reliable_reading )
 					return 0.0;
-				return std::pow( std::abs( ( std::abs( y ) - minimum_reliable_reading ) / y ), 1 );
+				//return std::pow( std::abs( ( std::abs( y ) - minimum_reliable_reading ) / y ), 1 );
+				return 1.0;
 			};
 			for( auto[ transmission, x, y ] : fn::zip( transmission_data, graph_data.x_data, graph_data.y_data ) )
 			{
@@ -74,6 +75,8 @@ std::tuple< QVector<double>, QVector<double> > Axes_Scales::Prepare_XY_Data( con
 
 			if( this->y_units == Y_Units::ABSORPTION )
 			{
+				arma::cx_vec ft = arma::fft( arma::conv_to<arma::vec>::from( graph_data.y_data.toStdVector() ) );
+				return toQVec( arma::imag( ft ) );
 				double max_transmission = *std::max_element( transmission_data.constBegin(), transmission_data.constEnd() );
 				QVector<double> & absorption_data = transmission_data;
 				for( double & y : absorption_data )
@@ -184,6 +187,13 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 				//setText( tr( "Cannot display data" ) );
 				return;
 			}
+		} );
+
+		menu->addAction( "Align Y-Levels Here", [ this, pos ]
+		{
+			double x = this->xAxis->pixelToCoord( pos.x() );
+			double y = this->yAxis->pixelToCoord( pos.y() );
+
 		} );
 	} );
 }

@@ -226,15 +226,20 @@ void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeSelectedGra
 		return;
 
 	QCPGraph* selected_graph = this->selectedGraphs().first();
-	for( std::map< QString, Single_Graph< X_Unit_Type, Y_Unit_Type > >::iterator element = remembered_graphs.begin();
-			element != remembered_graphs.end(); ++element )
+	graphs_in_order.erase( std::remove_if( graphs_in_order.begin(), graphs_in_order.end(),
+		[ selected_graph ]( const auto & x ) { return x->graph_pointer == selected_graph; } ), graphs_in_order.end() );
+	for( auto element = remembered_graphs.cbegin();
+		 element != remembered_graphs.cend(); )
 	{
 		if( element->second.graph_pointer == selected_graph )
 		{
-			remembered_graphs.erase( element );
+			element = remembered_graphs.erase( element );
 			break;
 		}
+		else
+			++element;
 	}
+
 	this->removeGraph( selected_graph );
 	this->replot();
 }
@@ -244,6 +249,7 @@ void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeAllGraphs()
 {
 	this->clearGraphs();
 	this->remembered_graphs.clear();
+	this->graphs_in_order.clear();
 	this->replot();
 }
 
@@ -283,6 +289,8 @@ void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::graphContextMenuR
 			menu->addAction( "Remove selected graph", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::removeSelectedGraph );
 		menu->addAction( "Save current graph", this, &Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::saveCurrentGraph );
 
+		menu->addAction( "Recolor graphs with spectrum", [ this ] { this->Recolor_Graphs( QCPColorGradient::gpSpectrum ); } );
+		menu->addAction( "Recolor graphs with polar", [ this ] { this->Recolor_Graphs( QCPColorGradient::gpPolar ); } );
 		for( const auto & menu_function : this->general_menu_functions )
 			menu_function( this, menu, pos );
 	}
@@ -357,6 +365,33 @@ void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::RegraphAll()
 	//this->yAxis->setRangeLower( 0 );
 	//double upper = this->yAxis->range().upper;
 	//this->yAxis->setRangeUpper( std::min( upper, 100. ) );
+	this->replot();
+}
+
+template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+void Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>::Recolor_Graphs( QCPColorGradient::GradientPreset gradient )
+{
+	int color_index = 0;
+	this->graph( 0 );
+	for( const auto graph : this->graphs_in_order )
+	{
+		QPen graphPen;
+		//QCPColorGradient gradient( QCPColorGradient::gpPolar );
+		QCPColorGradient gradient_used( gradient );
+		gradient_used.setPeriodic( true );
+		//gradient.setLevelCount( 10 );
+		//const QVector< Qt::PenStyle > patterns = { Qt::SolidLine, Qt::DotLine, Qt::DashLine, Qt::DashDotDotLine, Qt::DashDotLine };
+		const QVector< Qt::PenStyle > patterns = { Qt::SolidLine };
+		graphPen.setColor( gradient_used.color( double(color_index) / std::max(1, int(remembered_graphs.size())), QCPRange( -0.1, 1.1 ) ) );
+		graphPen.setStyle( patterns[ color_index % patterns.size() ] );
+		//graphPen.setWidthF( 2 ); Changing width currently causes massive performance issues
+		color_index++;
+		//graphPen.setColor( QColor::fromHslF( (color_index++)/10.0*0.8, 0.95, 0.5) );
+		//graphPen.setColor( QColor::fromHsv( rand() % 255, 255, 255 ) );
+		//graphPen.setWidthF( rand() / (double)RAND_MAX * 2 + 1 );
+		graph->graph_pointer->setPen( graphPen );
+	}
+
 	this->replot();
 }
 
@@ -489,7 +524,8 @@ const Single_Graph< X_Unit_Type, Y_Unit_Type > & Interactive_Graph<X_Unit_Type, 
 			current_graph->setName( graph_title );
 
 		// Remember data before changing it at all
-		remembered_graphs[ measurement_name ] = Single_Graph< X_Unit_Type, Y_Unit_Type >{ X_Units, Y_Units, std::move( x_data ), std::move( y_data ), current_graph, meta };
+		remembered_graphs[ measurement_name ] = Single_Graph< X_Unit_Type, Y_Unit_Type >{ X_Units, Y_Units, std::move( x_data ), std::move( y_data ), current_graph, meta, std::nullopt };
+		graphs_in_order.push_back( &remembered_graphs[ measurement_name ] );
 		auto[ adjusted_x_data, adjusted_y_data ] = axes.Prepare_XY_Data( remembered_graphs[ measurement_name ] );
 		this->graph()->setData( adjusted_x_data, adjusted_y_data );
 		this->graph()->setLineStyle( QCPGraph::lsLine );// (QCPGraph::LineStyle)(rand() % 5 + 1) );
