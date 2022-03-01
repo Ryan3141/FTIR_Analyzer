@@ -13,7 +13,7 @@
 
 
 template< typename X_Types, typename Y_Types >
-struct Single_Graph
+struct Default_Single_Graph
 {
 	X_Types x_units;
 	Y_Types y_units;
@@ -22,6 +22,12 @@ struct Single_Graph
 	QCPGraph* graph_pointer;
 	Labeled_Metadata meta;
 	std::optional<double> x_location_for_y_alignment;
+};
+
+struct Prepared_Data
+{
+	QVector<double> x_data;
+	QVector<double> y_data;
 };
 
 class Interactive_Graph_QObject_Adapter :
@@ -41,11 +47,11 @@ public:
 	}
 };
 
-template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
+template< typename Single_Graph, typename Axes_Scales >
 class Interactive_Graph :
 	public Interactive_Graph_QObject_Adapter
 {
-	using base_type = Interactive_Graph<X_Unit_Type, Y_Unit_Type, Axes_Scales>;
+	using base_type = Interactive_Graph<Single_Graph, Axes_Scales>;
 public:
 	explicit Interactive_Graph( QWidget *parent = nullptr );
 	void Initialize_Graph();
@@ -67,18 +73,18 @@ public:
 	void Hide_Graph( QString graph_name );
 	void RegraphAll();
 	void UpdateGraph( QCPGraph* existing_graph, QVector<double> x_data, QVector<double> y_data );
-	const Single_Graph< X_Unit_Type, Y_Unit_Type > & GetSelectedGraphData() const;
-	const Single_Graph< X_Unit_Type, Y_Unit_Type > & FindDataFromGraphPointer( QCPGraph* graph_pointer ) const;
+	const Single_Graph & GetSelectedGraphData() const;
+	const Single_Graph & FindDataFromGraphPointer( QCPGraph* graph_pointer ) const;
 	void Recolor_Graphs( QCPColorGradient::GradientPreset gradient );
 
-	template< X_Unit_Type X_Units, Y_Unit_Type Y_Units >
-	const Single_Graph< X_Unit_Type, Y_Unit_Type > & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata{} );
+	template< decltype(Single_Graph::x_units) X, decltype( Single_Graph::y_units ) Y >
+	const Single_Graph & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata{} );
 
 	Axes_Scales axes;
 
 protected:
-	std::map< QString, Single_Graph< X_Unit_Type, Y_Unit_Type > > remembered_graphs;
-	std::vector< Single_Graph< X_Unit_Type, Y_Unit_Type >* > graphs_in_order;
+	std::map< QString, Single_Graph > remembered_graphs;
+	std::vector< const Single_Graph* > graphs_in_order;
 	std::vector< std::function<void( base_type*, QMenu*, QPoint )> > x_axis_menu_functions;
 	std::vector< std::function<void( base_type*, QMenu*, QPoint )> > y_axis_menu_functions;
 	std::vector< std::function<void( base_type*, QMenu*, QPoint )> > general_menu_functions;

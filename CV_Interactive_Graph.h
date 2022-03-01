@@ -14,12 +14,13 @@
 namespace CV
 {
 
+using Single_Graph = Default_Single_Graph<X_Units, Y_Units>;
+
 struct Axes
 {
 	Axes( std::function<void()> regraph_function );
 
-	std::tuple< QVector<double>, QVector<double> >
-		Prepare_XY_Data( const Single_Graph< X_Units, Y_Units > & graph );
+	Prepared_Data Prepare_XY_Data( const Single_Graph & graph );
 
 	const static X_Units default_x_units = X_Units::VOLTAGE_V;
 	const static Y_Units default_y_units = Y_Units::CAPACITANCE_F;
@@ -31,8 +32,10 @@ struct Axes
 	const static QString Y_Unit_Names[ 5 ];
 };
 
+using Graph_Base = ::Interactive_Graph<Single_Graph, Axes>;
+
 class Interactive_Graph :
-	public ::Interactive_Graph<X_Units, Y_Units, Axes>
+	public Graph_Base
 {
 public:
 	Interactive_Graph( QWidget *parent = nullptr );

@@ -31,7 +31,7 @@ void Axes_Scales::Set_As_Background( XY_Data xy )
 	graph_function();
 }
 
-std::tuple< QVector<double>, QVector<double> > Axes_Scales::Prepare_XY_Data( const Single_Graph< FTIR::X_Units, FTIR::Y_Units > & graph_data ) const
+Prepared_Data Axes_Scales::Prepare_XY_Data( const Single_Graph & graph_data ) const
 {
 	const QVector<double> x_data = [ &graph_data, this ] {
 		if( this->x_units == graph_data.x_units )
@@ -105,8 +105,6 @@ std::tuple< QVector<double>, QVector<double> > Axes_Scales::Prepare_XY_Data( con
 
 	return { std::move( x_data ), std::move( y_data ) };
 }
-
-using Graph_Base = ::Interactive_Graph<X_Units, Y_Units, Axes_Scales>;
 
 Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 	Graph_Base( parent )

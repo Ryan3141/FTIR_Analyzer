@@ -5,9 +5,7 @@
 
 #include "Units.h"
 
-#include "fn.hpp"
-namespace fn = rangeless::fn;
-using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>(arg))));
+#include "rangeless_helper.hpp"
 
 //static QString Unit_Names[ 3 ] = { "Wave Number (cm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + ")",
 //							"Wavelength (" + QString( QChar( 0x03BC ) ) + "m)",
@@ -15,8 +13,6 @@ using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>
 
 namespace IV
 {
-
-using Graph_Base = ::Interactive_Graph<X_Units, Y_Units, Axes>;
 
 Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 	Graph_Base( parent ),
@@ -48,8 +44,8 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 						graph->yAxis->setScaleType( QCPAxis::stLogarithmic );
 						this->yAxis->setTicker( logTicker );
 						this->yAxis2->setTicker( logTicker );
-						this->yAxis->setNumberFormat( "eed" );
-						this->yAxis2->setNumberFormat( "eed" );
+						this->yAxis->setNumberFormat( "ebd" );
+						this->yAxis2->setNumberFormat( "ebd" );
 						this->yAxis->setNumberPrecision( 0 );
 						this->yAxis2->setNumberPrecision( 0 );
 						if( this->yAxis->range().lower < 0 )
@@ -62,8 +58,8 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 						graph->yAxis->setScaleType( QCPAxis::stLinear );
 						this->yAxis->setTicker( linearTicker );
 						this->yAxis2->setTicker( linearTicker );
-						this->yAxis->setNumberFormat( "ggd" );
-						this->yAxis2->setNumberFormat( "ggd" );
+						this->yAxis->setNumberFormat( "gbd" );
+						this->yAxis2->setNumberFormat( "gbd" );
 						this->yAxis->setNumberPrecision( 6 );
 						this->yAxis2->setNumberPrecision( 6 );
 					}

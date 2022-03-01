@@ -198,6 +198,7 @@
     <ClCompile Include="III_V_Materials.cpp" />
     <ClCompile Include="Interactive_Graph_Toolbar.cpp" />
     <ClCompile Include="IV_By_Device_Size_Plot.cpp" />
+    <ClCompile Include="IV_By_Size_Plotter.cpp" />
     <ClCompile Include="IV_Interactive_Graph.cpp" />
     <ClCompile Include="IV_Plotter.cpp" />
     <ClCompile Include="Material_Layer_Widget.cpp" />
@@ -234,6 +235,7 @@
     <ClInclude Include="III_V_Materials.h" />
     <ClInclude Include="Interactive_Graph.cpp" />
     <ClInclude Include="IV_By_Device_Size_Plot.h" />
+    <QtMoc Include="IV_By_Size_Plotter.h" />
     <ClInclude Include="IV_Interactive_Graph.h" />
     <QtMoc Include="IV_Plotter.h" />
     <ClInclude Include="Optimize.h" />

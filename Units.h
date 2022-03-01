@@ -11,41 +11,6 @@
 //	CURRENT_NA = 3
 //};
 
-namespace IV
-{
-enum class X_Units
-{
-	VOLTAGE_V = 0
-};
-
-enum class Y_Units
-{
-	CURRENT_A = 0,
-	CURRENT_A_PER_AREA_CM = 1,
-	LOG_CURRENT_A = 2,
-	LOG_CURRENT_A_PER_AREA_CM = 3,
-	ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM = 4,
-	RESISTANCE_OHM = 5,
-	RESISTANCE_OHM_PER_AREA_CM = 6
-};
-}
-
-namespace Report
-{
-enum class X_Units
-{
-	AREA_OVER_PERIMETER_M = 0
-};
-
-enum class Y_Units
-{
-	CURRENT_A = 0,
-	CURRENT_A_PER_AREA_CM = 1,
-	LOG_CURRENT_A = 2,
-	LOG_CURRENT_A_PER_AREA_CM = 3,
-};
-}
-
 namespace CV
 {
 enum class X_Units

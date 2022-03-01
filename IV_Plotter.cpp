@@ -7,7 +7,7 @@ using namespace std;
 namespace IV
 {
 
-double Rule_07( double temperature, double cutoff_wavelength )
+double Rule_07( double temperature, double cutoff_wavelength, double device_length_um )
 {
 	double J_0 = 8367.000019;
 	double Pwr = 0.544071282;
@@ -17,10 +17,12 @@ double Rule_07( double temperature, double cutoff_wavelength )
 	double k_B = 1.3806503e-23;
 	double ee = 1.60217646e-19;
 
+	double scale_for_device_length = device_length_um / cutoff_wavelength;
+
 	double lambda_e = ( cutoff_wavelength >= lambda_threshold ) ? cutoff_wavelength :
 		cutoff_wavelength / ( 1 - std::pow( lambda_scale / cutoff_wavelength - lambda_scale / lambda_threshold, Pwr ) );
 
-	return J_0 * std::exp( C * 1.24 * ee / ( k_B * lambda_e * temperature ) );
+	return scale_for_device_length * J_0 * std::exp( C * 1.24 * ee / ( k_B * lambda_e * temperature ) );
 }
 
 Plotter::Plotter( QWidget *parent )
@@ -161,22 +163,30 @@ void Plotter::treeContextMenuRequest( QPoint pos )
 }
 
 
-void Plotter::Graph_Rule07( double temperature_in_k, double cutoff_wavelength )
+void Plotter::Graph_Rule07( double dark_current_a_cm2, double temperature_in_k )
 {
 	// "Sample Name", "Location", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Temperature (K)", "Date", "Time of Day", "measurement_id"
 	double lower_bound = ui.customPlot->xAxis->range().lower;
 	double upper_bound = ui.customPlot->xAxis->range().upper;
-	double rule_07 = Rule_07( temperature_in_k, cutoff_wavelength );
-	ui.customPlot->Graph<X_Units::VOLTAGE_V, Y_Units::CURRENT_A>( QVector<double>( { lower_bound, upper_bound } ), QVector<double>( { rule_07, rule_07 } ), "Rule 07", "Rule 07", Label_Metadata( { "Rule 07", "", 1E4, temperature_in_k, "", "", "" }, config.header_titles ) );
+	double side_length_um = 1E4; // Set it as a pretend device of area 1 cm^2 to make units correct
+	ui.customPlot->Graph<X_Units::VOLTAGE_V, Y_Units::CURRENT_A>( QVector<double>( { lower_bound, upper_bound } ), QVector<double>( { dark_current_a_cm2, dark_current_a_cm2 } ),
+																  "Rule 07", "Rule 07", Label_Metadata( { "Rule 07", "", side_length_um, temperature_in_k, "", "", "" }, config.header_titles ) );
 	ui.customPlot->replot();
 }
 
 void Plotter::Initialize_Rule07()
 {
+	// Initialize Rule 07 Box
+	double rule_07 = Rule_07( ui.rule07Temperature_doubleSpinBox->value(), ui.rule07Cutoff_doubleSpinBox->value(), ui.rule07DeviceLength_doubleSpinBox->value() );
+	ui.rule07DarkCurrent_lineEdit->setText( QString::number( rule_07, 'E', 2 ) + QString::fromWCharArray( L" A/cm\u00B2" ) );
+
 	auto replot_rule07 = [ this ]
 	{
+		double temperature_in_k = ui.rule07Temperature_doubleSpinBox->value();
+		double rule_07 = Rule_07( temperature_in_k, ui.rule07Cutoff_doubleSpinBox->value(), ui.rule07DeviceLength_doubleSpinBox->value() );
+		ui.rule07DarkCurrent_lineEdit->setText( QString::number( rule_07, 'E', 4 ) + QString::fromWCharArray( L" A/cm\u00B2" ) );
 		if( this->ui.rule07_checkBox->isChecked() )
-			this->Graph_Rule07( ui.rule07Temperature_doubleSpinBox->value(), ui.rule07Cutoff_doubleSpinBox->value() );
+			this->Graph_Rule07( rule_07, temperature_in_k );
 		else
 			ui.customPlot->Hide_Graph( "Rule 07" );
 	};
@@ -185,7 +195,12 @@ void Plotter::Initialize_Rule07()
 	{
 		replot_rule07();
 	} );
-	connect( ui.rule07Cutoff_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ this, replot_rule07 ]( double )
+	connect( ui.rule07Cutoff_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ this, replot_rule07 ]( double value )
+	{
+		ui.rule07DeviceLength_doubleSpinBox->setValue( value );
+		replot_rule07();
+	} );
+	connect( ui.rule07DeviceLength_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ this, replot_rule07 ]( double )
 	{
 		replot_rule07();
 	} );

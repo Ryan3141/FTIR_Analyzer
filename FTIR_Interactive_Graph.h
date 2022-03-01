@@ -27,6 +27,8 @@ enum class Y_Units
 	DONT_CHANGE = 4
 };
 
+using Single_Graph = Default_Single_Graph<X_Units, Y_Units>;
+
 struct Axes_Scales
 {
 	using XY_Data = std::tuple< QVector<double>, QVector<double> >;
@@ -46,7 +48,7 @@ struct Axes_Scales
 
 	void Set_As_Background( XY_Data xy );
 
-	std::tuple< QVector<double>, QVector<double> > Prepare_XY_Data( const Single_Graph<FTIR::X_Units, FTIR::Y_Units> & graph_data ) const;
+	Prepared_Data Prepare_XY_Data( const Single_Graph & graph_data ) const;
 
 	QVector<double> background_x_data;
 	QVector<double> background_y_data;
@@ -63,8 +65,10 @@ struct Axes_Scales
 		"Absorption Derivative" };
 };
 
+using Graph_Base = ::Interactive_Graph<Single_Graph, FTIR::Axes_Scales>;
+
 class Interactive_Graph :
-	public ::Interactive_Graph<FTIR::X_Units, FTIR::Y_Units, FTIR::Axes_Scales>
+	public Graph_Base
 {
 public:
 	Interactive_Graph( QWidget* parent = nullptr );

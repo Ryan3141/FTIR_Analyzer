@@ -19,7 +19,6 @@ struct Data_Configuration
 using Metadata = std::vector<QVariant>;
 using Labeled_Metadata = std::map<QString, QVariant>;
 
-
 template<typename FloatType>
 constexpr QVector<FloatType> toQVec( const std::vector<FloatType> & input )
 {

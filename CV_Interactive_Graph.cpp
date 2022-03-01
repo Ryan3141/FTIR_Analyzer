@@ -16,8 +16,6 @@ using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>
 namespace CV
 {
 
-using Graph_Base = ::Interactive_Graph<X_Units, Y_Units, Axes>;
-
 Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 	Graph_Base( parent )
 {
@@ -51,7 +49,7 @@ Axes::Axes( std::function<void()> regraph_function ) : graph_function( regraph_f
 {
 }
 
-std::tuple< QVector<double>, QVector<double> > Axes::Prepare_XY_Data( const Single_Graph< X_Units, Y_Units > & graph )
+Prepared_Data Axes::Prepare_XY_Data( const Single_Graph & graph )
 {
 	arma::vec x_data = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
 	arma::vec y_data = arma::conv_to<arma::vec>::from( graph.y_data.toStdVector() );

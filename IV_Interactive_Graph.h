@@ -21,6 +21,23 @@
 namespace IV
 {
 
+enum class X_Units
+{
+	VOLTAGE_V = 0
+};
+
+enum class Y_Units
+{
+	CURRENT_A = 0,
+	CURRENT_A_PER_AREA_CM = 1,
+	LOG_CURRENT_A = 2,
+	LOG_CURRENT_A_PER_AREA_CM = 3,
+	ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM = 4,
+	RESISTANCE_OHM = 5,
+	RESISTANCE_OHM_PER_AREA_CM = 6
+};
+
+using Single_Graph = Default_Single_Graph<X_Units, Y_Units>;
 
 //struct Single_Graph
 //{
@@ -34,7 +51,7 @@ namespace IV
 //	current_info.y_data.size() == y_data.size() )
 struct Axes
 {
-	inline std::tuple< QVector<double>, QVector<double> > Prepare_XY_Data( const Single_Graph< X_Units, Y_Units > & graph )
+	inline Prepared_Data Prepare_XY_Data( const Single_Graph & graph )
 	{
 		arma::vec x_data = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
 		arma::vec y_data = arma::conv_to<arma::vec>::from( graph.y_data.toStdVector() );
@@ -50,21 +67,21 @@ struct Axes
 			break;
 			case Y_Units::LOG_CURRENT_A:
 			{
-				//y_data = arma::log10( arma::abs( y_data ) );
+				//y_data = arma::log10( arma::abs( y_data ) ); // Plotting on log scale now so taking log is unnecessary
 				y_data = arma::abs( y_data );
 			}
 			break;
 			case Y_Units::LOG_CURRENT_A_PER_AREA_CM:
 			{
 				double side_cm = graph.meta.find( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" )->second.toDouble() * 1E-4;
-				//y_data = arma::log10( arma::abs( y_data / ( side_cm * side_cm ) ) );
+				//y_data = arma::log10( arma::abs( y_data / ( side_cm * side_cm ) ) ); // Plotting on log scale now so taking log is unnecessary
 				y_data = arma::abs( y_data / ( side_cm * side_cm ) );
 			}
 			break;
 			case Y_Units::ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM:
 			{
 				double side_cm = graph.meta.find( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" )->second.toDouble() * 1E-4;
-				//y_data = arma::log10( arma::abs( y_data / ( side_cm * side_cm ) ) );
+				//y_data = arma::log10( arma::abs( y_data / ( side_cm * side_cm ) ) ); // Plotting on log scale now so taking log is unnecessary
 				y_data = arma::abs( y_data / ( side_cm * side_cm ) );
 				x_data = arma::abs( x_data );
 			}
@@ -107,8 +124,10 @@ struct Axes
 
 };
 
+using Graph_Base = ::Interactive_Graph<Default_Single_Graph<X_Units, Y_Units>, Axes>;
+
 class Interactive_Graph :
-	public ::Interactive_Graph<X_Units, Y_Units, Axes>
+	public Graph_Base
 {
 public:
 	Interactive_Graph( QWidget *parent = nullptr );

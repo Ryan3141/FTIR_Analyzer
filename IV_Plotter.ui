@@ -253,7 +253,7 @@
        <item>
         <widget class="QTabWidget" name="settings_tabWidget">
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="graphSettings_tab">
           <attribute name="title">
@@ -360,6 +360,12 @@
                 </item>
                 <item>
                  <widget class="QDoubleSpinBox" name="rule07Temperature_doubleSpinBox">
+                  <property name="maximumSize">
+                   <size>
+                    <width>80</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
                   <property name="suffix">
                    <string> K</string>
                   </property>
@@ -390,6 +396,12 @@
                 </item>
                 <item>
                  <widget class="QDoubleSpinBox" name="rule07Cutoff_doubleSpinBox">
+                  <property name="maximumSize">
+                   <size>
+                    <width>80</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
                   <property name="suffix">
                    <string> μm</string>
                   </property>
@@ -406,6 +418,56 @@
                    <double>10.000000000000000</double>
                   </property>
                  </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_4">
+                <item>
+                 <widget class="QLabel" name="label_28">
+                  <property name="text">
+                   <string>Device Length</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="rule07DeviceLength_doubleSpinBox">
+                  <property name="maximumSize">
+                   <size>
+                    <width>80</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="suffix">
+                   <string> μm</string>
+                  </property>
+                  <property name="minimum">
+                   <double>1.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>50.000000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.500000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>10.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_5">
+                <item>
+                 <widget class="QLabel" name="label_29">
+                  <property name="text">
+                   <string>Dark Current</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="rule07DarkCurrent_lineEdit"/>
                 </item>
                </layout>
               </item>
