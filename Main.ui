@@ -24,7 +24,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="main_tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="ftir_tab_layout">
        <attribute name="title">
@@ -46,12 +46,17 @@
         </item>
        </layout>
       </widget>
-      <widget class="CV::Plotter" name="tab">
+      <widget class="IV_By_Size::Plotter" name="ivBySize_tab">
+       <attribute name="title">
+        <string>IV By Size</string>
+       </attribute>
+      </widget>
+      <widget class="CV::Plotter" name="cv_tab">
        <attribute name="title">
         <string>C-V</string>
        </attribute>
       </widget>
-      <widget class="Report::Report_Plots" name="report_tab_layout">
+      <widget class="Report::Report_Plots" name="report_tab">
        <attribute name="title">
         <string>Report</string>
        </attribute>
@@ -104,6 +109,12 @@
    <class>Report::Report_Plots</class>
    <extends>QWidget</extends>
    <header>Report_Plots.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>IV_By_Size::Plotter</class>
+   <extends>QWidget</extends>
+   <header>IV_By_Size_Plotter.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

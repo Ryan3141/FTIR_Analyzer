@@ -212,6 +212,7 @@
     <QtRcc Include="FTIR_Analyzer.qrc" />
     <QtUic Include="CV_Plotter.ui" />
     <QtUic Include="FTIR_Analyzer.ui" />
+    <QtUic Include="IV_By_Size_Plotter.ui" />
     <QtUic Include="IV_Plotter.ui" />
     <QtUic Include="Report_Plots.ui" />
     <QtUic Include="skip_Fit_DoubleSpinBox.ui" />

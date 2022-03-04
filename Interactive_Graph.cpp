@@ -356,9 +356,9 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::RegraphAll()
 {
 	for( const auto &[ name, graph ] : remembered_graphs )
 	{
-		auto[ x_data, y_data ] = axes.Prepare_XY_Data( graph );
+		axes.Graph_XY_Data( name, graph );
 
-		this->UpdateGraph( graph.graph_pointer, x_data, y_data );
+		//this->UpdateGraph( graph.graph_pointer, x_data, y_data );
 	}
 
 	//this->rescaleAxes();

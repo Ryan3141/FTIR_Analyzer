@@ -5,7 +5,7 @@
 
 #include "Units.h"
 
-namespace Report
+namespace IV_By_Size
 {
 
 using Graph_Base = ::Interactive_Graph<IV_Scatter_Plot, Axes>;
@@ -24,7 +24,7 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 		{
 			std::array<double, 2> bounds = { xAxis->range().lower, xAxis->range().upper };
 			for( double & x : bounds )
-				x = Report::Convert_Units( this->axes.x_units, new_type, x );
+				x = IV_By_Size::Convert_Units( this->axes.x_units, new_type, x );
 			xAxis->setRange( std::min( bounds[ 0 ], bounds[ 1 ] ), std::max( bounds[ 0 ], bounds[ 1 ] ) );
 			graph->xAxis->setLabel( Axes::X_Unit_Names[ int( new_type ) ] );
 			this->axes.x_units = new_type;
@@ -104,28 +104,54 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 //using IV_Scatter_Plot = std::tuple< Structured_Metadata, ID_To_XY_Data >;
 //
 
+Linear_Equation Linear_Regression( arma::vec x_data, arma::vec y_data )
+{
+	double x_average = arma::mean( x_data );
+	double y_average = arma::mean( y_data );
+	auto S_x = arma::sum( arma::pow( x_data - x_average, 2 ) );
+	auto S_xy = arma::sum( ( x_data - x_average ) % ( y_data - y_average ) );
+	double slope = S_xy / S_x;
+	double y_intercept = y_average - slope * x_average;
+	return { y_intercept, slope };
+}
+
 const IV_Scatter_Plot & Interactive_Graph::Store_IV_Scatter_Plot( QString measurement_name, Structured_Metadata metadata, ID_To_XY_Data data )
 {
 	static int color_index = 0;
-	QCPGraph* current_graph = this->addGraph();
+	QCPGraph* xy_scatter_graph = this->addGraph();
+	QCPGraph* line_fit_pointer = this->addGraph();
 
 	//if( graph_title.isEmpty() )
-		current_graph->setName( measurement_name );
+		xy_scatter_graph->setName( measurement_name );
 	//else
-	//	current_graph->setName( graph_title );
+	//	xy_scatter_graph->setName( graph_title );
 
 	// Remember data before changing it at all
-	remembered_graphs[ measurement_name ] = { std::move( metadata ), std::move( data ), current_graph };
-	this->graph()->setLineStyle( QCPGraph::lsNone );
-	this->graph()->setScatterStyle( QCPScatterStyle::ssCircle );
+	remembered_graphs[ measurement_name ] = { std::move( metadata ), std::move( data ), xy_scatter_graph, line_fit_pointer };
+	graphs_in_order.push_back( &( remembered_graphs[ measurement_name ] ) );
+
 	QPen graphPen;
 	//QCPColorGradient gradient( QCPColorGradient::gpPolar );
 	QCPColorGradient gradient( QCPColorGradient::gpSpectrum );
 	gradient.setPeriodic( true );
 	graphPen.setColor( gradient.color( color_index / 10.0, QCPRange( 0.0, 1.0 ) ) );
-	//graphPen.setWidthF( 2 ); Changing width currently causes massive performance issues
-	color_index++;
-	this->graph()->setPen( graphPen );
+	{
+		xy_scatter_graph->setLineStyle( QCPGraph::lsNone );
+		xy_scatter_graph->setScatterStyle( QCPScatterStyle::ssCircle );
+		QPen graphPen;
+		//QCPColorGradient gradient( QCPColorGradient::gpPolar );
+		QCPColorGradient gradient( QCPColorGradient::gpSpectrum );
+		gradient.setPeriodic( true );
+		graphPen.setColor( gradient.color( color_index / 10.0, QCPRange( 0.0, 1.0 ) ) );
+		color_index++;
+		xy_scatter_graph->setPen( graphPen );
+	}
+	{
+		line_fit_pointer->setLineStyle( QCPGraph::lsLine );
+		line_fit_pointer->setScatterStyle( QCPScatterStyle::ssNone );
+		//graphPen.setWidthF( 2 ); Changing width currently causes massive performance issues
+		line_fit_pointer->setPen( graphPen );
+	}
 
 	return remembered_graphs[ measurement_name ];
 }
@@ -138,6 +164,19 @@ const IV_Scatter_Plot & Interactive_Graph::Store_IV_Scatter_Plot( QString measur
 
 	//stored_graphs.emplace_back( { metadata.column_names, metadata_sorted_by_device_sizes }, data );
 
+void Axes::Graph_XY_Data( QString measurement_name, const IV_Scatter_Plot & graph )
+{
+	//scatter_data->setVisible( true );
+	//scatter_data->addToLegend();
+
+	auto[ x_data, y_data ] = this->Prepare_XY_Data( graph );
+	graph.graph_pointer->setData( x_data, y_data );
+
+	auto[ fit_name, x_line_fit_data, y_line_fit_data ] = this->Prepare_Linear_Fit_Data( x_data, y_data );
+	graph.line_fit_pointer->setName( fit_name );
+	graph.line_fit_pointer->setData( x_line_fit_data, y_line_fit_data );
+}
+
 const IV_Scatter_Plot & Interactive_Graph::Graph( Structured_Metadata metadata, ID_To_XY_Data data )
 {
 	auto[ measurement_name, x_data, y_data ] = Axes::Build_XY_Data( metadata, data, axes.set_voltage );
@@ -146,14 +185,60 @@ const IV_Scatter_Plot & Interactive_Graph::Graph( Structured_Metadata metadata, 
 		Store_IV_Scatter_Plot( measurement_name, metadata, data );
 
 	const auto & this_measurement = remembered_graphs.at( measurement_name );
-	QCPGraph* this_graph = this_measurement.graph_pointer;
-	auto[ adjusted_x_data, adjusted_y_data ] = axes.Prepare_XY_Data( this_measurement, x_data, y_data );
-	this_graph->setData( adjusted_x_data, adjusted_y_data );
-
-	this_graph->setVisible( true );
-	this_graph->addToLegend();
+	axes.Graph_XY_Data( measurement_name, this_measurement );
 
 	return this_measurement;
+}
+
+void Interactive_Graph::Show_Reference_Graph( QString measurement_name, QVector<double> x_data, QVector<double> y_data )
+{
+	if( reference_graph_pointer == nullptr )
+	{
+		reference_graph_pointer = this->addGraph();
+		reference_graph_pointer->setName( measurement_name );
+		reference_graph_pointer->setLineStyle( QCPGraph::lsLine );
+		QPen graphPen;
+		graphPen.setColor( QRgb( 0xFF0000 ) );
+		graphPen.setStyle( Qt::SolidLine );
+		this->graph()->setPen( graphPen );
+	}
+
+	reference_graph_pointer->setData( x_data, y_data );
+
+	reference_graph_pointer->setVisible( true );
+	reference_graph_pointer->addToLegend();
+}
+
+void Interactive_Graph::Hide_Reference_Graph( QString measurement_name )
+{
+	if( reference_graph_pointer == nullptr || !reference_graph_pointer->visible() ) // Already invisible, nothing to do
+		return;
+	reference_graph_pointer->setVisible( false );
+	reference_graph_pointer->removeFromLegend();
+}
+
+void Interactive_Graph::Hide_Fit_Graphs( bool should_hide )
+{
+	for( auto full_graph : this->graphs_in_order )
+	{
+		QCPGraph* xy_scatter_graph = full_graph->graph_pointer;
+		QCPGraph* line_fit_graph = full_graph->line_fit_pointer;
+		if( should_hide )
+		{
+			if( !line_fit_graph->visible() ) // Already invisible, nothing to do
+				return;
+			line_fit_graph->setVisible( false );
+			line_fit_graph->removeFromLegend();
+		}
+		else
+		{
+			xy_scatter_graph->removeFromLegend();
+			xy_scatter_graph->addToLegend();
+			line_fit_graph->setVisible( true );
+			line_fit_graph->addToLegend();
+		}
+	}
+	this->replot();
 }
 
 Axes::Prepared_Data_And_Name Axes::Build_XY_Data( const Structured_Metadata & metadata, const ID_To_XY_Data & data, double voltage_to_use )

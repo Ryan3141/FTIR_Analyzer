@@ -17,6 +17,18 @@ void Add_Mouse_Position_Label( QCustomPlot* graph, QLabel* statusLabel )
 	} );
 }
 
+void Add_Mouse_Position_And_Point_Label( QCustomPlot* graph, QLabel* statusLabel )
+{
+	statusLabel->setText( "Status Label" );
+	QObject::connect( graph, &QCustomPlot::mouseMove, [ statusLabel, graph ]( QMouseEvent *event )
+	{
+		double x = graph->xAxis->pixelToCoord( event->pos().x() );
+		double y = graph->yAxis->pixelToCoord( event->pos().y() );
+
+		statusLabel->setText( QString( "%1 , %2" ).arg( x ).arg( y ) );
+	} );
+}
+
 int main(int argc, char *argv[])
 {
 	if constexpr( false )
@@ -58,6 +70,8 @@ int main(int argc, char *argv[])
 	ui.statusBar->addPermanentWidget( statusLabel );
 	Add_Mouse_Position_Label( ui.ftir_tab->ui.customPlot, statusLabel );
 	Add_Mouse_Position_Label( ui.iv_tab->ui.customPlot, statusLabel );
+	Add_Mouse_Position_Label( ui.ivBySize_tab->ui.customPlot, statusLabel );
+	Add_Mouse_Position_Label( ui.cv_tab->ui.customPlot, statusLabel );
 	w.show();
 	return a.exec();
 }

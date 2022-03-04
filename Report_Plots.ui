@@ -93,7 +93,7 @@
        <enum>Qt::Vertical</enum>
       </property>
       <widget class="IV::Interactive_Graph" name="reportIV_customPlot" native="true"/>
-      <widget class="Report::Interactive_Graph" name="reportIVSize_customPlot" native="true"/>
+      <widget class="IV_By_Size::Interactive_Graph" name="reportIVSize_customPlot" native="true"/>
      </widget>
      <widget class="QSplitter" name="splitter">
       <property name="minimumSize">
@@ -128,19 +128,19 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>FTIR::Interactive_Graph</class>
-   <extends>QWidget</extends>
-   <header>FTIR_Interactive_Graph.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>IV::Interactive_Graph</class>
    <extends>QWidget</extends>
    <header>IV_Interactive_Graph.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>Report::Interactive_Graph</class>
+   <class>FTIR::Interactive_Graph</class>
+   <extends>QWidget</extends>
+   <header>FTIR_Interactive_Graph.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>IV_By_Size::Interactive_Graph</class>
    <extends>QWidget</extends>
    <header>IV_By_Device_Size_Plot.h</header>
    <container>1</container>

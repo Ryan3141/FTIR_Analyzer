@@ -56,6 +56,11 @@ Prepared_Data Axes::Prepare_XY_Data( const Single_Graph & graph )
 	return { toQVec( x_data ), toQVec( y_data ) };
 }
 
+void Axes::Graph_XY_Data( QString measurement_name, const Single_Graph & graph )
+{
+	auto[ x_data, y_data ] = this->Prepare_XY_Data( graph );
+	graph.graph_pointer->setData( x_data, y_data );
+}
 
 const QString Axes::X_Unit_Names[ 1 ] = { "Voltage (V)" };
 const QString Axes::Y_Unit_Names[ 5 ] = { "Capacitance (F)",

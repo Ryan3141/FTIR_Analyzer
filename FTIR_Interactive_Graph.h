@@ -49,6 +49,7 @@ struct Axes_Scales
 	void Set_As_Background( XY_Data xy );
 
 	Prepared_Data Prepare_XY_Data( const Single_Graph & graph_data ) const;
+	void Graph_XY_Data( QString measurement_name, const Single_Graph & graph );
 
 	QVector<double> background_x_data;
 	QVector<double> background_y_data;

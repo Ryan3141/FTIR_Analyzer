@@ -2,6 +2,8 @@
 
 #include "Interactive_Graph_Toolbar.h"
 
+#include "IV_By_Size_Plotter.h"
+
 namespace Report
 {
 
@@ -25,7 +27,7 @@ void Report_Plots::Initialize_SQL( QString config_filename )
 	config.sorting_strategy = "ORDER BY measurement_id, voltage_v ASC";
 	config.columns_to_show = 6;
 
-	sql_manager = new SQL_Manager( this, config_filename, "Report" );
+	sql_manager = new SQL_Manager_With_Local_Cache( this, config_filename, "Report" );
 	sql_manager->Start_Thread();
 }
 	//auto repoll_sql = [ this ]
@@ -91,42 +93,12 @@ void Report_Plots::Load_Report( QFileInfo file )
 			% fn::transform( []( const auto & std_s ) { return QString::fromStdString( std_s ); } )
 		) );
 
-		std::function<void( Structured_Metadata )> test = [ this ]( Structured_Metadata metadata )
+		auto grab_raw_data = [ this ]( Structured_Metadata metadata )
 		{
-			const auto & column_names = metadata.column_names;
-
-			int measurement_id_i = column_names.indexOf( "measurement_id" );
-			const std::vector<QString> measurement_ids_as_vec = metadata.data
-				% fn::transform( [ measurement_id_i ]( const auto & row_of_metadata ) { return row_of_metadata[ measurement_id_i ].toString(); } );
-			const QStringList measurement_ids = QStringList::fromVector( QVector<QString>::fromStdVector( measurement_ids_as_vec ) );
-
-			sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, measurement_ids, this,
-																[ this, metadata = std::move( metadata ) ]( ID_To_XY_Data data )
-			{
-				ui.reportIVSize_customPlot->Graph( metadata, data );
-				ui.reportIVSize_customPlot->replot();
-			}, config.sorting_strategy );
-
+			Graph_IV_By_Size_Raw_Data( this, ui.reportIVSize_customPlot, metadata );
 		};
 
-		sql_manager->Grab_All_SQL_Metadata( config.what_to_collect, config.sql_table, this, test, QString( " WHERE measurement_id in (%1)" ).arg( ids_in_report.join( ',' ) ) );
-
-		//sql_manager->Grab_All_SQL_Metadata( config.what_to_collect, config.sql_table, this, [ this ]( Structured_Metadata metadata )
-		//{
-		//	const auto & column_names = metadata.column_names;
-
-		//	int measurement_id_i = column_names.indexOf( "measurement_id" );
-		//	const std::vector<QString> measurement_ids_as_vec = metadata.data
-		//		% fn::transform( [ measurement_id_i ]( const auto & row_of_metadata ) { return row_of_metadata[ measurement_id_i ].toString(); } );
-		//	const QStringList measurement_ids = QStringList::fromVector( QVector<QString>::fromStdVector( measurement_ids_as_vec ) );
-
-		//	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, measurement_ids, this,
-		//														[ this, metadata = std::move( metadata ) ]( ID_To_XY_Data data )
-		//	{
-		//		ui.reportIVSize_customPlot->Add_IV_Scatter_Plot( metadata, data );
-		//	}, config.sorting_strategy );
-
-		//}, QString( " WHERE measurement_id in (%1)" ).arg( ids_in_report.join( ',' ) ) );
+		sql_manager->Grab_All_SQL_Metadata( config.what_to_collect, config.sql_table, this, grab_raw_data, QString( " WHERE measurement_id in (%1)" ).arg( ids_in_report.join( ',' ) ) );
 	}
 }
 

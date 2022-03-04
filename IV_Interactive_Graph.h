@@ -103,6 +103,13 @@ struct Axes
 		return { toQVec( x_data ), toQVec( y_data ) };
 	}
 
+	void Graph_XY_Data( QString measurement_name, const Single_Graph & graph )
+	{
+		auto[ x_data, y_data ] = this->Prepare_XY_Data( graph );
+		graph.graph_pointer->setData( x_data, y_data );
+	}
+
+
 	const static X_Units default_x_units = X_Units::VOLTAGE_V;
 	const static Y_Units default_y_units = Y_Units::CURRENT_A;
 	X_Units x_units = default_x_units;

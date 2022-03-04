@@ -15,14 +15,13 @@ class Report_Plots : public QWidget
 
 public:
 	Report_Plots(QWidget *parent = Q_NULLPTR);
+	Data_Configuration config;
+	SQL_Manager_With_Local_Cache* sql_manager;
 
 private:
 	void Initialize_SQL( QString config_filename );
 	void Initialize_Graph();
 	void Load_Report( QFileInfo file );
-
-	SQL_Manager* sql_manager;
-	Data_Configuration config;
 
 	Ui::Report_Plots ui;
 };

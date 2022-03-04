@@ -106,6 +106,12 @@ Prepared_Data Axes_Scales::Prepare_XY_Data( const Single_Graph & graph_data ) co
 	return { std::move( x_data ), std::move( y_data ) };
 }
 
+void Axes_Scales::Graph_XY_Data( QString measurement_name, const Single_Graph & graph )
+{
+	auto[ x_data, y_data ] = this->Prepare_XY_Data( graph );
+	graph.graph_pointer->setData( x_data, y_data );
+}
+
 Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 	Graph_Base( parent )
 {
