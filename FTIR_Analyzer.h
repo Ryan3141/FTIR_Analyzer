@@ -41,7 +41,7 @@ private:
 	void Initialize_Simulation();
 	void Initialize_SQL( QString config_filename );
 
-	void Graph_Measurement( QString measurement_id, Labeled_Metadata metadata );
+	void Graph_Data( const ID_To_Metadata & selected_data );
 	void Graph_Simulation( std::vector<Material_Layer> layers, std::tuple<bool, bool, bool> what_to_plot, double largest_transmission = 100.0, Material_Layer backside_material = Material_Layer() );
 	void Graph_Blackbody( double temperature_in_k, double amplitude );
 	void Graph_Refractive_Index( std::string material_name, Optional_Material_Parameters parameters );
@@ -51,10 +51,12 @@ private:
 
 	void Save_To_CSV( const ID_To_Metadata & things_to_save );
 
-	Data_Configuration config;
 	QLabel* statusLabel;
 	Thin_Film_Interference* thin_film_manager;
 	SQL_Manager_With_Local_Cache* sql_manager;
+	SQL_Configuration config;
 };
+
+void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label = "" );
 
 }

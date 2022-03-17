@@ -24,7 +24,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="main_tabWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>4</number>
       </property>
       <widget class="QWidget" name="ftir_tab_layout">
        <attribute name="title">

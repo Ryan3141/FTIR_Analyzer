@@ -28,7 +28,7 @@ private:
 
 	int simulated_graph_number = 0;
 	SQL_Manager* sql_manager;
-	Data_Configuration config;
+	SQL_Configuration config;
 
 	using XY_Data = std::tuple< QVector<double>, QVector<double> >;
 };

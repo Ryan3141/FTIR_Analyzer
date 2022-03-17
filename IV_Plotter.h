@@ -22,8 +22,8 @@ private:
 	void Initialize_Tree_Table();
 	void Initialize_Graph();
 	void Initialize_Rule07();
-	void Graph_Measurement( QString measurement_id, Labeled_Metadata metadata );
 	void treeContextMenuRequest( QPoint pos );
+	void Graph_Data( const ID_To_Metadata & selected_data );
 	void Graph_Rule07( double dark_current_a_cm2, double temperature_in_k );
 	void Save_To_CSV( const ID_To_Metadata & things_to_save );
 
@@ -32,7 +32,9 @@ private:
 
 	int simulated_graph_number = 0;
 	SQL_Manager_With_Local_Cache* sql_manager;
-	Data_Configuration config;
+	SQL_Configuration config;
 };
+
+void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label = "" );
 
 }

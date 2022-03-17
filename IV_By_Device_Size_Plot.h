@@ -38,6 +38,12 @@ struct IV_Scatter_Plot
 	ID_To_XY_Data data;
 	QCPGraph* graph_pointer;
 	QCPGraph* line_fit_pointer;
+
+	void SetPen( const QPen & graphPen ) const
+	{
+		graph_pointer->setPen( graphPen );
+		line_fit_pointer->setPen( graphPen );
+	}
 };
 
 template< typename FloatType >
@@ -153,7 +159,7 @@ struct Axes
 	{
 		arma::vec x_data = arma::conv_to<arma::vec>::from( alread_scaled_x_Qdata.toStdVector() );
 		arma::vec y_data = arma::conv_to<arma::vec>::from( alread_scaled_y_Qdata.toStdVector() );
-		auto[ b, m ] = Linear_Regression( x_data, y_data );
+		auto [ b, m ] = Linear_Regression( x_data, y_data );
 
 		double x_max = arma::max( x_data );
 		arma::vec fit_x = arma::linspace( 0.0, x_max, 1001 );
@@ -201,8 +207,8 @@ struct Axes
 		return { QString::number( m, 'E', 4 ) + " x + " + QString::number( b, 'E', 4 ), toQVec( fit_x ), toQVec( fit_y ) };
 	}
 
-	const static X_Units default_x_units = X_Units::AREA_OVER_PERIMETER_UM;
-	const static Y_Units default_y_units = Y_Units::CURRENT_A;
+	const static X_Units default_x_units = X_Units::PERIMETER_OVER_AREA_UM;
+	const static Y_Units default_y_units = Y_Units::CURRENT_A_PER_AREA_CM;
 	X_Units x_units = default_x_units;
 	Y_Units y_units = default_y_units;
 	std::function<void()> graph_function;
@@ -210,22 +216,27 @@ struct Axes
 
 	const static QString X_Unit_Names[ 3 ];
 	const static QString Y_Unit_Names[ 4 ];
+	const static QString Change_To_X_Unit_Names[ 3 ];
 	const static QString Change_To_Y_Unit_Names[ 4 ];
 };
+
+using Single_Graph = IV_Scatter_Plot;
 
 class Interactive_Graph :
 	public ::Interactive_Graph<IV_Scatter_Plot, Axes>
 {
 public:
 	Interactive_Graph( QWidget *parent = nullptr );
+	void Change_X_Axis( int index );
+	void Change_Y_Axis( int index );
 
-	const IV_Scatter_Plot & Graph( Structured_Metadata metadata, ID_To_XY_Data data );
+	const Single_Graph & Graph( Structured_Metadata metadata, ID_To_XY_Data data, QString plot_title = "" );
 	void Show_Reference_Graph( QString measurement_name, QVector<double> x_data, QVector<double> y_data );
 	void Hide_Reference_Graph( QString measurement_name );
 	void Hide_Fit_Graphs( bool should_hide );
 
 private:
-	const IV_Scatter_Plot & Store_IV_Scatter_Plot( QString measurement_name, Structured_Metadata metadata, ID_To_XY_Data data );
+	const Single_Graph & Store_IV_Scatter_Plot( QString measurement_name, Structured_Metadata metadata, ID_To_XY_Data data );
 
 	//const Single_Graph< X_Units, Y_Units > & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata{} );
 	QCPGraph* reference_graph_pointer = nullptr;

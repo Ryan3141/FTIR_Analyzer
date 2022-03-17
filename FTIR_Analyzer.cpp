@@ -85,6 +85,19 @@ void FTIR_Analyzer::Initialize_SQL( QString config_filename )
 	sql_manager->Start_Thread();
 }
 
+void FTIR_Analyzer::Graph_Data( const ID_To_Metadata & selected_data )
+{
+	for( auto[ measurement_id, metadata ] : selected_data )
+	{
+		auto labeled_metadata = Label_Metadata( metadata, config.what_to_collect );
+		sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this,
+															[ this, measurement_id, labeled_metadata ]( ID_To_XY_Data data )
+		{
+			Graph_Measurement( std::move( data ), ui.customPlot, measurement_id, labeled_metadata );
+		}, config.sorting_strategy );
+	}
+}
+
 void FTIR_Analyzer::Graph_Blackbody( double temperature_in_k, double amplitude )
 {
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
@@ -216,8 +229,8 @@ void FTIR_Analyzer::Run_Fit()
 
 void FTIR_Analyzer::Initialize_Tree_Table()
 {
-	config.header_titles    = QStringList{ "Date", "Sample Name", "Temperature (K)", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Location", "Bias (V)", "Dewar Temp (C)", "Time of Day", "Gain", "measurement_id" };
-	config.what_to_collect  = QStringList{ "date(time)", "sample_name", "temperature_in_k", "device_side_length_in_um", "device_location", "bias_in_v", "dewar_temp_in_c", "time(time)", "gain", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
+	config.header_titles    = QStringList{ "Date", "Sample Name", "Temperature (K)", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Location", "Bias (V)", "Time of Day", "T Gain", "Gain", "Dewar Temp (C)", "measurement_id" };
+	config.what_to_collect  = QStringList{ "date(time)", "sample_name", "temperature_in_k", "device_side_length_in_um", "device_location", "bias_in_v", "time(time)", "transimpedance_gain", "gain", "dewar_temp_in_c", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
 	config.sql_table        = "ftir_measurements";
 	config.raw_data_columns = QStringList{ "measurement_id","wavenumber","intensity" };
 	config.raw_data_table   = "ftir_raw_data";
@@ -240,10 +253,7 @@ void FTIR_Analyzer::Initialize_Tree_Table()
 
 	connect( ui.treeWidget, &SQL_Tree_Widget::Data_Double_Clicked, [this]( ID_To_Metadata id_and_metadata )
 	{
-		for( auto [ measurement_id, metadata ] : id_and_metadata )
-		{
-			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
-		}
+		Graph_Data( id_and_metadata );
 	} );
 
 	// setup policy and connect slot for context menu popup:
@@ -263,9 +273,9 @@ void FTIR_Analyzer::Initialize_Graph()
 	connect( ui.customPlot, &FTIR::Interactive_Graph::Graph_Selected, [this]( QCPGraph* selected_graph )
 	{
 		const auto & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
-		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "Sample Name", "" ) );
-		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "Temperature (K)", "" ) );
-		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default<QString>( measurement.meta, "Gain", "" ) );
+		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "sample_name", "" ) );
+		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "temperature_in_k", "" ) );
+		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default<QString>( measurement.meta, "gain", "" ) );
 
 		//	QVector<double> cutoffs = Find_Zero_Crossings( x_data, y_data, *std::max_element( y_data.constBegin(), y_data.constEnd() ) / 2 );
 		//	if( !cutoffs.isEmpty() )
@@ -416,13 +426,7 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 	ID_To_Metadata selected = ui.treeWidget->Selected_Data();
 
 	if( !selected.empty() )
-		menu->addAction( "Graph Selected", [ this, selected ]
-		{
-			for( auto[ measurement_id, metadata ] : selected )
-			{
-				Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
-			}
-		} );
+		menu->addAction( "Graph Selected", [ this, selected ] { Graph_Data( selected ); } );
 
 	bool only_one_thing_selected = selected.size() == 1;
 	if( only_one_thing_selected ) // Only show up if only 1 thing is selected
@@ -453,6 +457,16 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 
 		QClipboard *clipboard = QApplication::clipboard();
 		clipboard->setText( measurement_ids.join( '\n' ) );
+	} );
+
+	menu->addAction( "Copy Measurement IDs (YAML)", [ this, selected ]
+	{
+		const auto measurement_ids = selected
+			% fn::transform( []( const auto & x ) { const auto &[ measurement_id, metadata ] = x; return measurement_id; } )
+			% fn::to( QStringList{} );
+
+		QClipboard *clipboard = QApplication::clipboard();
+		clipboard->setText( "[" + measurement_ids.join( ',' ) + "]" );
 	} );
 
 	menu->popup( ui.treeWidget->mapToGlobal( pos ) );
@@ -544,33 +558,37 @@ void FTIR_Analyzer::Save_To_CSV( const ID_To_Metadata & things_to_save )
 			}
 		}, config.sorting_strategy );
 	}
-
 }
 
-// 	config.header_titles    = QStringList{ "Sample Name", "Date", "Temperature (K)", "Dewar Temp (C)", "Time of Day", "Gain", "measurement_id" };
 
-void FTIR_Analyzer::Graph_Measurement( QString measurement_id, Labeled_Metadata metadata )
+template< typename Func >
+QString lookup( const Labeled_Metadata & metadata, const QString & lookup_name, QString the_default, Func run_if_exists )
 {
-	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this, [ this, measurement_id, metadata ]( ID_To_XY_Data data )
-	{
-		auto & [ x_data, y_data ] = data[ measurement_id ];
-		const auto q = [ &metadata ]( const auto & i ) { return metadata.find( i )->second.toString(); };
-		const auto f = [ &metadata ]( const auto & i ) { return metadata.find( i )->second; };
-		//this->Graph( measurement_id, x_data, y_data, QString( "%1 %2 K" ).arg( row[ 0 ].toString(), row[ 2 ].toString() ), true, row );
-		// Please clean this code
-		QString bias_label   = f( "Bias (V)" ).isNull() ? "" : ( QString::number( std::round( f( "Bias (V)" ).toFloat() * 1.0E3 ) ) + " mV " );
-		QString device_label = f( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" ).isNull() ? ""
-			: ( q( "Location" ) + " " + QString::number( std::round( f( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" ).toFloat() ) ) + QString( QChar( 0x03BC ) ) + "m" );
-		QString legend_label = QString( "%4%1 %2 %3" ).arg( device_label, q( "Sample Name" ), q( "Temperature (K)" ) + " K", bias_label );
-		ui.customPlot->Graph<FTIR::X_Units::WAVE_NUMBER, FTIR::Y_Units::RAW_SENSOR>( x_data, y_data, measurement_id, legend_label, metadata );
-		ui.customPlot->replot();
-	}, config.sorting_strategy );
+	auto lookup = metadata.find( lookup_name );
+	if( lookup == metadata.end() || lookup->second.isNull() )
+		return the_default;
+	else
+		return run_if_exists( lookup->second );
 }
 
-//void FTIR_Analyzer::Graph( QString measurement_id, const QVector<double> & x_data, const QVector<double> & y_data, QString data_title, bool allow_y_scaling, Metadata meta )
-//{
-//	ui.customPlot->Graph( x_data, y_data, measurement_id, data_title, allow_y_scaling, meta );
-//	ui.customPlot->replot();
-//}
+void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label )
+{
+	const auto &[ x_data, y_data ] = data[ measurement_id ];
+	QString used_legend_label = legend_label;
+	if( used_legend_label == "" )
+	{
+		auto to_string = []( QVariant value ) { return value.toString(); };
+		QString sample_name = lookup( metadata, "sample_name", "", to_string );
+		QString temperature_label = lookup( metadata, "temperature_in_k", "", []( QVariant value ) { return value.toString() + " K"; } );
+		QString bias_label = lookup( metadata, "bias_in_v", "", []( QVariant value ) { return QString::number( std::round( value.toFloat() * 1.0E3 ) ) + " mV ";  } );
+		QString side_length_label = lookup( metadata, "device_side_length_in_um", "",
+											[]( QVariant value ) { return QString::number( std::round( value.toFloat() ) ) + " " + QString( QChar( 0x03BC ) ) + "m";  } );
+		QString device_location = lookup( metadata, "device_location", "", to_string );
+		used_legend_label = QStringList{ sample_name, device_location, side_length_label, temperature_label, bias_label }.join( " " );
+	}
+	graph->Graph<FTIR::X_Units::WAVE_NUMBER, FTIR::Y_Units::RAW_SENSOR>( x_data, y_data, measurement_id, used_legend_label, metadata );
+	graph->replot();
+}
+
 
 }

@@ -100,10 +100,7 @@ void Plotter::Initialize_Tree_Table()
 
 	connect( ui.treeWidget, &SQL_Tree_Widget::Data_Double_Clicked, [ this ]( ID_To_Metadata id_and_metadata )
 	{
-		for( auto[ measurement_id, metadata ] : id_and_metadata )
-		{
-			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
-		}
+		Graph_Data( id_and_metadata );
 	} );
 
 	// setup policy and connect slot for context menu popup:
@@ -138,10 +135,7 @@ void Plotter::treeContextMenuRequest( QPoint pos )
 
 	menu->addAction( "Graph Selected", [this, selected]
 	{
-		for( auto[ measurement_id, metadata ] : selected )
-		{
-			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
-		}
+		Graph_Data( selected );
 	} );
 
 	menu->addAction( "Save to csv file", [this, selected]
@@ -159,9 +153,31 @@ void Plotter::treeContextMenuRequest( QPoint pos )
 		clipboard->setText( measurement_ids.join( '\n' ) );
 	} );
 
+	menu->addAction( "Copy Measurement IDs (YAML)", [ this, selected ]
+	{
+		const auto measurement_ids = selected
+			% fn::transform( []( const auto & x ) { const auto &[ measurement_id, metadata ] = x; return measurement_id; } )
+			% fn::to( QStringList{} );
+
+		QClipboard *clipboard = QApplication::clipboard();
+		clipboard->setText( "[" + measurement_ids.join( ',' ) + "]" );
+	} );
+
 	menu->popup( ui.treeWidget->mapToGlobal( pos ) );
 }
 
+void Plotter::Graph_Data( const ID_To_Metadata & selected_data )
+{
+	for( auto[ measurement_id, metadata ] : selected_data )
+	{
+		auto labeled_metadata = Label_Metadata( metadata, config.what_to_collect );
+		sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this,
+															[ this, measurement_id, labeled_metadata ]( ID_To_XY_Data data )
+		{
+			Graph_Measurement( std::move( data ), ui.customPlot, measurement_id, labeled_metadata );
+		}, config.sorting_strategy );
+	}
+}
 
 void Plotter::Graph_Rule07( double dark_current_a_cm2, double temperature_in_k )
 {
@@ -170,7 +186,7 @@ void Plotter::Graph_Rule07( double dark_current_a_cm2, double temperature_in_k )
 	double upper_bound = ui.customPlot->xAxis->range().upper;
 	double side_length_um = 1E4; // Set it as a pretend device of area 1 cm^2 to make units correct
 	ui.customPlot->Graph<X_Units::VOLTAGE_V, Y_Units::CURRENT_A>( QVector<double>( { lower_bound, upper_bound } ), QVector<double>( { dark_current_a_cm2, dark_current_a_cm2 } ),
-																  "Rule 07", "Rule 07", Label_Metadata( { "Rule 07", "", side_length_um, temperature_in_k, "", "", "" }, config.header_titles ) );
+																  "Rule 07", "Rule 07", Label_Metadata( { "Rule 07", "", side_length_um, temperature_in_k, "", "", "" }, config.what_to_collect ) );
 	ui.customPlot->replot();
 }
 
@@ -206,25 +222,6 @@ void Plotter::Initialize_Rule07()
 	} );
 	connect( ui.rule07_checkBox, &QCheckBox::stateChanged, [ replot_rule07 ]( int ) { replot_rule07(); } );
 
-}
-//const QStringList header_titles{ "Sample Name", "Date", "Temperature (K)", "Location", "Side Length", "Time of Day", "Sweep Direction", "measurement_id" };
-void Plotter::Graph_Measurement( QString measurement_id, Labeled_Metadata metadata )
-{
-	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this, [ this, measurement_id, metadata ]( ID_To_XY_Data data )
-	{
-		auto[ x_data, y_data ] = data[ measurement_id ];
-		const auto q = [ &metadata ]( const auto & i ) { return metadata.find( i )->second.toString(); };
-		ui.customPlot->Graph<X_Units::VOLTAGE_V, Y_Units::CURRENT_A>(
-			x_data, y_data, measurement_id,
-			//QString("%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3").arg( row[0].toString(), row[2].toString(), row[3].toString(), QString::number(int(std::sqrt(row[4].toInt()))) ) );
-			QString( "%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3" ).arg(
-				q( "Sample Name" ),
-				q( "Temperature (K)" ),
-				q( "Location" ),
-				q( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" ) ),
-			metadata );
-		ui.customPlot->replot();
-	}, config.sorting_strategy );
 }
 
 void Plotter::Save_To_CSV( const ID_To_Metadata & things_to_save )
@@ -316,4 +313,35 @@ void Plotter::Save_To_CSV( const ID_To_Metadata & things_to_save )
 	}
 
 }
+
+template< typename Func >
+QString lookup( const Labeled_Metadata & metadata, const QString & lookup_name, QString the_default, Func run_if_exists )
+{
+	auto lookup = metadata.find( lookup_name );
+	if( lookup == metadata.end() || lookup->second.isNull() )
+		return the_default;
+	else
+		return run_if_exists( lookup->second );
+}
+
+//const QStringList header_titles{ "Sample Name", "Date", "Temperature (K)", "Location", "Side Length", "Time of Day", "Sweep Direction", "measurement_id" };
+void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label )
+{
+	auto[ x_data, y_data ] = data[ measurement_id ];
+	QString used_legend_label = legend_label;
+	if( used_legend_label == "" )
+	{
+		auto to_string = []( QVariant value ) { return value.toString(); };
+		QString sample_name = lookup( metadata, "sample_name", "", to_string );
+		QString temperature_label = lookup( metadata, "temperature_in_k", "", []( QVariant value ) { return value.toString() + " K"; } );
+		QString bias_label = lookup( metadata, "bias_in_v", "", []( QVariant value ) { return QString::number( std::round( value.toFloat() * 1.0E3 ) ) + " mV ";  } );
+		QString side_length_label = lookup( metadata, "device_side_length_in_um", "",
+											[]( QVariant value ) { return QString::number( std::round( value.toFloat() ) ) + " " + QString( QChar( 0x03BC ) ) + "m";  } );
+		QString device_location = lookup( metadata, "device_location", "", to_string );
+		used_legend_label = QStringList{ sample_name, device_location, side_length_label, temperature_label, bias_label }.join( " " );
+	}
+	graph->Graph<X_Units::VOLTAGE_V, Y_Units::CURRENT_A>( x_data, y_data, measurement_id, used_legend_label, metadata );
+	graph->replot();
+}
+
 }

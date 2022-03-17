@@ -19,9 +19,9 @@ namespace CV
 Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 	Graph_Base( parent )
 {
-	this->y_axis_menu_functions.emplace_back( [this]( Graph_Base* graph, QMenu* menu, QPoint pos )
+	this->y_axis_menu_functions.emplace_back( [this]( QMenu* menu, QPoint pos )
 	{
-		if( graph->yAxis->selectTest( pos, false ) >= 0 ) // general context menu on graphs requested
+		if( this->yAxis->selectTest( pos, false ) >= 0 ) // general context menu on graphs requested
 		{
 			//CURRENT_A = 0,
 			//	CURRENT_A_PER_AREA_CM = 1,

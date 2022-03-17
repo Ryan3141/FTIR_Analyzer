@@ -18,80 +18,73 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 	axes.graph_function = [ this ]() { this->RegraphAll(); }; // Override graph function
 	this->yAxis->setTicker( linearTicker );
 	this->yAxis2->setTicker( linearTicker );
-	this->x_axis_menu_functions.push_back( [ this ]( Graph_Base* graph, QMenu* menu, QPoint pos )
+	this->x_axis_menu_functions.emplace_back( [ this ]( QMenu* menu, QPoint pos ) mutable
 	{
-		auto Fix_X_Range = [ graph, this ]( X_Units new_type )
+		for( size_t index = 0; index < sizeof( Axes::X_Unit_Names ) / sizeof( Axes::X_Unit_Names[ 0 ] ); index++ )
 		{
-			std::array<double, 2> bounds = { xAxis->range().lower, xAxis->range().upper };
-			for( double & x : bounds )
-				x = IV_By_Size::Convert_Units( this->axes.x_units, new_type, x );
-			xAxis->setRange( std::min( bounds[ 0 ], bounds[ 1 ] ), std::max( bounds[ 0 ], bounds[ 1 ] ) );
-			graph->xAxis->setLabel( Axes::X_Unit_Names[ int( new_type ) ] );
-			this->axes.x_units = new_type;
-			this->RegraphAll();
-		};
-		menu->addAction( "Change to Side Length", [ this, Fix_X_Range ]
-		{
-			Fix_X_Range( X_Units::SIDE_LENGTH_UM );
-		} );
-		menu->addAction( "Change to Area / Perimeter", [ this, Fix_X_Range ]
-		{
-			Fix_X_Range( X_Units::AREA_OVER_PERIMETER_UM );
-		} );
-		menu->addAction( "Change to Perimeter / Area", [ this, Fix_X_Range ]
-		{
-			Fix_X_Range( X_Units::PERIMETER_OVER_AREA_UM );
-		} );
-	} );
-
-	this->y_axis_menu_functions.emplace_back( [ this ]( Graph_Base* graph, QMenu* menu, QPoint pos )
-	{
-		if( graph->yAxis->selectTest( pos, false ) >= 0 ) // general context menu on graphs requested
-		{
-			//CURRENT_A = 0,
-			//	CURRENT_A_PER_AREA_CM = 1,
-			//	LOG_CURRENT_A = 2,
-			//	LOG_CURRENT_A_PER_AREA_CM = 3,
-			//	ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM = 4
-
-			for( size_t index = 0; index < sizeof( Axes::Y_Unit_Names ) / sizeof( Axes::Y_Unit_Names[ 0 ] ); index++ )
+			menu->addAction( Axes::Change_To_X_Unit_Names[ index ], [ index, this ]
 			{
-				QString axis_name = Axes::Y_Unit_Names[ index ];
-				menu->addAction( Axes::Change_To_Y_Unit_Names[ index ], [ graph, index, axis_name, this ]
-				{
-					graph->axes.y_units = Y_Units( index );
-					if( Y_Units::LOG_CURRENT_A == graph->axes.y_units ||
-						Y_Units::LOG_CURRENT_A_PER_AREA_CM == graph->axes.y_units )
-					{
-						graph->yAxis->setScaleType( QCPAxis::stLogarithmic );
-						this->yAxis->setTicker( logTicker );
-						this->yAxis2->setTicker( logTicker );
-						this->yAxis->setNumberFormat( "ebd" );
-						this->yAxis2->setNumberFormat( "ebd" );
-						this->yAxis->setNumberPrecision( 0 );
-						this->yAxis2->setNumberPrecision( 0 );
-
-						if( this->yAxis->range().lower < 0 )
-							this->yAxis->setRangeLower( 1E-15 );
-						if( this->yAxis->range().upper < 0 )
-							this->yAxis->setRangeUpper( 1E-3 + this->yAxis->range().lower );
-					}
-					else
-					{
-						this->yAxis->setTicker( linearTicker );
-						this->yAxis2->setTicker( linearTicker );
-						this->yAxis->setNumberFormat( "gbd" );
-						this->yAxis2->setNumberFormat( "gbd" );
-						this->yAxis->setNumberPrecision( 6 );
-						this->yAxis2->setNumberPrecision( 6 );
-						graph->yAxis->setScaleType( QCPAxis::stLinear );
-					}
-					graph->yAxis->setLabel( axis_name );
-					graph->RegraphAll();
-				} );
-			}
+				Change_X_Axis( index );
+			} );
 		}
 	} );
+
+	this->y_axis_menu_functions.emplace_back( [ this ]( QMenu* menu, QPoint pos ) mutable
+	{
+		for( size_t index = 0; index < sizeof( Axes::Y_Unit_Names ) / sizeof( Axes::Y_Unit_Names[ 0 ] ); index++ )
+		{
+			menu->addAction( Axes::Change_To_Y_Unit_Names[ index ], [ index, this ]
+			{
+				Change_Y_Axis( index );
+			} );
+		}
+	} );
+}
+
+void Interactive_Graph::Change_X_Axis( int index )
+{
+	X_Units x_units = X_Units( index );
+	std::array<double, 2> bounds = { xAxis->range().lower, xAxis->range().upper };
+	for( double & x : bounds )
+		x = IV_By_Size::Convert_Units( this->axes.x_units, x_units, x );
+	xAxis->setRange( std::min( bounds[ 0 ], bounds[ 1 ] ), std::max( bounds[ 0 ], bounds[ 1 ] ) );
+	this->xAxis->setLabel( Axes::X_Unit_Names[ int( x_units ) ] );
+	this->axes.x_units = x_units;
+	this->RegraphAll();
+}
+
+void Interactive_Graph::Change_Y_Axis( int index )
+{
+	Y_Units y_units = Y_Units( index );
+	this->axes.y_units = y_units;
+	if( Y_Units::LOG_CURRENT_A == this->axes.y_units ||
+		Y_Units::LOG_CURRENT_A_PER_AREA_CM == this->axes.y_units )
+	{
+		this->yAxis->setScaleType( QCPAxis::stLogarithmic );
+		this->yAxis->setTicker( logTicker );
+		this->yAxis2->setTicker( logTicker );
+		this->yAxis->setNumberFormat( "ebd" );
+		this->yAxis2->setNumberFormat( "ebd" );
+		this->yAxis->setNumberPrecision( 0 );
+		this->yAxis2->setNumberPrecision( 0 );
+		if( this->yAxis->range().lower < 0 )
+			this->yAxis->setRangeLower( 1E-15 );
+		if( this->yAxis->range().upper < 0 )
+			this->yAxis->setRangeUpper( 1E-3 + this->yAxis->range().lower );
+	}
+	else
+	{
+		this->yAxis->setScaleType( QCPAxis::stLinear );
+		this->yAxis->setTicker( linearTicker );
+		this->yAxis2->setTicker( linearTicker );
+		this->yAxis->setNumberFormat( "gbd" );
+		this->yAxis2->setNumberFormat( "gbd" );
+		this->yAxis->setNumberPrecision( 6 );
+		this->yAxis2->setNumberPrecision( 6 );
+	}
+	const QString & axis_name = Axes::Y_Unit_Names[ static_cast<int>( y_units ) ];
+	this->yAxis->setLabel( axis_name );
+	this->RegraphAll();
 }
 
 //struct Structured_Metadata
@@ -115,7 +108,7 @@ Linear_Equation Linear_Regression( arma::vec x_data, arma::vec y_data )
 	return { y_intercept, slope };
 }
 
-const IV_Scatter_Plot & Interactive_Graph::Store_IV_Scatter_Plot( QString measurement_name, Structured_Metadata metadata, ID_To_XY_Data data )
+const Single_Graph & Interactive_Graph::Store_IV_Scatter_Plot( QString measurement_name, Structured_Metadata metadata, ID_To_XY_Data data )
 {
 	static int color_index = 0;
 	QCPGraph* xy_scatter_graph = this->addGraph();
@@ -129,7 +122,8 @@ const IV_Scatter_Plot & Interactive_Graph::Store_IV_Scatter_Plot( QString measur
 	// Remember data before changing it at all
 	remembered_graphs[ measurement_name ] = { std::move( metadata ), std::move( data ), xy_scatter_graph, line_fit_pointer };
 	graphs_in_order.push_back( &( remembered_graphs[ measurement_name ] ) );
-
+	const QCPScatterStyle dot_styles[] = { QCPScatterStyle::ssPlus, QCPScatterStyle::ssCircle, QCPScatterStyle::ssStar, QCPScatterStyle::ssTriangleInverted, QCPScatterStyle::ssSquare, QCPScatterStyle::ssDiamond, QCPScatterStyle::ssCross, QCPScatterStyle::ssTriangle, QCPScatterStyle::ssCrossSquare, QCPScatterStyle::ssPlusSquare, QCPScatterStyle::ssCrossCircle, QCPScatterStyle::ssPlusCircle, QCPScatterStyle::ssPeace, QCPScatterStyle::ssDisc };
+	constexpr int style_count = sizeof( dot_styles ) / sizeof( QCPScatterStyle );
 	QPen graphPen;
 	//QCPColorGradient gradient( QCPColorGradient::gpPolar );
 	QCPColorGradient gradient( QCPColorGradient::gpSpectrum );
@@ -137,8 +131,7 @@ const IV_Scatter_Plot & Interactive_Graph::Store_IV_Scatter_Plot( QString measur
 	graphPen.setColor( gradient.color( color_index / 10.0, QCPRange( 0.0, 1.0 ) ) );
 	{
 		xy_scatter_graph->setLineStyle( QCPGraph::lsNone );
-		xy_scatter_graph->setScatterStyle( QCPScatterStyle::ssCircle );
-		QPen graphPen;
+		xy_scatter_graph->setScatterStyle( dot_styles[color_index % style_count] );
 		//QCPColorGradient gradient( QCPColorGradient::gpPolar );
 		QCPColorGradient gradient( QCPColorGradient::gpSpectrum );
 		gradient.setPeriodic( true );
@@ -164,7 +157,7 @@ const IV_Scatter_Plot & Interactive_Graph::Store_IV_Scatter_Plot( QString measur
 
 	//stored_graphs.emplace_back( { metadata.column_names, metadata_sorted_by_device_sizes }, data );
 
-void Axes::Graph_XY_Data( QString measurement_name, const IV_Scatter_Plot & graph )
+void Axes::Graph_XY_Data( QString measurement_name, const Single_Graph & graph )
 {
 	//scatter_data->setVisible( true );
 	//scatter_data->addToLegend();
@@ -177,7 +170,7 @@ void Axes::Graph_XY_Data( QString measurement_name, const IV_Scatter_Plot & grap
 	graph.line_fit_pointer->setData( x_line_fit_data, y_line_fit_data );
 }
 
-const IV_Scatter_Plot & Interactive_Graph::Graph( Structured_Metadata metadata, ID_To_XY_Data data )
+const Single_Graph & Interactive_Graph::Graph( Structured_Metadata metadata, ID_To_XY_Data data, QString plot_title )
 {
 	auto[ measurement_name, x_data, y_data ] = Axes::Build_XY_Data( metadata, data, axes.set_voltage );
 	auto dataset = remembered_graphs.find( measurement_name );
@@ -185,7 +178,9 @@ const IV_Scatter_Plot & Interactive_Graph::Graph( Structured_Metadata metadata, 
 		Store_IV_Scatter_Plot( measurement_name, metadata, data );
 
 	const auto & this_measurement = remembered_graphs.at( measurement_name );
-	axes.Graph_XY_Data( measurement_name, this_measurement );
+	if( plot_title.isEmpty() )
+		plot_title = measurement_name;
+	axes.Graph_XY_Data( plot_title, this_measurement );
 
 	return this_measurement;
 }
@@ -280,6 +275,10 @@ const QString Axes::Y_Unit_Names[ 4 ] = { "Current (A)",
 								QString::fromWCharArray( L"Current (A/cm\u00B2)" ),
 								QString::fromWCharArray( L"Current (log\u2081\u2080(|A|))" ),
 								QString::fromWCharArray( L"Current (log\u2081\u2080(|A|/cm\u00B2))" ) };
+
+const QString Axes::Change_To_X_Unit_Names[ 3 ] = { "Change to Side Length",
+								"Change to Area / Perimeter",
+								"Change to Perimeter / Area" };
 
 const QString Axes::Change_To_Y_Unit_Names[ 4 ] = { "Change to current",
 								"Change to current per area",

@@ -10,16 +10,16 @@
 #include "rangeless_helper.hpp"
 
 
-template<typename Single_Graph, typename Axes_Scales>
-Interactive_Graph<Single_Graph, Axes_Scales>::Interactive_Graph( QWidget *parent ) :
+template<typename Single_Graph, typename Axes>
+Interactive_Graph<Single_Graph, Axes>::Interactive_Graph( QWidget *parent ) :
 	Interactive_Graph_QObject_Adapter( parent ),
 	axes( [ this ]() { this->RegraphAll(); } )
 {
 	Initialize_Graph();
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::Initialize_Graph()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::Initialize_Graph()
 {
 	this->setOpenGl( true );
 	this->setInteractions( QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes |
@@ -32,8 +32,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::Initialize_Graph()
 	//QCPTextElement *title = new QCPTextElement( this, "Transmission", QFont( "sans", 17, QFont::Bold ) );
 	//this->plotLayout()->addElement( 0, 0, title );
 
-	this->xAxis->setLabel( Axes_Scales::X_Unit_Names[ int( Axes_Scales::default_x_units ) ] );
-	this->yAxis->setLabel( Axes_Scales::Y_Unit_Names[ int( Axes_Scales::default_y_units ) ] );
+	this->xAxis->setLabel( Axes::X_Unit_Names[ int( Axes::default_x_units ) ] );
+	this->yAxis->setLabel( Axes::Y_Unit_Names[ int( Axes::default_y_units ) ] );
 	this->legend->setVisible( true );
 	{ // Set up fonts
 		QFont legendFont = font();
@@ -49,22 +49,22 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::Initialize_Graph()
 	this->setAntialiasedElements( QCP::aeAll );
 
 																	 // connect slot that ties some axis selections together (especially opposite axes):
-	connect( this, &QWidget::customContextMenuRequested, this, &Interactive_Graph<Single_Graph, Axes_Scales>::graphContextMenuRequest );
-	connect( this, &QCustomPlot::selectionChangedByUser, this, &Interactive_Graph<Single_Graph, Axes_Scales>::selectionChanged );
+	connect( this, &QWidget::customContextMenuRequested, this, &Interactive_Graph<Single_Graph, Axes>::graphContextMenuRequest );
+	connect( this, &QCustomPlot::selectionChangedByUser, this, &Interactive_Graph<Single_Graph, Axes>::selectionChanged );
 	// connect slots that takes care that when an axis is selected, only that direction can be dragged and zoomed:
-	connect( this, &QCustomPlot::mousePress, this, &Interactive_Graph<Single_Graph, Axes_Scales>::mousePress );
-	connect( this, &QCustomPlot::mouseWheel, this, &Interactive_Graph<Single_Graph, Axes_Scales>::mouseWheel );
+	connect( this, &QCustomPlot::mousePress, this, &Interactive_Graph<Single_Graph, Axes>::mousePress );
+	connect( this, &QCustomPlot::mouseWheel, this, &Interactive_Graph<Single_Graph, Axes>::mouseWheel );
 
-	connect( this, &QCustomPlot::mouseDoubleClick, this, &Interactive_Graph<Single_Graph, Axes_Scales>::refitGraphs );
+	connect( this, &QCustomPlot::mouseDoubleClick, this, &Interactive_Graph<Single_Graph, Axes>::refitGraphs );
 
 	// make bottom and left axes transfer their ranges to top and right axes:
 	connect( this->xAxis, SIGNAL( rangeChanged( QCPRange ) ), this->xAxis2, SLOT( setRange( QCPRange ) ) );
 	connect( this->yAxis, SIGNAL( rangeChanged( QCPRange ) ), this->yAxis2, SLOT( setRange( QCPRange ) ) );
 
 	// connect some interaction slots:
-	connect( this, &QCustomPlot::axisDoubleClick,   this, &Interactive_Graph<Single_Graph, Axes_Scales>::axisLabelDoubleClick );
-	connect( this, &QCustomPlot::legendDoubleClick, this, &Interactive_Graph<Single_Graph, Axes_Scales>::legendDoubleClick );
-	//connect( title, &QCPTextElement::doubleClicked, this, &Interactive_Graph<Single_Graph, Axes_Scales>::titleDoubleClick );
+	connect( this, &QCustomPlot::axisDoubleClick,   this, &Interactive_Graph<Single_Graph, Axes>::axisLabelDoubleClick );
+	connect( this, &QCustomPlot::legendDoubleClick, this, &Interactive_Graph<Single_Graph, Axes>::legendDoubleClick );
+	//connect( title, &QCPTextElement::doubleClicked, this, &Interactive_Graph<Single_Graph, Axes>::titleDoubleClick );
 
 	//// connect slot that shows a message in the status bar when a graph is clicked:
 	//connect( this, SIGNAL( plottableClick( QCPAbstractPlottable*, int, QMouseEvent* ) ), this, SLOT( graphClicked( QCPAbstractPlottable*, int ) ) );
@@ -73,8 +73,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::Initialize_Graph()
 	this->setContextMenuPolicy( Qt::CustomContextMenu );
 }
 
-//template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes_Scales>
-//void Interactive_Graph<Single_Graph, Axes_Scales>::mouseDoubleClickEvent( QMouseEvent* event )
+//template<typename X_Unit_Type, typename Y_Unit_Type, typename Axes>
+//void Interactive_Graph<Single_Graph, Axes>::mouseDoubleClickEvent( QMouseEvent* event )
 //{
 //	QCustomPlot::mouseDoubleClickEvent( event );
 //
@@ -82,8 +82,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::Initialize_Graph()
 //	//	this->refitGraphs( event );
 //}
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::titleDoubleClick( QMouseEvent* event )
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::titleDoubleClick( QMouseEvent* event )
 {
 	Q_UNUSED( event )
 		if( QCPTextElement *title = qobject_cast<QCPTextElement*>(sender()) )
@@ -100,8 +100,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::titleDoubleClick( QMouseEvent
 		}
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::axisLabelDoubleClick( QCPAxis *axis, QCPAxis::SelectablePart part, QMouseEvent * event )
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::axisLabelDoubleClick( QCPAxis *axis, QCPAxis::SelectablePart part, QMouseEvent * event )
 {
 	// Set an axis label by double clicking on it
 	if( part == QCPAxis::spAxisLabel ) // only react when the actual axis label is clicked, not tick label or axis backbone
@@ -117,8 +117,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::axisLabelDoubleClick( QCPAxis
 	}
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::legendDoubleClick( QCPLegend *legend, QCPAbstractLegendItem *item, QMouseEvent * event )
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::legendDoubleClick( QCPLegend *legend, QCPAbstractLegendItem *item, QMouseEvent * event )
 {
 	// Rename a graph by double clicking on its legend item
 	Q_UNUSED( legend )
@@ -136,8 +136,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::legendDoubleClick( QCPLegend 
 		}
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::selectionChanged()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::selectionChanged()
 {
 	/*
 	normally, axis base line, axis tick labels and axis labels are selectable separately, but we want
@@ -181,8 +181,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::selectionChanged()
 	}
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::mousePress()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::mousePress()
 {
 	// if an axis is selected, only allow the direction of that axis to be dragged
 	// if no axis is selected, both directions may be dragged
@@ -195,8 +195,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::mousePress()
 		this->axisRect()->setRangeDrag( Qt::Horizontal | Qt::Vertical );
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::mouseWheel()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::mouseWheel()
 {
 	// if an axis is selected, only allow the direction of that axis to be zoomed
 	// if no axis is selected, both directions may be zoomed
@@ -209,8 +209,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::mouseWheel()
 		this->axisRect()->setRangeZoom( Qt::Horizontal | Qt::Vertical );
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::refitGraphs( QMouseEvent* event )
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::refitGraphs( QMouseEvent* event )
 {
 	event->accept();
 	this->rescaleAxes( true );
@@ -219,8 +219,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::refitGraphs( QMouseEvent* eve
 	this->replot();
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::removeSelectedGraph()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::removeSelectedGraph()
 {
 	if( this->selectedGraphs().size() == 0 )
 		return;
@@ -244,8 +244,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::removeSelectedGraph()
 	this->replot();
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::removeAllGraphs()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::removeAllGraphs()
 {
 	this->clearGraphs();
 	this->remembered_graphs.clear();
@@ -253,8 +253,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::removeAllGraphs()
 	this->replot();
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::graphContextMenuRequest( QPoint pos )
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::graphContextMenuRequest( QPoint pos )
 {
 	QMenu *menu = new QMenu( this );
 	menu->setAttribute( Qt::WA_DeleteOnClose );
@@ -265,11 +265,11 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::graphContextMenuRequest( QPoi
 
 	if( selected_legend ) // context menu on legend requested
 	{
-		menu->addAction( "Move to top left",     this, &Interactive_Graph<Single_Graph, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignLeft) );
-		menu->addAction( "Move to top center",   this, &Interactive_Graph<Single_Graph, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignHCenter) );
-		menu->addAction( "Move to top right",    this, &Interactive_Graph<Single_Graph, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignRight) );
-		menu->addAction( "Move to bottom right", this, &Interactive_Graph<Single_Graph, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignRight) );
-		menu->addAction( "Move to bottom left" , this, &Interactive_Graph<Single_Graph, Axes_Scales>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignLeft) );
+		menu->addAction( "Move to top left",     this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignLeft) );
+		menu->addAction( "Move to top center",   this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignHCenter) );
+		menu->addAction( "Move to top right",    this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignRight) );
+		menu->addAction( "Move to bottom right", this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignRight) );
+		menu->addAction( "Move to bottom left" , this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignLeft) );
 		menu->addAction( "Turn Legend Off", [this]
 		{
 			this->legend->setVisible( false );
@@ -286,33 +286,33 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::graphContextMenuRequest( QPoi
 			this->replot();
 		} );
 		if( this->selectedGraphs().size() > 0 )
-			menu->addAction( "Remove selected graph", this, &Interactive_Graph<Single_Graph, Axes_Scales>::removeSelectedGraph );
-		menu->addAction( "Save current graph", this, &Interactive_Graph<Single_Graph, Axes_Scales>::saveCurrentGraph );
+			menu->addAction( "Remove selected graph", this, &Interactive_Graph<Single_Graph, Axes>::removeSelectedGraph );
+		menu->addAction( "Save current graph", this, &Interactive_Graph<Single_Graph, Axes>::saveCurrentGraph );
 
 		menu->addAction( "Recolor graphs with spectrum", [ this ] { this->Recolor_Graphs( QCPColorGradient::gpSpectrum ); } );
 		menu->addAction( "Recolor graphs with polar", [ this ] { this->Recolor_Graphs( QCPColorGradient::gpHot ); } );
 		for( const auto & menu_function : this->general_menu_functions )
-			menu_function( this, menu, pos );
+			menu_function( menu, pos );
 	}
 
 	if( selected_x_axis )
 		for( const auto & menu_function : this->x_axis_menu_functions )
-			menu_function( this, menu, pos );
+			menu_function( menu, pos );
 
 	if( selected_y_axis )
 		for( const auto & menu_function : this->y_axis_menu_functions )
-			menu_function( this, menu, pos );
+			menu_function( menu, pos );
 
 	// Put Remove all graphs last to minimize accidental clicking
 	if( !selected_x_axis && !selected_y_axis && !selected_legend )
 		if( this->graphCount() > 0 )
-			menu->addAction( "Remove all graphs", this, &Interactive_Graph<Single_Graph, Axes_Scales>::removeAllGraphs );
+			menu->addAction( "Remove all graphs", this, &Interactive_Graph<Single_Graph, Axes>::removeAllGraphs );
 
 	menu->popup( this->mapToGlobal( pos ) );
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::moveLegend()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::moveLegend()
 {
 	if( QAction* contextAction = qobject_cast<QAction*>(sender()) ) // make sure this slot is really called by a context menu action, so it carries the data we need
 	{
@@ -326,8 +326,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::moveLegend()
 	}
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::graphClicked( QCPAbstractPlottable *plottable, int dataIndex )
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::graphClicked( QCPAbstractPlottable *plottable, int dataIndex )
 {
 	//// since we know we only have QCPGraphs in the plot, we can immediately access interface1D()
 	//// usually it's better to first check whether interface1D() returns non-zero, and only then use it.
@@ -336,8 +336,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::graphClicked( QCPAbstractPlot
 	//ui.statusBar->showMessage( message, 2500 );
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::Hide_Graph( QString graph_name )
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::Hide_Graph( QString graph_name )
 {
 	auto existing_graph = remembered_graphs.find( graph_name );
 	if( existing_graph == remembered_graphs.end() )
@@ -351,8 +351,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::Hide_Graph( QString graph_nam
 	replot();
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::RegraphAll()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::RegraphAll()
 {
 	for( const auto &[ name, graph ] : remembered_graphs )
 	{
@@ -368,11 +368,11 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::RegraphAll()
 	this->replot();
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::Recolor_Graphs( QCPColorGradient::GradientPreset gradient )
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::Recolor_Graphs( QCPColorGradient::GradientPreset gradient )
 {
 	int color_index = 0;
-	this->graph( 0 );
+	//this->graph( 0 );
 	for( const auto graph : this->graphs_in_order )
 	{
 		QPen graphPen;
@@ -389,13 +389,26 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::Recolor_Graphs( QCPColorGradi
 		//graphPen.setColor( QColor::fromHslF( (color_index++)/10.0*0.8, 0.95, 0.5) );
 		//graphPen.setColor( QColor::fromHsv( rand() % 255, 255, 255 ) );
 		//graphPen.setWidthF( rand() / (double)RAND_MAX * 2 + 1 );
-		graph->graph_pointer->setPen( graphPen );
+		graph->SetPen( graphPen );
 	}
 
 	this->replot();
 }
 
-//void Interactive_Graph<Single_Graph, Axes_Scales>::RegraphAll()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::Set_Title( QString title )
+{
+	if( title_display == nullptr )
+	{
+		title_display = new QCPTextElement( this, title, QFont( "times", 12, QFont::Normal ) );
+		this->plotLayout()->insertRow( 0 );
+		this->plotLayout()->addElement( 0, 0, title_display );
+	}
+	else
+		title_display->setText( title );
+}
+
+//void Interactive_Graph<Single_Graph, Axes>::RegraphAll()
 //{
 //	for( int i = 0; i < this->graphCount(); i++ )
 //	{
@@ -403,8 +416,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::Recolor_Graphs( QCPColorGradi
 //	}
 //}
 //
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::saveCurrentGraph()
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::saveCurrentGraph()
 {
 	QString selectedFilter;
 	QFileInfo file_name = QFileDialog::getSaveFileName( this,
@@ -429,8 +442,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::saveCurrentGraph()
 }
 
 
-template<typename Single_Graph, typename Axes_Scales>
-void Interactive_Graph<Single_Graph, Axes_Scales>::UpdateGraph( QCPGraph* existing_graph, QVector<double> x_data, QVector<double> y_data )
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::UpdateGraph( QCPGraph* existing_graph, QVector<double> x_data, QVector<double> y_data )
 {
 	//double previous_upper_limit = this->yAxis->range().upper;
 	existing_graph->setData( x_data, y_data );
@@ -443,8 +456,8 @@ void Interactive_Graph<Single_Graph, Axes_Scales>::UpdateGraph( QCPGraph* existi
 	this->replot();
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-const Single_Graph & Interactive_Graph<Single_Graph, Axes_Scales>::GetSelectedGraphData() const
+template<typename Single_Graph, typename Axes>
+const Single_Graph & Interactive_Graph<Single_Graph, Axes>::GetSelectedGraphData() const
 {
 	static Single_Graph nothing_selected;
 	QList<QCPGraph*> selection = this->selectedGraphs();
@@ -454,8 +467,8 @@ const Single_Graph & Interactive_Graph<Single_Graph, Axes_Scales>::GetSelectedGr
 		return FindDataFromGraphPointer( selection[ 0 ] );
 }
 
-template<typename Single_Graph, typename Axes_Scales>
-const Single_Graph & Interactive_Graph<Single_Graph, Axes_Scales>::FindDataFromGraphPointer( QCPGraph* graph_pointer ) const
+template<typename Single_Graph, typename Axes>
+const Single_Graph & Interactive_Graph<Single_Graph, Axes>::FindDataFromGraphPointer( QCPGraph* graph_pointer ) const
 {
 	static Single_Graph nothing_selected;
 	auto result = std::find_if(
@@ -471,9 +484,9 @@ const Single_Graph & Interactive_Graph<Single_Graph, Axes_Scales>::FindDataFromG
 }
 
 
-template<typename Single_Graph, typename Axes_Scales>
+template<typename Single_Graph, typename Axes>
 template< decltype( Single_Graph::x_units ) X, decltype( Single_Graph::y_units ) Y >
-const Single_Graph & Interactive_Graph<Single_Graph, Axes_Scales>::Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title, Labeled_Metadata meta )
+const Single_Graph & Interactive_Graph<Single_Graph, Axes>::Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title, Labeled_Metadata meta )
 {
 	if( x_data.size() != y_data.size() )
 	{

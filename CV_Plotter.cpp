@@ -78,7 +78,7 @@ void Plotter::Initialize_Tree_Table()
 	{
 		for( auto[ measurement_id, metadata ] : id_and_metadata )
 		{
-			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
+			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.what_to_collect ) );
 		}
 	} );
 
@@ -221,7 +221,7 @@ void Plotter::treeContextMenuRequest( QPoint pos )
 	{
 		for( auto[ measurement_id, metadata ] : selected )
 		{
-			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.header_titles ) );
+			Graph_Measurement( measurement_id, Label_Metadata( metadata, config.what_to_collect ) );
 		}
 	} );
 
@@ -233,6 +233,16 @@ void Plotter::treeContextMenuRequest( QPoint pos )
 
 		QClipboard *clipboard = QApplication::clipboard();
 		clipboard->setText( measurement_ids.join( '\n' ) );
+	} );
+
+	menu->addAction( "Copy Measurement IDs (YAML)", [ this, selected ]
+	{
+		const auto measurement_ids = selected
+			% fn::transform( []( const auto & x ) { const auto &[ measurement_id, metadata ] = x; return measurement_id; } )
+			% fn::to( QStringList{} );
+
+		QClipboard *clipboard = QApplication::clipboard();
+		clipboard->setText( "[" + measurement_ids.join( ',' ) + "]" );
 	} );
 
 	//menu->addAction( "Save to csv file", [this, selected]

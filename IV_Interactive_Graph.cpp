@@ -21,54 +21,55 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 {
 	this->yAxis->setTicker( linearTicker );
 	this->yAxis2->setTicker( linearTicker );
-	this->y_axis_menu_functions.emplace_back( [this]( Graph_Base* graph, QMenu* menu, QPoint pos )
+	this->y_axis_menu_functions.emplace_back( [ this ]( QMenu* menu, QPoint pos ) mutable
 	{
-		if( graph->yAxis->selectTest( pos, false ) >= 0 ) // general context menu on graphs requested
+		for( size_t index = 0; index < sizeof( Axes::Y_Unit_Names ) / sizeof( Axes::Y_Unit_Names[ 0 ] ); index++ )
 		{
-			//CURRENT_A = 0,
-			//	CURRENT_A_PER_AREA_CM = 1,
-			//	LOG_CURRENT_A = 2,
-			//	LOG_CURRENT_A_PER_AREA_CM = 3,
-			//	ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM = 4
-
-			//menu->addAction( "Add random graph", this, SLOT( addRandomGraph() ) );
-			for( size_t index = 0; index < sizeof( Axes::Y_Unit_Names ) / sizeof( Axes::Y_Unit_Names[0] ); index++ )
+			menu->addAction( Axes::Change_To_Y_Unit_Names[ index ], [ index, this ]
 			{
-				QString axis_name = Axes::Y_Unit_Names[ index ];
-				menu->addAction( Axes::Change_To_Y_Unit_Names[ index ], [graph, index, axis_name, this]
-				{
-					graph->axes.y_units = Y_Units( index );
-					if( Y_Units::LOG_CURRENT_A == graph->axes.y_units ||
-						Y_Units::LOG_CURRENT_A_PER_AREA_CM == graph->axes.y_units )
-					{
-						graph->yAxis->setScaleType( QCPAxis::stLogarithmic );
-						this->yAxis->setTicker( logTicker );
-						this->yAxis2->setTicker( logTicker );
-						this->yAxis->setNumberFormat( "ebd" );
-						this->yAxis2->setNumberFormat( "ebd" );
-						this->yAxis->setNumberPrecision( 0 );
-						this->yAxis2->setNumberPrecision( 0 );
-						if( this->yAxis->range().lower < 0 )
-							this->yAxis->setRangeLower( 1E-15 );
-						if( this->yAxis->range().upper < 0 )
-							this->yAxis->setRangeUpper( 1E-3 + this->yAxis->range().lower );
-					}
-					else
-					{
-						graph->yAxis->setScaleType( QCPAxis::stLinear );
-						this->yAxis->setTicker( linearTicker );
-						this->yAxis2->setTicker( linearTicker );
-						this->yAxis->setNumberFormat( "gbd" );
-						this->yAxis2->setNumberFormat( "gbd" );
-						this->yAxis->setNumberPrecision( 6 );
-						this->yAxis2->setNumberPrecision( 6 );
-					}
-					graph->yAxis->setLabel( axis_name );
-					graph->RegraphAll();
-				} );
-			}
+				Change_Y_Axis( index );
+			} );
 		}
 	} );
+}
+
+void Interactive_Graph::Change_X_Axis( int index )
+{
+	X_Units x_units = X_Units( index );
+}
+
+void Interactive_Graph::Change_Y_Axis( int index )
+{
+	Y_Units y_units = Y_Units( index );
+	this->axes.y_units = y_units;
+	if( Y_Units::LOG_CURRENT_A == this->axes.y_units ||
+		Y_Units::LOG_CURRENT_A_PER_AREA_CM == this->axes.y_units )
+	{
+		this->yAxis->setScaleType( QCPAxis::stLogarithmic );
+		this->yAxis->setTicker( logTicker );
+		this->yAxis2->setTicker( logTicker );
+		this->yAxis->setNumberFormat( "ebd" );
+		this->yAxis2->setNumberFormat( "ebd" );
+		this->yAxis->setNumberPrecision( 0 );
+		this->yAxis2->setNumberPrecision( 0 );
+		if( this->yAxis->range().lower < 0 )
+			this->yAxis->setRangeLower( 1E-15 );
+		if( this->yAxis->range().upper < 0 )
+			this->yAxis->setRangeUpper( 1E-3 + this->yAxis->range().lower );
+	}
+	else
+	{
+		this->yAxis->setScaleType( QCPAxis::stLinear );
+		this->yAxis->setTicker( linearTicker );
+		this->yAxis2->setTicker( linearTicker );
+		this->yAxis->setNumberFormat( "gbd" );
+		this->yAxis2->setNumberFormat( "gbd" );
+		this->yAxis->setNumberPrecision( 6 );
+		this->yAxis2->setNumberPrecision( 6 );
+	}
+	const QString & axis_name = Axes::Y_Unit_Names[ static_cast<int>( y_units ) ];
+	this->yAxis->setLabel( axis_name );
+	this->RegraphAll();
 }
 
 const QString Axes::X_Unit_Names[ 1 ] = { "Voltage (V)" };

@@ -29,7 +29,7 @@ enum class Y_Units
 
 using Single_Graph = Default_Single_Graph<X_Units, Y_Units>;
 
-struct Axes_Scales
+struct Axes
 {
 	using XY_Data = std::tuple< QVector<double>, QVector<double> >;
 
@@ -39,7 +39,7 @@ struct Axes_Scales
 	Y_Units y_units = default_y_units;
 	std::function<void()> graph_function;
 
-	FTIR::Axes_Scales( std::function<void()> regraph_function ) : graph_function( regraph_function )
+	FTIR::Axes( std::function<void()> regraph_function ) : graph_function( regraph_function )
 	{
 	}
 
@@ -54,25 +54,22 @@ struct Axes_Scales
 	QVector<double> background_x_data;
 	QVector<double> background_y_data;
 
-	const inline static QString X_Unit_Names[ 3 ] = {
-		"Wave Number (cm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + ")",
-		"Wavelength (" + QString( QChar( 0x03BC ) ) + "m)",
-		"Photon Energy (eV)" };
-
-	const inline static QString Y_Unit_Names[ 4 ] = {
-		"Raw Sensor Data (arbitrary units)",
-		"Transmission %",
-		"Absorption %",
-		"Absorption Derivative" };
+	const static QString X_Unit_Names[ 3 ];
+	const static QString Y_Unit_Names[ 4 ];
+	const static QString Change_To_X_Unit_Names[ 3 ];
+	const static QString Change_To_Y_Unit_Names[ 4 ];
 };
 
-using Graph_Base = ::Interactive_Graph<Single_Graph, FTIR::Axes_Scales>;
+using Graph_Base = ::Interactive_Graph<Single_Graph, FTIR::Axes>;
 
 class Interactive_Graph :
 	public Graph_Base
 {
 public:
 	Interactive_Graph( QWidget* parent = nullptr );
+
+	void Change_X_Axis( int index );
+	void Change_Y_Axis( int index );
 };
 
 template< typename FloatType >

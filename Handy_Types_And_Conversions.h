@@ -5,7 +5,7 @@
 #include <QString>
 #include <QVariant>
 
-struct Data_Configuration
+struct SQL_Configuration
 {
 	QStringList header_titles;
 	QStringList what_to_collect;

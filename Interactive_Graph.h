@@ -22,6 +22,11 @@ struct Default_Single_Graph
 	QCPGraph* graph_pointer;
 	Labeled_Metadata meta;
 	std::optional<double> x_location_for_y_alignment;
+
+	void SetPen( const QPen & graphPen ) const
+	{
+		graph_pointer->setPen( graphPen );
+	}
 };
 
 struct Prepared_Data
@@ -76,6 +81,7 @@ public:
 	const Single_Graph & GetSelectedGraphData() const;
 	const Single_Graph & FindDataFromGraphPointer( QCPGraph* graph_pointer ) const;
 	void Recolor_Graphs( QCPColorGradient::GradientPreset gradient );
+	void Set_Title( QString title );
 
 	template< decltype(Single_Graph::x_units) X, decltype( Single_Graph::y_units ) Y >
 	const Single_Graph & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata{} );
@@ -85,9 +91,10 @@ public:
 protected:
 	std::map< QString, Single_Graph > remembered_graphs;
 	std::vector< const Single_Graph* > graphs_in_order;
-	std::vector< std::function<void( base_type*, QMenu*, QPoint )> > x_axis_menu_functions;
-	std::vector< std::function<void( base_type*, QMenu*, QPoint )> > y_axis_menu_functions;
-	std::vector< std::function<void( base_type*, QMenu*, QPoint )> > general_menu_functions;
+	QCPTextElement* title_display = nullptr;
+	std::vector< std::function<void( QMenu*, QPoint )> > x_axis_menu_functions;
+	std::vector< std::function<void( QMenu*, QPoint )> > y_axis_menu_functions;
+	std::vector< std::function<void( QMenu*, QPoint )> > general_menu_functions;
 };
 
 

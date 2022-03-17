@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	{
 		QApplication a( argc, argv );
 
-		Data_Configuration config;
+		SQL_Configuration config;
 		//config.header_titles = QStringList{ "Sample Name", "Date", "Temperature (K)", "Dewar Temp (C)", "Time of Day", "Gain", "Bias (V)", "measurement_id" };
 		//config.what_to_collect = QStringList{ "sample_name", "date(time)", "temperature_in_k", "dewar_temp_in_c", "time(time)", "gain", "bias_in_v", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
 		config.header_titles = QStringList{ "Sample Name", "Temperature (K)", "Dewar Temp (C)", "Gain", "Bias (V)", "measurement_id" };
