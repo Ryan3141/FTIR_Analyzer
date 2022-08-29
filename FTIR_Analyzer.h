@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QtWidgets/QMainWindow>
+#include <QWidget>
 #include <vector>
 #include <tuple>
 #include <map>

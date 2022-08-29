@@ -129,17 +129,20 @@ void set_graph_title( const Node & node, Plot_Type* plot )
 
 QWidget* By_Device_Size( YAML::Node main_plot_node, Request_Data_Func get_the_data )
 {
-	auto plot = new IV_By_Size::Interactive_Graph();
+	auto interactive_graph = new IV_By_Size::Interactive_Graph();
 
-	set_graph_title( main_plot_node, plot );
+	set_graph_title( main_plot_node, interactive_graph );
+	QString save_file_name = lookup( main_plot_node[ "save_file_name" ], QString{} );
 	if( main_plot_node[ "voltage_v" ] )
-		plot->axes.set_voltage = main_plot_node[ "voltage_v" ].as< double >();
+		interactive_graph->axes.set_voltage = main_plot_node[ "voltage_v" ].as< double >();
 
 	auto plots = main_plot_node[ "plots" ];
 	if( !plots || !plots.IsSequence() )
-		return plot;
+		return interactive_graph;
+	auto data_remaining = plots.size(); // Workaround to async sequencing
 	for( const auto & one_plot : plots )
 	{
+		data_remaining--;
 		if( !one_plot[ "measurement_ids" ] )
 			continue;
 		QString title = lookup( one_plot[ "title" ], QString{} );
@@ -149,76 +152,88 @@ QWidget* By_Device_Size( YAML::Node main_plot_node, Request_Data_Func get_the_da
 		QStringList measurement_ids = one_plot[ "measurement_ids" ].as< QStringList >();
 
 		get_the_data( measurement_ids,
-						[ plot, title, main_plot_node ]( Structured_Metadata metadata, ID_To_XY_Data data )
+						[ interactive_graph, title, main_plot_node, save_file_name, data_remaining ]( Structured_Metadata metadata, ID_To_XY_Data data ) mutable
 		{
-			plot->Graph( metadata, data, title );
-			plot->axisRect()->insetLayout()->setInsetAlignment( 0, Qt::AlignTop | Qt::AlignLeft );
-			set_graph_limits( main_plot_node, plot );
-			plot->Recolor_Graphs( QCPColorGradient::gpSpectrum );
-			plot->replot();
+			interactive_graph->Graph( metadata, data, title );
+			interactive_graph->axisRect()->insetLayout()->setInsetAlignment( 0, Qt::AlignTop | Qt::AlignLeft );
+			set_graph_limits( main_plot_node, interactive_graph );
+			interactive_graph->Recolor_Graphs( QCPColorGradient::gpSpectrum );
+			interactive_graph->replot();
+			if( data_remaining == 0 && !save_file_name.isEmpty() )
+				interactive_graph->saveAsStandardPdf( save_file_name );
 		} );
 	}
-	return plot;
+	return interactive_graph;
 }
 
 QWidget* Dark_Current( YAML::Node main_plot_node, Request_Data_Func get_the_data )
 {
-	auto plot = new IV::Interactive_Graph();
+	auto interactive_graph = new IV::Interactive_Graph();
 
-	set_graph_title( main_plot_node, plot );
+	set_graph_title( main_plot_node, interactive_graph );
+	QString save_file_name = lookup( main_plot_node[ "save_file_name" ], QString{} );
 
 	auto plots = main_plot_node[ "plots" ];
 	if( !plots || !plots.IsSequence() )
-		return plot;
+		return interactive_graph;
 
+	auto data_remaining = plots.size(); // Workaround to async sequencing
 	for( const auto & one_plot : plots )
 	{
+		data_remaining--;
 		if( !one_plot[ "measurement_id" ] )
 			continue;
 		QString legend_label = lookup( one_plot[ "title" ], QString{} );
 		QString measurement_id = one_plot[ "measurement_id" ].as<QString>();
 
 		get_the_data( { measurement_id },
-					  [ plot, measurement_id, legend_label, main_plot_node ]( Structured_Metadata metadata, ID_To_XY_Data data )
+					  [ interactive_graph, measurement_id, legend_label, main_plot_node, save_file_name, data_remaining ]( Structured_Metadata metadata, ID_To_XY_Data data ) mutable
 		{
-			IV::Graph_Measurement( std::move( data ), plot, measurement_id, Label_Metadata( metadata.data[ 0 ], metadata.column_names ), legend_label );
-			plot->axisRect()->insetLayout()->setInsetAlignment( 0, Qt::AlignBottom | Qt::AlignRight );
-			set_graph_limits( main_plot_node, plot );
-			plot->Recolor_Graphs( QCPColorGradient::gpSpectrum );
-			plot->replot();
+			IV::Graph_Measurement( std::move( data ), interactive_graph, measurement_id, Label_Metadata( metadata.data[ 0 ], metadata.column_names ), legend_label );
+			interactive_graph->axisRect()->insetLayout()->setInsetAlignment( 0, Qt::AlignBottom | Qt::AlignRight );
+			set_graph_limits( main_plot_node, interactive_graph );
+			interactive_graph->Recolor_Graphs( QCPColorGradient::gpSpectrum );
+			interactive_graph->replot();
+			if( data_remaining == 0 && !save_file_name.isEmpty() )
+				interactive_graph->saveAsStandardPdf( save_file_name );
 		} );
 	}
-	return plot;
+	return interactive_graph;
 }
 
 QWidget* Spectral_Response( YAML::Node main_plot_node, Request_Data_Func get_the_data )
 {
-	auto plot = new FTIR::Interactive_Graph();
+	auto interactive_graph = new FTIR::Interactive_Graph();
 
-	set_graph_title( main_plot_node, plot );
+	set_graph_title( main_plot_node, interactive_graph );
+	QString save_file_name = lookup( main_plot_node[ "save_file_name" ], QString{} );
 
 	auto plots = main_plot_node[ "plots" ];
 	if( !plots || !plots.IsSequence() )
-		return plot;
+		return interactive_graph;
 
+	auto data_remaining = plots.size(); // Workaround to async sequencing
 	for( const auto & one_plot : plots )
 	{
+		data_remaining--;
 		if( !one_plot[ "measurement_id" ] )
 			continue;
 		QString legend_label = lookup( one_plot[ "title" ], QString{} );
 		QString measurement_id = one_plot[ "measurement_id" ].as<QString>();
 
 		get_the_data( { measurement_id },
-		[ plot, measurement_id, legend_label, main_plot_node ]( Structured_Metadata metadata, ID_To_XY_Data data )
+		[ interactive_graph, measurement_id, legend_label, main_plot_node, save_file_name, data_remaining ]( Structured_Metadata metadata, ID_To_XY_Data data ) mutable
 		{
-			FTIR::Graph_Measurement( std::move( data ), plot, measurement_id, Label_Metadata( metadata.data[ 0 ], metadata.column_names ), legend_label );
-			plot->axisRect()->insetLayout()->setInsetAlignment( 0, Qt::AlignTop | Qt::AlignLeft );
-			set_graph_limits( main_plot_node, plot );
-			plot->Recolor_Graphs( QCPColorGradient::gpSpectrum );
-			plot->replot();
+			FTIR::Graph_Measurement( std::move( data ), interactive_graph, measurement_id, Label_Metadata( metadata.data[ 0 ], metadata.column_names ), legend_label );
+			interactive_graph->axisRect()->insetLayout()->setInsetAlignment( 0, Qt::AlignTop | Qt::AlignLeft );
+			set_graph_limits( main_plot_node, interactive_graph );
+			interactive_graph->Recolor_Graphs( QCPColorGradient::gpSpectrum );
+			interactive_graph->replot();
+			if( data_remaining == 0 && !save_file_name.isEmpty() )
+				interactive_graph->saveAsStandardPdf( save_file_name );
 		} );
 	}
-	return plot;
+	return interactive_graph;
 }
 
 void Report_Plots::Get_SQL_Data( const SQL_Configuration & config, QStringList measurement_ids, Data_Is_Returned_Func run_on_data )

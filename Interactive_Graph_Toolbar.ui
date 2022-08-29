@@ -151,6 +151,12 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>xMin_doubleSpinBox</tabstop>
+  <tabstop>xMax_doubleSpinBox</tabstop>
+  <tabstop>yMin_doubleSpinBox</tabstop>
+  <tabstop>yMax_doubleSpinBox</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

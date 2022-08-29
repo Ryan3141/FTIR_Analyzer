@@ -42,6 +42,8 @@ public:
 	SQL_Manager( QObject* parent, QFileInfo config_filename, QString unique_name, QString config_category = "SQL_Server" );
 
 
+	void Grab_SQL_XY_Blob_Data_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* callback_context,
+												 std::function< void( ID_To_XY_Data ) > callback, const QString & extra_filtering = "" ) const;
 	void Grab_SQL_XY_Data_From_Measurement_IDs(  const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* callback_context,
 												 std::function< void( ID_To_XY_Data ) > callback, const QString & extra_filtering = "" ) const;
 	void Grab_SQL_Metadata_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* callback_context,
@@ -51,6 +53,8 @@ public:
 
 	void Write_SQL_Metadata( const ID_To_Metadata & meta_data, const QStringList & what_to_write, const QString & table_name,
 							 QObject* callback_context = nullptr, std::function< void() > callback = {} );
+	void Write_SQL_XY_Blob_Data( const ID_To_XY_Data & data, const QStringList & what_to_write, const QString & table_name,
+							QObject* callback_context = nullptr, std::function< void() > callback = {} );
 	void Write_SQL_XY_Data( const ID_To_XY_Data & data, const QStringList & what_to_write, const QString & table_name,
 							QObject* callback_context = nullptr, std::function< void() > callback = {} );
 	void Write_SQL_XY_Data_No_Duplicates( const ID_To_XY_Data & data, const QStringList & what_to_write, const QString & table_name,
@@ -88,6 +92,8 @@ public slots:
 public:
 	SQL_Manager_With_Local_Cache( QObject* parent, QFileInfo config_filename, QString unique_name, QString config_category = "SQL_Server" );
 
+	void Grab_SQL_XY_Blob_Data_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* callback_context,
+												std::function< void( ID_To_XY_Data ) > callback, const QString & extra_filtering = "" );
 	void Grab_SQL_XY_Data_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* callback_context,
 												std::function< void( ID_To_XY_Data ) > callback, const QString & extra_filtering = "" );
 	void Grab_SQL_Metadata_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* callback_context,

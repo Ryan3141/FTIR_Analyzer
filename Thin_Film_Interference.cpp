@@ -47,7 +47,7 @@ std::map<std::string, Material> name_to_material =
 std::map< Material, std::array< std::optional<double>, 4 > > defaults_per_material =
 { /*  Material    , thickness,  composition,    tauts_gap, urbach_energy */
 	{ Material::Si    , { 1.0, std::nullopt, std::nullopt, std::nullopt } },
-	{ Material::HgCdTe, { 1.0,          0.5,          1.0,          1.0 } },
+	{ Material::HgCdTe, { 1.0,          0.5, std::nullopt, std::nullopt } },
 	{ Material::CdTe  , { 1.0, std::nullopt, std::nullopt, std::nullopt } },
 	{ Material::ZnSe  , { 1.0, std::nullopt, std::nullopt, std::nullopt } },
 	{ Material::ZnS   , { 1.0, std::nullopt, std::nullopt, std::nullopt } },
@@ -63,7 +63,7 @@ std::map< Material, std::array< std::optional<double>, 4 > > defaults_per_materi
 };
 
 Material_To_Refraction_Component Load_Index_Of_Refraction_Files( const fs::path & directory, const char* indicator );
-static std::ofstream debug_file( "Debug.txt" );
+std::ofstream debug_file( "Debug.txt" );
 
 Thin_Film_Interference::Thin_Film_Interference()
 {
@@ -131,18 +131,16 @@ void Debug_Print( std::string name, arma::cx_mat out )
 
 Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, Material_Layer backside_material ) const
 {
-	debug_file << "Here -1\n";
 	cx_vec previous_ns( arma::size( wavelengths ), arma::fill::ones );// , { 1, 0 }; // Air
 	cx_cube Overall_Matrix( 2, 2, wavelengths.n_rows );
 	Overall_Matrix.each_slice() = arma::eye<cx_mat>( 2, 2 );
 	cx_cube A_matrix( arma::size( Overall_Matrix ) );
 	cx_cube M_matrix( arma::size( Overall_Matrix ) );
-	double mix_amount1 = 0.1;
-	double mix_amount2 = 0.1;
-	debug_file << "Here 0\n";
+
 	for( const auto & layer : layers )
 	{
 		cx_vec current_ns = Get_Refraction_Index( layer.material, wavelengths, layer.parameters );
+
 		{ // Setup A_matrix
 			cx_vec sum = (current_ns + previous_ns) / (2. * current_ns);
 			cx_vec difference = (current_ns - previous_ns) / (2. * current_ns);
@@ -195,15 +193,22 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 
 	if constexpr( true ) // Version with exit transition
 	{
-		arma::vec exit_backside_amount = [ this, &wavelengths, backside_material ]
+		const arma::vec exit_backside_amount = [ this, &wavelengths, backside_material ]() -> arma::vec
 		{
-			auto backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, backside_material.parameters );
-			auto sum = ( 1. + backside_ns ) / 2.;
-			auto difference = ( 1. - backside_ns ) / 2.;
+			auto debug1 = all_material_indices.find( backside_material.material );
+			if( debug1 == all_material_indices.end() )
+				debug_file << int( backside_material.material ) << " NOT FOUND\n";
+			//debug_file << "wavelengths = " << wavelengths << "\n";
+			//debug_file << "parameters = " << backside_material.parameters << "\n";
+			arma::cx_vec backside_ns = all_material_indices.find( backside_material.material )->second( wavelengths, backside_material.parameters );
+			//debug_file << "n = " << arma::real( backside_ns ) << "\n";
+			//debug_file << "k = " << arma::imag( backside_ns ) << "\n";
+			arma::cx_vec sum = ( 1. + backside_ns ) / 2.;
+			arma::cx_vec difference = ( 1. - backside_ns ) / 2.;
 			arma::cx_vec difference2 = difference % difference;
-			auto transmission_amplitude = sum - difference2 / sum;
+			arma::cx_vec transmission_amplitude = sum - difference2 / sum;
 			//auto transmission_amplitude = sum - difference % difference / sum; // sum - difference % difference seems to break release build
-			return vec( real( transmission_amplitude % conj( transmission_amplitude ) ) );
+			return arma::vec( arma::real( transmission_amplitude % arma::conj( transmission_amplitude ) ) );
 			//auto reflection_amplitude = difference / sum;
 			//return vec( real( reflection_amplitude % conj( reflection_amplitude ) ) );
 		}();
@@ -212,6 +217,7 @@ Result_Data Thin_Film_Interference::Get_Expected_Transmission( const std::vector
 		vec transmission = exit_backside_amount % vec( real( transmission_amplitude % conj( transmission_amplitude ) ) );
 		auto reflection_amplitude = Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
 		vec reflection = real( reflection_amplitude % conj( reflection_amplitude ) );
+		debug_file << "Here 3\n";
 
 		return { transmission, reflection };
 	}
@@ -390,6 +396,7 @@ arma::cx_vec MCT_Index( const arma::vec & wavelengths, Optional_Material_Paramet
 			//double debug2 = test[ 1 ];
 			//double debug3 = test[ 2 ];
 			// alpha_urbach must come first in case alpha_kane is nan
+			alpha_kane.replace( arma::datum::nan, arma::datum::inf );
 			return arma::min( alpha_urbach, alpha_kane ) % wavelengths * 1E2 / (4 * datum::pi); // Convert wavelengths from m to cm because alphas are per cm
 		}
 		//else if constexpr( false )

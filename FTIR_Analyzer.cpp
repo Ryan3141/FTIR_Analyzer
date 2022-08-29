@@ -135,15 +135,22 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, std::t
 	Thin_Film_Interference tfi;
 	try
 	{
+		constexpr auto X = FTIR::X_Units::WAVELENGTH_METERS;
+		constexpr auto Y = FTIR::Y_Units::DONT_CHANGE;
+		double transmission_scale = ui.transmissionAmplitude_doubleSpinBox->value();
+		double transmission_subtractor = ui.transmissionSubtractor_doubleSpinBox->value();
+		double reflection_scale   = ui.reflectionAmplitude_doubleSpinBox->value();
+		double absorption_scale   = ui.absorptionAmplitude_doubleSpinBox->value();
 		auto[ transmission, reflection ] = tfi.Get_Expected_Transmission( layers, x_data_meters, backside_material );
+		transmission += transmission_subtractor;
 		transmission *= largest_transmission;
 		reflection *= largest_transmission;
 		if( std::get<0>( what_to_plot ) )
-			ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( transmission ), "Transmission Simulation", "Transmission Simulation" );
+			ui.customPlot->Graph<X, Y>( toQVec( x_data_meters ), toQVec( transmission_scale * transmission ), "Transmission Simulation", "Transmission Simulation" );
 		if( std::get<1>( what_to_plot ) )
-			ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( reflection ), "Reflection Simulation", "Reflection Simulation" );
+			ui.customPlot->Graph<X, Y>( toQVec( x_data_meters ), toQVec( reflection_scale * reflection ), "Reflection Simulation", "Reflection Simulation" );
 		if( std::get<2>( what_to_plot ) )
-			ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( 100.0 - transmission - reflection ), "Absorption Simulation", "Absorption Simulation" );
+			ui.customPlot->Graph<X, Y>( toQVec( x_data_meters ), toQVec( 100.0 * absorption_scale - transmission * transmission_scale - reflection * reflection_scale ), "Absorption Simulation", "Absorption Simulation" );
 		ui.customPlot->replot();
 	}
 	catch( ... )
@@ -194,11 +201,16 @@ void FTIR_Analyzer::Run_Fit()
 	//double debug[20];
 	//const auto test3 = fn::from( &debug[0], &debug[20] );
 	//const auto[ filtered_wavelength_data, filtered_transmission_data ] = fn::zip( fn::cfrom( wavelength_data ), fn::cfrom( transmission_data ) )
+	double transmission_scale = ui.transmissionAmplitude_doubleSpinBox->value();
+	double subtractor = ui.transmissionSubtractor_doubleSpinBox->value();
+	transmission_data -= subtractor;
+	transmission_data /= transmission_scale;
+
 	const auto [ filtered_wavelength_data, filtered_transmission_data ] = fn::zip( wavelength_data, transmission_data )
 		% fn::where( [ bounds ]( auto x ) { auto[ wavelength, transmission ] = x; return wavelength >= bounds[ 0 ] && wavelength <= bounds[ 1 ]; } )
 		% fn::unzip( std::tuple < arma::vec, arma::vec >{} );
 	if( filtered_transmission_data.size() == 0 )
-		return; // Something went wrong and none of the data is 
+		return; // Something went wrong and none of the data is in these bounds
 	//double transmission_max = arma::max( filtered_transmission_data );
 	double transmission_max = 100.0;
 	{ // Start the thread
@@ -325,7 +337,7 @@ void FTIR_Analyzer::Initialize_Simulation()
 	auto replot_blackbody = [this]
 	{
 		if( this->ui.blackbodyOn_checkBox->isChecked() )
-			this->Graph_Blackbody( ui.blackbodyTemperature_horizontalSlider->value() / 100.0, ui.blackbodyAmplitude_horizontalSlider->value() / 1000.0 );
+			this->Graph_Blackbody( ui.blackbodyTemperature_doubleSpinBox->value(), ui.blackbodyAmplitude_doubleSpinBox->value() );
 		else
 			ui.customPlot->Hide_Graph( "Black Body" );
 	};
@@ -354,27 +366,52 @@ void FTIR_Analyzer::Initialize_Simulation()
 	connect( ui.simulationReflectionOn_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
 	connect( ui.simulationAbsorptionOn_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
 
+	connect( ui.transmissionAmplitude_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ replot_simulation ]( double ) { replot_simulation(); } );
+	connect( ui.transmissionSubtractor_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ replot_simulation ]( double ) { replot_simulation(); } );
+	connect( ui.reflectionAmplitude_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ replot_simulation ]( double ) { replot_simulation(); } );
+	connect( ui.absorptionAmplitude_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ replot_simulation ]( double ) { replot_simulation(); } );
+
 	connect( ui.plotMaterialIndex_comboBox, qOverload<int>( &QComboBox::currentIndexChanged ), [replot_refractive_index]( int ) { replot_refractive_index(); } );
 	connect( ui.plotMaterialIndex_checkBox, &QCheckBox::stateChanged, [replot_refractive_index]( int ) { replot_refractive_index(); } );
 
 	connect( ui.blackbodyAmplitude_horizontalSlider, &QSlider::valueChanged, [this, Avoid_Resignalling_setValue, replot_blackbody]( int )
 	{
-		Avoid_Resignalling_setValue( ui.blackbodyAmplitude_doubleSpinBox, ui.blackbodyAmplitude_horizontalSlider->value() / 1000.0 );
+		int one_to_1E5 = ui.blackbodyAmplitude_horizontalSlider->value();
+		const int max = 100000;
+		const double curvature = 8.0;
+		const double max_y = 200.0;
+		double scaled = max_y * std::exp( curvature * ( one_to_1E5 - max ) / max );
+		Avoid_Resignalling_setValue( ui.blackbodyAmplitude_doubleSpinBox, scaled );
 		replot_blackbody();
 	} );
 	connect( ui.blackbodyTemperature_horizontalSlider, &QSlider::valueChanged, [this, Avoid_Resignalling_setValue, replot_blackbody]( int )
 	{
-		Avoid_Resignalling_setValue( ui.blackbodyTemperature_doubleSpinBox, ui.blackbodyTemperature_horizontalSlider->value() / 100.0 );
+		int one_to_1E6 = ui.blackbodyTemperature_horizontalSlider->value();
+		const int max = 1000000;
+		const double curvature = 4.0;
+		const double max_y = 6000.0;
+		double scaled = max_y * std::exp( curvature * ( one_to_1E6 - max ) / max );
+		Avoid_Resignalling_setValue( ui.blackbodyTemperature_doubleSpinBox, scaled );
 		replot_blackbody();
 	} );
 	connect( ui.blackbodyTemperature_doubleSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged), [this, Avoid_Resignalling_setValue, replot_blackbody]( double )
 	{
-		Avoid_Resignalling_setValue( ui.blackbodyTemperature_horizontalSlider, ui.blackbodyTemperature_doubleSpinBox->value() * 100.0 );
+		const int max = 1000000;
+		const double curvature = 4.0;
+		const double max_y = 6000.0;
+		double box = ui.blackbodyTemperature_doubleSpinBox->value();
+		int inverse = std::log( box / max_y ) * max / curvature + max;
+		Avoid_Resignalling_setValue( ui.blackbodyTemperature_horizontalSlider, std::max( 1, std::min( max, inverse ) ) );
 		replot_blackbody();
 	} );
 	connect( ui.blackbodyAmplitude_doubleSpinBox,   qOverload<double>(&QDoubleSpinBox::valueChanged), [this, Avoid_Resignalling_setValue, replot_blackbody]( double )
 	{
-		Avoid_Resignalling_setValue( ui.blackbodyAmplitude_horizontalSlider, ui.blackbodyAmplitude_doubleSpinBox->value() * 1000.0 );
+		const int max = 100000;
+		const double curvature = 8.0;
+		const double max_y = 200.0;
+		double box = ui.blackbodyAmplitude_doubleSpinBox->value();
+		int inverse = std::log( box / max_y ) * max / curvature + max;
+		Avoid_Resignalling_setValue( ui.blackbodyAmplitude_horizontalSlider, std::max( 1, std::min( max, inverse ) ) );
 		replot_blackbody();
 	} );
 	connect( ui.blackbodyOn_checkBox, &QCheckBox::stateChanged, [replot_blackbody]( int ) { replot_blackbody(); } );

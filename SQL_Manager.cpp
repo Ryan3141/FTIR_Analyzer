@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <set>
 #include <iterator>
+#include "base64pp.h"
 
 #include <QString>
 #include <QSettings>
@@ -32,8 +33,9 @@ static QString Sanitize_SQL( const QString & raw_string )
 		return raw_string;
 }
 
+static int unique_number = 0;
 SQL_Manager::SQL_Manager( QObject* parent, QFileInfo config_filename, QString unique_name, QString config_category ) :
-	unique_name( unique_name )
+	unique_name( unique_name + QString::number( unique_number++ ) )
 {
 	QSettings settings( config_filename.filePath(), QSettings::IniFormat, this );
 	database_type = settings.value( config_category + "/database_type" ).toString();
@@ -89,6 +91,53 @@ bool SQL_Manager::Initialize_DB_Connection()
 	return sql_worked;
 }
 
+void SQL_Manager::Grab_SQL_XY_Blob_Data_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* context,
+														 std::function< void( ID_To_XY_Data ) > callback, const QString & extra_filtering ) const
+{
+	QTimer::singleShot( 0, this, [ this, what_to_collect, table_name, measurement_ids, context, callback, extra_filtering ]
+	{
+		int measurement_id_index = what_to_collect.indexOf( "measurement_id" );
+		if( measurement_id_index == -1 )
+			return;
+		QSqlQuery query( sql_db );
+		query.setForwardOnly( true );
+		query.prepare( QString( "SELECT %1 FROM %2 WHERE measurement_id IN (%3) %4" )
+					   .arg( what_to_collect.join( ',' ), table_name, measurement_ids.join( "," ), Sanitize_SQL(extra_filtering) ) );
+		if( !query.exec() )
+		{
+			qDebug() << "Error pulling data from sql table: "
+				<< query.lastError();
+			return;
+		}
+		QString debug = query.executedQuery();
+
+		ID_To_XY_Data data_per_id;
+		while( query.next() )
+		{
+			QString measurement_id = query.value( measurement_id_index ).toString();
+			XY_Data & one_measurement = data_per_id[ measurement_id ];
+			//QByteArray ba1 = query.value( 1 ).toByteArray();
+			//QByteArray ba2 = query.value( 2 ).toByteArray();
+			std::string x64_data = query.value( 1 ).toString().toStdString();
+			std::string y64_data = query.value( 2 ).toString().toStdString();
+			auto ba1 = base64pp::decode( x64_data ).value();
+			auto ba2 = base64pp::decode( y64_data ).value();
+			auto &[ x_data, y_data ] = one_measurement;
+			x_data.resize( ba1.size() / sizeof( decltype(+x_data[0]) ) + 1 ); // Oversize a bit to avoid potential memory overrun
+			y_data.resize( ba2.size() / sizeof( decltype(+y_data[0]) ) + 1 ); // Oversize a bit to avoid potential memory overrun
+			std::copy( ba1.begin(), ba1.end(), reinterpret_cast<char*>( x_data.data() ) );
+			std::copy( ba2.begin(), ba2.end(), reinterpret_cast<char*>( y_data.data() ) );
+			x_data.resize( x_data.size() - 1 ); // Undo previous oversize
+			y_data.resize( y_data.size() - 1 );	// Undo previous oversize
+		}
+
+		QTimer::singleShot( 0, context, [ callback, data_per_id = std::move(data_per_id) ]
+		{
+			callback( std::move( data_per_id ) );
+		} );
+	} );
+}
+
 void SQL_Manager::Grab_SQL_XY_Data_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name, const QStringList & measurement_ids, QObject* context,
 														 std::function< void( ID_To_XY_Data ) > callback, const QString & extra_filtering ) const
 {
@@ -103,7 +152,7 @@ void SQL_Manager::Grab_SQL_XY_Data_From_Measurement_IDs( const QStringList & wha
 					   .arg( what_to_collect.join( ',' ), table_name, measurement_ids.join( "\" OR measurement_id=\"" ), Sanitize_SQL(extra_filtering) ) );
 		if( !query.exec() )
 		{
-			qDebug() << "Error pulling data from ftir_measurments: "
+			qDebug() << "Error pulling data from sql table: "
 				<< query.lastError();
 			return;
 		}
@@ -318,6 +367,44 @@ void SQL_Manager::Write_SQL_XY_Data_No_Duplicates( const ID_To_XY_Data & data, c
 	} );
 }
 
+void SQL_Manager::Write_SQL_XY_Blob_Data( const ID_To_XY_Data & data, const QStringList & what_to_write, const QString & table_name,
+									 QObject* callback_context, std::function< void() > callback )
+{
+	if( data.empty() )
+		return;
+	QTimer::singleShot( 0, this, [ this, data, what_to_write, table_name, callback_context, callback ]
+	{
+		QSqlQuery query( this->sql_db );
+		// Write each set of xy_data one measurement_id at a time
+		for( const auto &[ measurement_id, xy_data ] : data )
+		{
+			QString question_marks = QStringList::fromVector(
+				QVector<QString>::fromStdVector(
+					std::vector<QString>( what_to_write.size(), "?" )
+				) ).join( ',' );
+			query.prepare( QString( "INSERT INTO %1 (%2) SELECT %3;" )
+						   .arg( table_name,
+								 what_to_write.join( ',' ),
+								 question_marks ) );
+			const auto & [ x_data, y_data ] = xy_data;
+			QByteArray encoded_x = base64pp::encode<QVector<double>, QByteArray>( x_data );
+			QByteArray encoded_y = base64pp::encode<QVector<double>, QByteArray>( y_data );
+			query.addBindValue( measurement_id );
+			query.addBindValue( encoded_x );
+			query.addBindValue( encoded_y );
+
+			if( !query.exec() )
+			{
+				qDebug() << "Error writing data to " << table_name << ":\n"
+					<< query.lastError();
+			}
+		}
+
+		if( callback_context != nullptr )
+			QTimer::singleShot( 0, callback_context, callback );
+	} );
+}
+
 void SQL_Manager::Write_SQL_XY_Data( const ID_To_XY_Data & data, const QStringList & what_to_write, const QString & table_name,
 									 QObject* callback_context, std::function< void() > callback )
 {
@@ -386,6 +473,42 @@ void SQL_Manager_With_Local_Cache::Start_Thread()
 {
 	local_sql.Start_Thread();
 	remote_sql.Start_Thread();
+}
+
+void SQL_Manager_With_Local_Cache::Grab_SQL_XY_Blob_Data_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name,
+																		  const QStringList & measurement_ids, QObject* callback_context,
+																		  std::function< void( ID_To_XY_Data ) > callback, const QString & extra_filtering )
+{
+	local_sql.Grab_SQL_XY_Blob_Data_From_Measurement_IDs( what_to_collect, table_name, measurement_ids, this,
+		[ this, what_to_collect, table_name, measurement_ids, callback_context, callback, extra_filtering ]( ID_To_XY_Data data )
+		{
+			const auto measurement_ids_missing = [ &measurement_ids, &data ]
+			{
+				QStringList copy_of_measurement_ids = measurement_ids;
+				std::vector<QString> found_ids;
+				for( const auto &[ id, xy_data ] : data )
+					found_ids.push_back( id );
+				// Need to sort lists before use so that set_difference works
+				std::sort( found_ids.begin(), found_ids.end() );
+				std::sort( copy_of_measurement_ids.begin(), copy_of_measurement_ids.end() );
+				QStringList measurement_ids_missing;
+				std::set_difference( copy_of_measurement_ids.begin(), copy_of_measurement_ids.end(), found_ids.begin(), found_ids.end(),
+									 std::back_inserter( measurement_ids_missing ) );
+				return measurement_ids_missing;
+			}();
+			if( measurement_ids_missing.size() > 0 ) // Need to lookup data from remote source
+			{
+				remote_sql.Grab_SQL_XY_Blob_Data_From_Measurement_IDs( what_to_collect, table_name, measurement_ids_missing, this,
+					[ this, callback_context, callback, what_to_collect, table_name, data ]( ID_To_XY_Data remaining_data )
+					{
+						local_sql.Write_SQL_XY_Blob_Data( remaining_data, what_to_collect, table_name );
+						remaining_data.insert( data.begin(), data.end() );
+						QTimer::singleShot( 0, callback_context, [ callback, remaining_data = std::move( remaining_data ) ] { callback( remaining_data ); } );
+					}, extra_filtering );
+			}
+			else
+				QTimer::singleShot( 0, callback_context, [ callback, data ]{ callback( data ); } );
+		}, extra_filtering );
 }
 
 void SQL_Manager_With_Local_Cache::Grab_SQL_XY_Data_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name,

@@ -3,7 +3,7 @@
 namespace FTIR
 {
 
-void Axes::Set_X_Units( FTIR::X_Units units )
+void Axes::Set_X_Units( X_Units units )
 {
 	if( units == x_units )
 		return;
@@ -13,7 +13,7 @@ void Axes::Set_X_Units( FTIR::X_Units units )
 	graph_function();
 }
 
-void Axes::Set_Y_Units( FTIR::Y_Units units )
+void Axes::Set_Y_Units( Y_Units units )
 {
 	if( units == y_units )
 		return;
@@ -172,8 +172,15 @@ void Interactive_Graph::Change_X_Axis( int index )
 {
 	X_Units x_units = X_Units( index );
 	std::array<double, 2> bounds = { xAxis->range().lower, xAxis->range().upper };
+	std::array<double, 2> original = { xAxis->range().lower, xAxis->range().upper };
+
 	for( double & x : bounds )
 		x = Convert_Units( this->axes.x_units, x_units, x );
+
+	if( original[ 0 ] < 0 && bounds[ 0 ] > 0 )
+		original[ 0 ] = original[ 0 ];
+	if( bounds[ 0 ] < 0 && std::abs( bounds[ 0 ] ) > bounds[ 1 ] )
+		bounds[ 0 ] = Axes::X_Unit_Sensible_Maximum[ int( x_units ) ];
 	xAxis->setRange( std::min( bounds[ 0 ], bounds[ 1 ] ), std::max( bounds[ 0 ], bounds[ 1 ] ) );
 	this->xAxis->setLabel( Axes::X_Unit_Names[ int( x_units ) ] );
 	this->axes.Set_X_Units( x_units );
@@ -184,14 +191,17 @@ void Interactive_Graph::Change_Y_Axis( int index )
 {
 	Y_Units y_units = Y_Units( index );
 	this->yAxis->setLabel( Axes::Y_Unit_Names[ int( y_units ) ] );
-	if( this->axes.y_units == FTIR::Y_Units::RAW_SENSOR &&
-		( y_units == FTIR::Y_Units::RAW_SENSOR || y_units == FTIR::Y_Units::RAW_SENSOR ) )
+	if( this->axes.y_units == Y_Units::RAW_SENSOR &&
+		( y_units == Y_Units::RAW_SENSOR || y_units == Y_Units::RAW_SENSOR ) )
 		yAxis->setRange( 0.0, 100.0 );
 
 	this->axes.Set_Y_Units( y_units );
 	emit Y_Units_Changed();
 };
 
+const double Axes::X_Unit_Sensible_Maximum[ 3 ] = { 8000.0,
+												30.0,
+												1.0 };
 const QString Axes::X_Unit_Names[ 3 ] = { "Wave Number (cm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + ")",
 												"Wavelength (" + QString( QChar( 0x03BC ) ) + "m)",
 												"Photon Energy (eV)" };

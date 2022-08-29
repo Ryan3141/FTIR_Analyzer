@@ -31,6 +31,7 @@ private:
 	void Initialize_Graph();
 	void Load_Report( QFileInfo file );
 
+public:
 	Ui::Report_Plots ui;
 };
 

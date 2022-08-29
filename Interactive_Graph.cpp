@@ -58,8 +58,8 @@ void Interactive_Graph<Single_Graph, Axes>::Initialize_Graph()
 	connect( this, &QCustomPlot::mouseDoubleClick, this, &Interactive_Graph<Single_Graph, Axes>::refitGraphs );
 
 	// make bottom and left axes transfer their ranges to top and right axes:
-	connect( this->xAxis, SIGNAL( rangeChanged( QCPRange ) ), this->xAxis2, SLOT( setRange( QCPRange ) ) );
-	connect( this->yAxis, SIGNAL( rangeChanged( QCPRange ) ), this->yAxis2, SLOT( setRange( QCPRange ) ) );
+	connect( this->xAxis, qOverload<const QCPRange &>( &QCPAxis::rangeChanged ), this->xAxis2, qOverload<const QCPRange &>( &QCPAxis::setRange ) );
+	connect( this->yAxis, qOverload<const QCPRange &>( &QCPAxis::rangeChanged ), this->yAxis2, qOverload<const QCPRange &>( &QCPAxis::setRange ) );
 
 	// connect some interaction slots:
 	connect( this, &QCustomPlot::axisDoubleClick,   this, &Interactive_Graph<Single_Graph, Axes>::axisLabelDoubleClick );
@@ -85,19 +85,18 @@ void Interactive_Graph<Single_Graph, Axes>::Initialize_Graph()
 template<typename Single_Graph, typename Axes>
 void Interactive_Graph<Single_Graph, Axes>::titleDoubleClick( QMouseEvent* event )
 {
-	Q_UNUSED( event )
-		if( QCPTextElement *title = qobject_cast<QCPTextElement*>(sender()) )
+	if( QCPTextElement *title = qobject_cast<QCPTextElement*>(sender()) )
+	{
+		event->accept();
+		// Set the plot title by double clicking on it
+		bool ok;
+		QString newTitle = QInputDialog::getText( this, "Change Title", "New plot title:", QLineEdit::Normal, title->text(), &ok );
+		if( ok )
 		{
-			event->accept();
-			// Set the plot title by double clicking on it
-			bool ok;
-			QString newTitle = QInputDialog::getText( this, "Change Title", "New plot title:", QLineEdit::Normal, title->text(), &ok );
-			if( ok )
-			{
-				title->setText( newTitle );
-				this->replot();
-			}
+			title->setText( newTitle );
+			this->replot();
 		}
+	}
 }
 
 template<typename Single_Graph, typename Axes>
@@ -122,18 +121,18 @@ void Interactive_Graph<Single_Graph, Axes>::legendDoubleClick( QCPLegend *legend
 {
 	// Rename a graph by double clicking on its legend item
 	Q_UNUSED( legend )
-		if( item ) // only react if item was clicked (user could have clicked on border padding of legend where there is no item, then item is 0)
+	if( item ) // only react if item was clicked (user could have clicked on border padding of legend where there is no item, then item is 0)
+	{
+		event->accept();
+		QCPPlottableLegendItem *plItem = qobject_cast<QCPPlottableLegendItem*>(item);
+		bool ok;
+		QString newName = QInputDialog::getText( this, "Change Graph Name", "New graph name:", QLineEdit::Normal, plItem->plottable()->name(), &ok );
+		if( ok )
 		{
-			event->accept();
-			QCPPlottableLegendItem *plItem = qobject_cast<QCPPlottableLegendItem*>(item);
-			bool ok;
-			QString newName = QInputDialog::getText( this, "Change Graph Name", "New graph name:", QLineEdit::Normal, plItem->plottable()->name(), &ok );
-			if( ok )
-			{
-				plItem->plottable()->setName( newName );
-				this->replot();
-			}
+			plItem->plottable()->setName( newName );
+			this->replot();
 		}
+	}
 }
 
 template<typename Single_Graph, typename Axes>
@@ -265,19 +264,19 @@ void Interactive_Graph<Single_Graph, Axes>::graphContextMenuRequest( QPoint pos 
 
 	if( selected_legend ) // context menu on legend requested
 	{
-		menu->addAction( "Move to top left",     this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignLeft) );
-		menu->addAction( "Move to top center",   this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignHCenter) );
-		menu->addAction( "Move to top right",    this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignRight) );
-		menu->addAction( "Move to bottom right", this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignRight) );
-		menu->addAction( "Move to bottom left" , this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignLeft) );
+		menu->addAction( "Move to top left",      this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignLeft) );
+		menu->addAction( "Move to top center",    this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignHCenter) );
+		menu->addAction( "Move to top right",     this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignTop | Qt::AlignRight) );
+		menu->addAction( "Move to bottom right",  this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignRight) );
+		menu->addAction( "Move to bottom center", this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignHCenter) );
+		menu->addAction( "Move to bottom left",   this, &Interactive_Graph<Single_Graph, Axes>::moveLegend )->setData( (int)(Qt::AlignBottom | Qt::AlignLeft) );
 		menu->addAction( "Turn Legend Off", [this]
 		{
 			this->legend->setVisible( false );
 			this->replot();
 		} );
 	}
-
-	if( !selected_x_axis && !selected_y_axis )
+	else if( !selected_x_axis && !selected_y_axis )
 	{
 		if( !this->legend->visible() )
 			menu->addAction( "Turn Legend On", [this]
@@ -337,17 +336,27 @@ void Interactive_Graph<Single_Graph, Axes>::graphClicked( QCPAbstractPlottable *
 }
 
 template<typename Single_Graph, typename Axes>
-void Interactive_Graph<Single_Graph, Axes>::Hide_Graph( QString graph_name )
+void Interactive_Graph<Single_Graph, Axes>::Hide_Graph( QString graph_name, bool should_hide )
 {
 	auto existing_graph = remembered_graphs.find( graph_name );
 	if( existing_graph == remembered_graphs.end() )
 		return;
 
 	Single_Graph & current_info = existing_graph->second;
-	if( !current_info.graph_pointer->visible() ) // Already invisible, nothing to do
-		return;
-	current_info.graph_pointer->setVisible( false );
-	current_info.graph_pointer->removeFromLegend();
+	if( should_hide )
+	{
+		if( !current_info.graph_pointer->visible() ) // Already invisible, nothing to do
+			return;
+		current_info.graph_pointer->setVisible( false );
+		current_info.graph_pointer->removeFromLegend();
+	}
+	else
+	{
+		if( current_info.graph_pointer->visible() ) // Already invisible, nothing to do
+			return;
+		current_info.graph_pointer->setVisible( true );
+		current_info.graph_pointer->addToLegend();
+	}
 	replot();
 }
 
@@ -420,8 +429,8 @@ template<typename Single_Graph, typename Axes>
 void Interactive_Graph<Single_Graph, Axes>::saveCurrentGraph()
 {
 	QString selectedFilter;
-	QFileInfo file_name = QFileDialog::getSaveFileName( this,
-														tr( "Save Graph" ), QString(), tr( "JPG File (*.jpg);; PNG File (*.png);; BMP File (*.bmp);; PDF File (*.pdf)" ),
+	QFileInfo file_name = QFileDialog::getSaveFileName( this, tr( "Save Graph" ), QString(),
+														tr( "PDF File (*.pdf);; JPG File (*.jpg);; PNG File (*.png);; BMP File (*.bmp);; " ),
 														&selectedFilter );
 
 	int dpi = 1000;
@@ -437,8 +446,135 @@ void Interactive_Graph<Single_Graph, Axes>::saveCurrentGraph()
 		this->saveBmp( file_name.absoluteFilePath() );
 	else if( file_name.suffix().toLower() == "pdf" )
 	{
-		this->savePdf( file_name.absoluteFilePath(), dpi * 3, dpi * 2 );
+		int dpi = 100;
+		//double scale = ( 1.0 / 140 ) * dpi;
+		{
+			QPen pen;
+			pen.setColor( QColor(0, 0, 0) );
+			pen.setStyle( Qt::SolidLine );
+			this->xAxis->setBasePen( pen );
+			this->yAxis->setBasePen( pen );
+		}
+		{
+			QPen pen;
+			pen.setColor( QColor( 180, 180, 180 ) );
+			pen.setStyle( Qt::DashLine );
+			pen.setWidthF( 0.5 );
+			this->xAxis->grid()->setPen( pen );
+			this->yAxis->grid()->setPen( pen );
+		}
+		//{
+		//	QPen pen;
+		//	pen.setColor( QColor( 100, 100, 100 ) );
+		//	pen.setStyle( Qt::DashLine );
+		//	pen.setWidthF( 0.5 );
+		//	//pen.setStyle( Qt::DotLine );
+		//	//void setPen( const QPen &pen );
+		//	//void setSubGridPen( const QPen &pen );
+		//	//void setZeroLinePen( const QPen &pen );
+		//	this->yAxis->grid()->setPen( pen );
+		//}
+		//this->savePdf( file_name.absoluteFilePath(), dpi * 3, dpi * 2 );
+		this->savePdf( file_name.absoluteFilePath(), 4 * dpi, 3 * dpi );
 	}
+}
+
+//template<typename Single_Graph, typename Axes>
+//void Interactive_Graph<Single_Graph, Axes>::saveRastered( const QString &fileName, int width, int height, double scale, const char *format, int quality, int resolution, QCP::ResolutionUnit resolutionUnit )
+//{
+//	QImage buffer = toPixmap( width, height, scale ).toImage();
+//
+//	int dotsPerMeter = 0;
+//	switch( resolutionUnit )
+//	{
+//	case QCP::ruDotsPerMeter: dotsPerMeter = resolution; break;
+//	case QCP::ruDotsPerCentimeter: dotsPerMeter = resolution * 100; break;
+//	case QCP::ruDotsPerInch: dotsPerMeter = resolution / 0.0254; break;
+//	}
+//	buffer.setDotsPerMeterX( dotsPerMeter ); // this is saved together with some image formats, e.g. PNG, and is relevant when opening image in other tools
+//	buffer.setDotsPerMeterY( dotsPerMeter ); // this is saved together with some image formats, e.g. PNG, and is relevant when opening image in other tools
+//	if( !buffer.isNull() )
+//		return buffer.save( fileName, format, quality );
+//	else
+//		return false;
+//}
+template<typename Single_Graph, typename Axes>
+bool Interactive_Graph<Single_Graph, Axes>::saveAsStandardPdf( const QString & fileName )
+{
+	int dpi = 100;
+	//double scale = ( 1.0 / 140 ) * dpi;
+	{
+		QPen pen;
+		pen.setColor( QColor( 0, 0, 0 ) );
+		pen.setStyle( Qt::SolidLine );
+		this->xAxis->setBasePen( pen );
+		this->yAxis->setBasePen( pen );
+	}
+	{
+		QPen pen;
+		pen.setColor( QColor( 180, 180, 180 ) );
+		pen.setStyle( Qt::DashLine );
+		pen.setWidthF( 0.5 );
+		this->xAxis->grid()->setPen( pen );
+		this->yAxis->grid()->setPen( pen );
+	}
+	//{
+	//	QPen pen;
+	//	pen.setColor( QColor( 100, 100, 100 ) );
+	//	pen.setStyle( Qt::DashLine );
+	//	pen.setWidthF( 0.5 );
+	//	//pen.setStyle( Qt::DotLine );
+	//	//void setPen( const QPen &pen );
+	//	//void setSubGridPen( const QPen &pen );
+	//	//void setZeroLinePen( const QPen &pen );
+	//	this->yAxis->grid()->setPen( pen );
+	//}
+	//this->savePdf( file_name.absoluteFilePath(), dpi * 3, dpi * 2 );
+	return this->savePdf( fileName, 4 * dpi, 3 * dpi );
+}
+
+template<typename Single_Graph, typename Axes>
+bool Interactive_Graph<Single_Graph, Axes>::savePdf( const QString &fileName, int width, int height, QCP::ExportPen exportPen, const QString &pdfCreator, const QString &pdfTitle )
+{
+	bool success = false;
+
+	QPrinter printer( QPrinter::ScreenResolution );
+	{ // Setup pdf printer
+		printer.setOutputFileName( fileName );
+		printer.setOutputFormat( QPrinter::PdfFormat );
+		printer.setColorMode( QPrinter::Color );
+		printer.printEngine()->setProperty( QPrintEngine::PPK_Creator, pdfCreator );
+		printer.printEngine()->setProperty( QPrintEngine::PPK_DocumentName, pdfTitle );
+	}
+	QRect oldViewport = viewport();
+	setViewport( QRect( 0, 0, width, height ) );
+	QPageLayout pageLayout;
+	{
+		pageLayout.setMode( QPageLayout::FullPageMode );
+		pageLayout.setOrientation( QPageLayout::Portrait );
+		pageLayout.setMargins( QMarginsF( 0, 0, 0, 0 ) );
+		pageLayout.setPageSize( QPageSize( viewport().size(), QPageSize::Point, QString(), QPageSize::ExactMatch ) );
+		printer.setPageLayout( pageLayout );
+	}
+	QCPPainter printpainter;
+	if( printpainter.begin( &printer ) )
+	{
+		printpainter.setMode( QCPPainter::pmVectorized );
+		printpainter.setMode( QCPPainter::pmNoCaching );
+		printpainter.setMode( QCPPainter::pmNonCosmetic, exportPen == QCP::epNoCosmetic );
+		printpainter.setWindow( mViewport );
+		if( mBackgroundBrush.style() != Qt::NoBrush &&
+			mBackgroundBrush.color() != Qt::white &&
+			mBackgroundBrush.color() != Qt::transparent &&
+			mBackgroundBrush.color().alpha() > 0 ) // draw pdf background color if not white/transparent
+			printpainter.fillRect( viewport(), mBackgroundBrush );
+		draw( &printpainter );
+		printpainter.end();
+		success = true;
+	}
+	setViewport( oldViewport );
+
+	return success;
 }
 
 
@@ -562,6 +698,7 @@ const Single_Graph & Interactive_Graph<Single_Graph, Axes>::Graph( QVector<doubl
 		//graphPen.setColor( QColor::fromHsv( rand() % 255, 255, 255 ) );
 		//graphPen.setWidthF( rand() / (double)RAND_MAX * 2 + 1 );
 		this->graph()->setPen( graphPen );
+		this->graph()->setAntialiased( false );
 		//if( this_is_the_first_graph )
 		//{
 		//	//this->rescaleAxes();

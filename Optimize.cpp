@@ -2,6 +2,9 @@
 
 #include <armadillo>
 #include <functional>
+#include "nelder_mead.h"
+
+#include "rangeless_helper.hpp"
 
 arma::vec Gradient_Approximate( const arma::vec & x,
 								std::function<double( const arma::vec & )> func,
@@ -20,6 +23,25 @@ arma::vec Gradient_Approximate( const arma::vec & x,
 	}
 
 	return gradient_vector;
+}
+
+arma::vec Gradient_Approximate( const arma::vec & x,
+	std::function<double( const arma::vec & )> func,
+	arma::vec resolution )
+{
+	arma::vec gradient_vector = arma::zeros( x.size() );
+	for( auto i = 0; i < x.size(); i++ )
+	{
+		arma::vec offset = arma::zeros<arma::vec>( x.size() );
+		offset( i ) = resolution( i );
+		std::cout << "Dimension " << i << " = " << func( x + offset ) << " " << func( x - offset ) << "\n";
+		gradient_vector( i ) = ( func( x + offset ) - func( x - offset ) );// / (2 * resolution);
+	}
+	std::cout << "Gradient =";
+	for( double x : gradient_vector )
+		std::cout << " " << x;
+	std::cout << std::endl;
+	return gradient_vector / ( 2 * resolution );
 }
 
 arma::mat Hessian_Approximate( const arma::vec & x,
@@ -123,6 +145,108 @@ arma::vec Minimize_Function_Starting_Point( std::function<double( const arma::ve
 	return current_guess;
 }
 
+//arma::vec Fit_Data_To_Function( std::function<arma::vec( const arma::vec &, const arma::vec & )> function,
+//	const arma::vec & x_data,
+//	const arma::vec & y_data,
+//	arma::vec lower_bounds,
+//	arma::vec upper_bounds,
+//	double resolution,
+//	int max_iteration_count,
+//	double learning_factor )
+//{
+//	const arma::vec bounds_range = upper_bounds - lower_bounds;
+//	arma::vec current_guess = ( upper_bounds + lower_bounds ) / 2;
+//	const arma::vec resolution_vec = bounds_range * resolution;
+//	//arma::vec previous_direction = arma::zeros( current_guess.size() );
+//	auto error_function = [ &x_data, &y_data, function ]( arma::vec fit_params ) -> double {
+//		arma::vec diff = y_data - function( fit_params, x_data );
+//		return arma::dot( diff, diff );
+//	};
+//	//arma::vec learning_factor = bounds_range * 1E-6;
+//	for( int i = 0; i < max_iteration_count; i++ )
+//	{
+//		std::cout << "current_guess =";
+//		for( double x : current_guess )
+//			std::cout << " " << x;
+//		std::cout << std::endl;
+//
+//		arma::vec gradient = Gradient_Approximate( current_guess, error_function, resolution_vec );
+//		//arma::vec to_zero = -gradient / ( 2 * resolution ) / function_to_minimize( current_guess );
+//		//arma::vec move_vector = arma::min( arma::abs( to_zero ), biggest_step_ratio * current_guess ) % arma::sign( to_zero );
+//		//double length = arma::norm( gradient ) / (2 * resolution);
+//		//arma::vec move_vector = -arma::normalise( gradient ) % bounds_range * 0.1;
+//		//arma::vec move_vector = -gradient % bounds_range * 0.1;
+//		arma::vec move_vector = -gradient * learning_factor;
+//		double move_vector_amplitude = move_vector[ 0 ];
+//		double move_vector_offset = move_vector[ 1 ];
+//		double move_vector_tau = move_vector[ 2 ];
+//
+//		double current_guess_amplitude = current_guess[ 0 ];
+//		double current_guess_offset = current_guess[ 1 ];
+//		double current_guess_tau = current_guess[ 2 ];
+//
+//		//learning_factor *= 0.5;
+//		//arma::vec extend_thing = { 0, 0, 0 };
+//		//extend_thing( arma::span( 0, 1 ) ) = move_vector;
+//		//move_vector = extend_thing;
+//		//move_vector( 2 ) = 0;
+//		current_guess = arma::min( upper_bounds, arma::max( lower_bounds, current_guess + move_vector ) );
+//		if( arma::dot( move_vector, move_vector ) < resolution * resolution )
+//			break; // Quit out if we are barely moving anymore
+//
+//		//previous_direction = move_vector;
+//	}
+//
+//	return current_guess;
+//}
+
+template< typename ArrayType >
+arma::vec to_vec( const ArrayType & from )
+{
+	arma::vec to( from.size() );
+	std::copy( from.begin(), from.end(), to.begin() );
+	return to;
+}
+
+template< typename VecType, typename real, int n >
+std::array<real, n> to_array( const VecType & from )
+{
+	assert( n == from.size() );
+	std::array<real, n> to;
+	std::copy( from.begin(), from.end(), to.begin() );
+	return to;
+}
+
+
+arma::vec Fit_Data_To_Function( std::function<arma::vec( const arma::vec &, const arma::vec & )> function,
+	const arma::vec & x_data,
+	const arma::vec & y_data,
+	arma::vec lower_bounds,
+	arma::vec upper_bounds,
+	double resolution,
+	int max_iteration_count,
+	double learning_factor )
+{
+	const arma::vec bounds_range = upper_bounds - lower_bounds;
+	arma::vec current_guess = ( upper_bounds + lower_bounds ) / 2;
+	const arma::vec resolution_vec = bounds_range * resolution;
+	//arma::vec previous_direction = arma::zeros( current_guess.size() );
+	auto error_function = [ &x_data, &y_data, function ]( const std::array<double, 3> & fit_params ) -> double {
+		arma::vec diff = y_data - function( to_vec( fit_params ), x_data );
+		std::cout << fit_params[0] << " " << fit_params[1] << " " << fit_params[2] << ": " << arma::dot( diff, diff ) << "\n";
+		return arma::dot( diff, diff );
+	};
+
+	nelder_mead_result<double, 3> result = nelder_mead<double, 3>(
+		error_function,
+		to_array<arma::vec, double, 3>( current_guess ),
+		1.0e-25, // the terminating limit for the variance of function values
+		to_array<arma::vec, double, 3>( resolution_vec ) );
+
+	return to_vec( result.xmin );
+	//return arma::min( upper_bounds, arma::max( lower_bounds, to_vec( result.xmin ) ) );
+}
+
 arma::mat Minimize_Function( std::function<double( const arma::vec & )> function_to_minimize,
 							 const std::vector< std::tuple<double, double> > & bounds,
 							 const int max_iteration_count )
@@ -144,6 +268,7 @@ double Newtons_Method( std::function<double( double )> func, std::function<doubl
 			return x_i;
 		}
 	}
+	return x_i;
 }
 
 double Binary_Search( std::function<double( double )> func, double left_most, double right_most, double resolution, int max_iteration_count )

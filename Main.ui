@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1279</width>
-    <height>955</height>
+    <height>716</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -23,43 +23,132 @@
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
      <widget class="QTabWidget" name="main_tabWidget">
-      <property name="currentIndex">
-       <number>4</number>
+      <property name="tabShape">
+       <enum>QTabWidget::Rounded</enum>
       </property>
-      <widget class="QWidget" name="ftir_tab_layout">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <property name="tabsClosable">
+       <bool>true</bool>
+      </property>
+      <property name="movable">
+       <bool>true</bool>
+      </property>
+      <widget class="QWidget" name="addNew_tab">
        <attribute name="title">
-        <string>FTIR</string>
+        <string>+</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_4">
+       <layout class="QGridLayout" name="gridLayout_3">
         <item row="0" column="0">
-         <widget class="FTIR::FTIR_Analyzer" name="ftir_tab" native="true"/>
+         <widget class="QPushButton" name="startFTIR_pushButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>24</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>FTIR</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QPushButton" name="startIV_pushButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>24</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>IV</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QPushButton" name="startLifetime_pushButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>24</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Lifetime</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QPushButton" name="startReport_pushButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>24</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Report</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QPushButton" name="startIVBySize_pushButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>24</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>IV By Size</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QPushButton" name="startCV_pushButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>24</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>CV</string>
+          </property>
+         </widget>
         </item>
        </layout>
-      </widget>
-      <widget class="QWidget" name="iv_tab_layout">
-       <attribute name="title">
-        <string>I-V</string>
-       </attribute>
-       <layout class="QGridLayout" name="gridLayout_2">
-        <item row="0" column="0">
-         <widget class="IV::Plotter" name="iv_tab" native="true"/>
-        </item>
-       </layout>
-      </widget>
-      <widget class="IV_By_Size::Plotter" name="ivBySize_tab">
-       <attribute name="title">
-        <string>IV By Size</string>
-       </attribute>
-      </widget>
-      <widget class="CV::Plotter" name="cv_tab">
-       <attribute name="title">
-        <string>C-V</string>
-       </attribute>
-      </widget>
-      <widget class="Report::Report_Plots" name="report_tab">
-       <attribute name="title">
-        <string>Report</string>
-       </attribute>
       </widget>
      </widget>
     </item>
@@ -86,38 +175,6 @@
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <customwidgets>
-  <customwidget>
-   <class>FTIR::FTIR_Analyzer</class>
-   <extends>QWidget</extends>
-   <header>FTIR_Analyzer.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>CV::Plotter</class>
-   <extends>QWidget</extends>
-   <header>CV_Plotter.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>IV::Plotter</class>
-   <extends>QWidget</extends>
-   <header>IV_Plotter.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>Report::Report_Plots</class>
-   <extends>QWidget</extends>
-   <header>Report_Plots.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>IV_By_Size::Plotter</class>
-   <extends>QWidget</extends>
-   <header>IV_By_Size_Plotter.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="FTIR_Analyzer.qrc"/>
  </resources>

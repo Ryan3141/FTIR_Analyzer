@@ -97,7 +97,7 @@
        <item>
         <widget class="SQL_Tree_Widget" name="treeWidget">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>1</verstretch>
           </sizepolicy>
@@ -165,7 +165,7 @@
          </column>
          <item>
           <property name="text">
-           <string>Sample1</string>
+           <string>Loading</string>
           </property>
           <property name="text">
            <string/>
@@ -184,7 +184,7 @@
             <string/>
            </property>
            <property name="text">
-            <string>First</string>
+            <string>Grabbing SQL Data</string>
            </property>
            <property name="text">
             <string/>
@@ -201,7 +201,7 @@
             <string/>
            </property>
            <property name="text">
-            <string>Second</string>
+            <string>One Sec</string>
            </property>
            <property name="text">
             <string/>
@@ -417,25 +417,113 @@
              </property>
              <layout class="QVBoxLayout" name="verticalLayout">
               <item>
-               <widget class="QCheckBox" name="simulationTransmissionOn_checkBox">
-                <property name="text">
-                 <string>Transmission</string>
-                </property>
-               </widget>
+               <layout class="QHBoxLayout" name="horizontalLayout_8">
+                <item>
+                 <widget class="QCheckBox" name="simulationTransmissionOn_checkBox">
+                  <property name="text">
+                   <string>Transmission</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="transmissionAmplitude_doubleSpinBox">
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>200.000000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>1.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="transmissionSubtractor_doubleSpinBox">
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>-200.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>200.000000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>0.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
               <item>
-               <widget class="QCheckBox" name="simulationReflectionOn_checkBox">
-                <property name="text">
-                 <string>Reflection</string>
-                </property>
-               </widget>
+               <layout class="QHBoxLayout" name="horizontalLayout_9">
+                <item>
+                 <widget class="QCheckBox" name="simulationReflectionOn_checkBox">
+                  <property name="text">
+                   <string>Reflection</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="reflectionAmplitude_doubleSpinBox">
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>200.000000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>1.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
               <item>
-               <widget class="QCheckBox" name="simulationAbsorptionOn_checkBox">
-                <property name="text">
-                 <string>Absorption</string>
-                </property>
-               </widget>
+               <layout class="QHBoxLayout" name="horizontalLayout_10">
+                <item>
+                 <widget class="QCheckBox" name="simulationAbsorptionOn_checkBox">
+                  <property name="text">
+                   <string>Absorption</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="absorptionAmplitude_doubleSpinBox">
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>200.000000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>1.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -625,36 +713,17 @@
               <string>Blackbody</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_5">
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_15">
-                <property name="text">
-                 <string>Temperature</string>
+              <item row="3" column="1">
+               <widget class="QDoubleSpinBox" name="blackbodyTemperature_doubleSpinBox">
+                <property name="maximum">
+                 <double>100000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>820.000000000000000</double>
                 </property>
                </widget>
               </item>
               <item row="2" column="2">
-               <widget class="QSlider" name="blackbodyTemperature_horizontalSlider">
-                <property name="minimum">
-                 <number>0</number>
-                </property>
-                <property name="maximum">
-                 <number>1000000</number>
-                </property>
-                <property name="singleStep">
-                 <number>1</number>
-                </property>
-                <property name="pageStep">
-                 <number>1000</number>
-                </property>
-                <property name="value">
-                 <number>82000</number>
-                </property>
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
                <widget class="QSlider" name="blackbodyAmplitude_horizontalSlider">
                 <property name="minimum">
                  <number>1</number>
@@ -676,17 +745,24 @@
                 </property>
                </widget>
               </item>
-              <item row="1" column="0">
+              <item row="1" column="1">
+               <widget class="QCheckBox" name="blackbodyOn_checkBox">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
                <widget class="QLabel" name="label_14">
                 <property name="text">
                  <string>Amplitude</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="1">
+              <item row="2" column="1">
                <widget class="QDoubleSpinBox" name="blackbodyAmplitude_doubleSpinBox">
                 <property name="minimum">
-                 <double>0.100000000000000</double>
+                 <double>0.000000000000000</double>
                 </property>
                 <property name="maximum">
                  <double>200.000000000000000</double>
@@ -699,29 +775,59 @@
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
-               <widget class="QDoubleSpinBox" name="blackbodyTemperature_doubleSpinBox">
+              <item row="3" column="2">
+               <widget class="QSlider" name="blackbodyTemperature_horizontalSlider">
+                <property name="minimum">
+                 <number>0</number>
+                </property>
                 <property name="maximum">
-                 <double>100000.000000000000000</double>
+                 <number>1000000</number>
+                </property>
+                <property name="singleStep">
+                 <number>1</number>
+                </property>
+                <property name="pageStep">
+                 <number>1000</number>
                 </property>
                 <property name="value">
-                 <double>820.000000000000000</double>
+                 <number>82000</number>
+                </property>
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
                 </property>
                </widget>
               </item>
-              <item row="0" column="0">
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_15">
+                <property name="text">
+                 <string>Temperature</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
                <widget class="QLabel" name="label_16">
                 <property name="text">
                  <string>Activate</string>
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
-               <widget class="QCheckBox" name="blackbodyOn_checkBox">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
+              <item row="1" column="2">
+               <layout class="QHBoxLayout" name="horizontalLayout_11">
+                <item>
+                 <widget class="QLabel" name="label_17">
+                  <property name="text">
+                   <string>Photon Count</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="blackbodyPhotonCount_checkBox">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </item>
              </layout>
             </widget>

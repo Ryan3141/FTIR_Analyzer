@@ -1,9 +1,14 @@
 //#include "FTIR_Analyzer.h"
 #include <QtWidgets/QApplication>
-#include <QMainWindow>
-#include <QObject>
 
-#include "ui_Main.h"
+#include "IV_By_Size_Plotter.h"
+#include "IV_Plotter.h"
+#include "CV_Plotter.h"
+#include "FTIR_Analyzer.h"
+#include "Lifetime_Plotter.h"
+#include "Report_Plots.h"
+
+#include "main.h"
 
 void Add_Mouse_Position_Label( QCustomPlot* graph, QLabel* statusLabel )
 {
@@ -29,8 +34,60 @@ void Add_Mouse_Position_And_Point_Label( QCustomPlot* graph, QLabel* statusLabel
 	} );
 }
 
+Main_Widget::Main_Widget( QWidget *parent ) : QMainWindow( parent )
+{
+	ui.setupUi( this );
+
+	QLabel* statusLabel = new QLabel( this );
+	ui.statusBar->addPermanentWidget( statusLabel );
+	Prepare_New_Tab( statusLabel );
+}
+
+void Main_Widget::Prepare_New_Tab( QLabel* statusLabel )
+{
+	connect( this->ui.main_tabWidget, &QTabWidget::tabCloseRequested, this->ui.main_tabWidget, &QTabWidget::removeTab );
+	auto prepare_new_tab = [ this, statusLabel ]( auto* new_tab, QString title )
+	{
+		int index = ui.main_tabWidget->count() - 1;
+		ui.main_tabWidget->insertTab( index, new_tab, title );
+		ui.main_tabWidget->setCurrentIndex( index );
+		Add_Mouse_Position_Label( new_tab->ui.customPlot, statusLabel );
+	};
+	auto prepare_new_tab2 = [ this, statusLabel ]( auto* new_tab, QString title )
+	{
+		int index = ui.main_tabWidget->count() - 1;
+		ui.main_tabWidget->insertTab( index, new_tab, title );
+		ui.main_tabWidget->setCurrentIndex( index );
+	};
+	connect( ui.startFTIR_pushButton,     &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new FTIR::FTIR_Analyzer( this ), "&FTIR" ); } );
+	connect( ui.startIV_pushButton,       &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new IV::Plotter( this ), "&IV" ); } );
+	connect( ui.startLifetime_pushButton, &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new Lifetime::Plotter( this ), "&Lifetime" ); } );
+	connect( ui.startReport_pushButton,   &QPushButton::clicked, [ this, prepare_new_tab2 ]( bool checked ) { prepare_new_tab2( new Report::Report_Plots( this ), "&Report" ); } );
+	connect( ui.startIVBySize_pushButton, &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new IV_By_Size::Plotter( this ), "IV By &Size" ); } );
+	connect( ui.startCV_pushButton,       &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new CV::Plotter( this ), "&CV" ); } );
+}
+
+#include "Optimize.h"
+
 int main(int argc, char *argv[])
 {
+	if constexpr( true )
+	{
+		auto func = []( const arma::vec & fit_params, const arma::vec & x ) -> arma::vec
+		{
+			return fit_params - x;
+			//return ( 1 - x[ 0 ] ) * ( 1 - x[ 1 ] ) * ( 1 - x[ 2 ] );
+		};
+		const arma::vec x_data = { 1,2,3 };
+		const arma::vec y_data = { 0,0,0 };
+		const arma::vec lower_bounds = { -10,-10,-10 };
+		const arma::vec upper_bounds = { +10,+10,+10 };
+
+		arma::vec best_fit_params = Fit_Data_To_Function( func, x_data, y_data, lower_bounds, upper_bounds,
+			1E-5, 1000, 1E-2 );
+		std::cout << "Test fit should be 1,2,3: " << best_fit_params[ 0 ] << " " << best_fit_params[ 1 ] << " " << best_fit_params[ 2 ] << "\n";
+	}
+
 	if constexpr( false )
 	{
 		QApplication a( argc, argv );
@@ -63,15 +120,16 @@ int main(int argc, char *argv[])
 	}
 
 	QApplication a(argc, argv);
-	QMainWindow w;
-	Ui::Main ui;
-	ui.setupUi( &w );
-	QLabel* statusLabel = new QLabel( &w );
-	ui.statusBar->addPermanentWidget( statusLabel );
-	Add_Mouse_Position_Label( ui.ftir_tab->ui.customPlot, statusLabel );
-	Add_Mouse_Position_Label( ui.iv_tab->ui.customPlot, statusLabel );
-	Add_Mouse_Position_Label( ui.ivBySize_tab->ui.customPlot, statusLabel );
-	Add_Mouse_Position_Label( ui.cv_tab->ui.customPlot, statusLabel );
+	Main_Widget w;
+	//Ui::Main ui;
+	//ui.setupUi( &w );
+	//QLabel* statusLabel = new QLabel( &w );
+	//ui.statusBar->addPermanentWidget( statusLabel );
+	//Prepare_New_Tab( &w, ui, statusLabel );
+	//Add_Mouse_Position_Label( ui.ftir_tab->ui.customPlot, statusLabel );
+	//Add_Mouse_Position_Label( ui.iv_tab->ui.customPlot, statusLabel );
+	//Add_Mouse_Position_Label( ui.ivBySize_tab->ui.customPlot, statusLabel );
+	//Add_Mouse_Position_Label( ui.cv_tab->ui.customPlot, statusLabel );
 	w.show();
 	return a.exec();
 }

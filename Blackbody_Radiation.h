@@ -14,6 +14,8 @@ const double c3 = c * c * c;
 
 inline arma::vec Blackbody_Radiation( arma::vec wavelengths, double temperature_in_k, double adjust_height = 0.0 )
 {
+	if( int i = 0; i < 2 )
+		i++;
 	auto frequencies = c / wavelengths;
 	const double A = h / (k_B * temperature_in_k);
 	if( adjust_height == 0.0 )
@@ -25,13 +27,19 @@ inline arma::vec Blackbody_Radiation( arma::vec wavelengths, double temperature_
 		//adjust_height = 1.0 / ( std::pow( frequency_of_maximum, 3 ) / (std::exp( A * frequency_of_maximum ) - 1) );
 
 		// https://www.wolframalpha.com/input/?i=%28derivative+of+x%5E5+%2F+%28exp%28+A+*+x+%29+-+1%29%29+%3D+0
-		double frequency_of_maximum = (boost::math::lambert_w0( -5 / std::pow( arma::datum::e, 5 ) ) + 5) / A;
+		//double frequency_of_maximum = ( boost::math::lambert_w0( -5 / std::pow( arma::datum::e, 5 ) ) + 5 ) / A;
+		double frequency_of_maximum = ( boost::math::lambert_w0( -4 / std::pow( arma::datum::e, 4 ) ) + 4 ) / A;
+		//double frequency_of_maximum = ( boost::math::lambert_w0( -3 / std::pow( arma::datum::e, 3 ) ) + 3 ) / A;
 		//double test1 = find_maximum( frequency_of_maximum );
 		//double test2 = find_maximum( frequency_of_maximum+1 );
 		//double test3 = find_maximum( frequency_of_maximum-1 );
-		adjust_height = adjust_height / ( std::pow( frequency_of_maximum, 5 ) / (std::exp( A * frequency_of_maximum ) - 1) );
+		//adjust_height = adjust_height / ( std::pow( frequency_of_maximum, 5 ) / ( std::exp( A * frequency_of_maximum ) - 1 ) );
+		adjust_height = adjust_height / ( std::pow( frequency_of_maximum, 4 ) / ( std::exp( A * frequency_of_maximum ) - 1 ) );
+		//adjust_height = adjust_height / ( std::pow( frequency_of_maximum, 3 ) / ( std::exp( A * frequency_of_maximum ) - 1 ) );
 	}
-	return adjust_height * arma::pow( frequencies, 5 ) / (arma::exp( A * frequencies ) - 1);
+	//return adjust_height * arma::pow( frequencies, 5 ) / ( arma::exp( A * frequencies ) - 1 );
+	return adjust_height * arma::pow( frequencies, 4 ) / ( arma::exp( A * frequencies ) - 1 );
+	//return adjust_height * arma::pow( frequencies, 3 ) / ( arma::exp( A * frequencies ) - 1 );
 }
 
 //template<int n>

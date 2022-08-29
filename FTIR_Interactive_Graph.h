@@ -54,13 +54,14 @@ struct Axes
 	QVector<double> background_x_data;
 	QVector<double> background_y_data;
 
+	const static double X_Unit_Sensible_Maximum[ 3 ];
 	const static QString X_Unit_Names[ 3 ];
 	const static QString Y_Unit_Names[ 4 ];
 	const static QString Change_To_X_Unit_Names[ 3 ];
 	const static QString Change_To_Y_Unit_Names[ 4 ];
 };
 
-using Graph_Base = ::Interactive_Graph<Single_Graph, FTIR::Axes>;
+using Graph_Base = ::Interactive_Graph<Single_Graph, Axes>;
 
 class Interactive_Graph :
 	public Graph_Base

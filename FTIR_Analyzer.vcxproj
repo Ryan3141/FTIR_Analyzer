@@ -190,6 +190,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="base64pp.cpp" />
     <ClCompile Include="CV_Interactive_Graph.cpp" />
     <ClCompile Include="CV_Plotter.cpp" />
     <ClCompile Include="CV_Theoretical.cpp" />
@@ -201,6 +202,8 @@
     <ClCompile Include="IV_By_Size_Plotter.cpp" />
     <ClCompile Include="IV_Interactive_Graph.cpp" />
     <ClCompile Include="IV_Plotter.cpp" />
+    <ClCompile Include="Lifetime_Interactive_Graph.cpp" />
+    <ClCompile Include="Lifetime_Plotter.cpp" />
     <ClCompile Include="Material_Layer_Widget.cpp" />
     <ClCompile Include="Optimize.cpp" />
     <ClCompile Include="qcustomplot.cpp" />
@@ -214,17 +217,28 @@
     <QtUic Include="FTIR_Analyzer.ui" />
     <QtUic Include="IV_By_Size_Plotter.ui" />
     <QtUic Include="IV_Plotter.ui" />
+    <QtUic Include="Lifetime_Plotter.ui" />
     <QtUic Include="Report_Plots.ui" />
     <QtUic Include="skip_Fit_DoubleSpinBox.ui" />
     <QtUic Include="Main.ui" />
     <QtMoc Include="FTIR_Analyzer.h" />
     <ClCompile Include="FTIR_Analyzer.cpp" />
     <ClCompile Include="Layer_Builder.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="main.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </ClCompile>
     <QtUic Include="Interactive_Graph_Toolbar.ui" />
     <QtUic Include="Material_Layer_Widget.ui" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="base64pp.h" />
     <ClInclude Include="Blackbody_Radiation.h" />
     <QtMoc Include="Fit_DoubleSpinBox.h" />
     <ClInclude Include="CV_Interactive_Graph.h" />
@@ -239,6 +253,10 @@
     <QtMoc Include="IV_By_Size_Plotter.h" />
     <ClInclude Include="IV_Interactive_Graph.h" />
     <QtMoc Include="IV_Plotter.h" />
+    <QtMoc Include="Lifetime_Plotter.h" />
+    <ClInclude Include="Lifetime_Interactive_Graph.h" />
+    <QtMoc Include="main.h" />
+    <ClInclude Include="nelder_mead.h" />
     <ClInclude Include="Optimize.h" />
     <ClInclude Include="rangeless_helper.hpp" />
     <ClInclude Include="Rational.h" />

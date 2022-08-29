@@ -6,6 +6,7 @@
 #include <numeric>
 #include <vector>
 #include <map>
+#include <ostream>
 #include <armadillo>
 //#include <boost/units/systems/si.hpp>
 #include <QObject>
@@ -79,6 +80,16 @@ struct Optional_Material_Parameters
 		std::optional< double > all[ 4 ];
 	};
 };
+
+inline std::ostream& operator<<( std::ostream& os, const Optional_Material_Parameters& params )
+{
+	return os << "material_name = " << params.material_name << "\n"
+		<< "temperature = "      << params.temperature     .value_or(-1.) << "\n"
+		<< "thickness = "        << params.thickness       .value_or(-1.) << "\n"
+		<< "composition = "      << params.composition     .value_or(-1.) << "\n"
+		<< "tauts_gap_eV = "     << params.tauts_gap_eV    .value_or(-1.) << "\n"
+		<< "urbach_energy_eV = " << params.urbach_energy_eV.value_or(-1.) << "\n";
+}
 
 struct Material_Layer
 {
