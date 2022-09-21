@@ -21,7 +21,7 @@ struct Axes
 	Axes( std::function<void()> regraph_function );
 
 	Prepared_Data Prepare_XY_Data( const Single_Graph & graph );
-	void Axes::Graph_XY_Data( QString measurement_name, const Single_Graph & graph );
+	void Graph_XY_Data( QString measurement_name, const Single_Graph & graph );
 
 
 	const static X_Units default_x_units = X_Units::VOLTAGE_V;

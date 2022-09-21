@@ -79,6 +79,7 @@ public:
 	void RegraphAll();
 	void UpdateGraph( QCPGraph* existing_graph, QVector<double> x_data, QVector<double> y_data );
 	const Single_Graph & GetSelectedGraphData() const;
+	Single_Graph & FindDataFromGraphPointer( QCPGraph* graph_pointer );
 	const Single_Graph & FindDataFromGraphPointer( QCPGraph* graph_pointer ) const;
 	void Recolor_Graphs( QCPColorGradient::GradientPreset gradient );
 	void Set_Title( QString title );
@@ -88,7 +89,7 @@ public:
 	bool saveAsStandardPdf( const QString & fileName );
 
 	template< decltype(Single_Graph::x_units) X, decltype( Single_Graph::y_units ) Y >
-	const Single_Graph & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata{} );
+	Single_Graph & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata{} );
 
 	Axes_Scales axes;
 
@@ -102,4 +103,4 @@ protected:
 };
 
 
-#include "Interactive_Graph.cpp"
+#include "Interactive_Graph_Implementation.hpp"

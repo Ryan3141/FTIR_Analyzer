@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Interactive_Graph.h"
+//#include "Interactive_Graph.h"
 
 #include <array>
 #include <algorithm>
@@ -604,6 +604,22 @@ const Single_Graph & Interactive_Graph<Single_Graph, Axes>::GetSelectedGraphData
 }
 
 template<typename Single_Graph, typename Axes>
+Single_Graph & Interactive_Graph<Single_Graph, Axes>::FindDataFromGraphPointer( QCPGraph* graph_pointer )
+{
+	static Single_Graph nothing_selected;
+	auto result = std::find_if(
+		this->remembered_graphs.begin(),
+		this->remembered_graphs.end(),
+		[graph_pointer]( const auto& mo ) { return mo.second.graph_pointer == graph_pointer; } );
+
+	//RETURN VARIABLE IF FOUND
+	if( result != this->remembered_graphs.end() )
+		return result->second;
+	else
+		return nothing_selected;
+}
+
+template<typename Single_Graph, typename Axes>
 const Single_Graph & Interactive_Graph<Single_Graph, Axes>::FindDataFromGraphPointer( QCPGraph* graph_pointer ) const
 {
 	static Single_Graph nothing_selected;
@@ -622,7 +638,7 @@ const Single_Graph & Interactive_Graph<Single_Graph, Axes>::FindDataFromGraphPoi
 
 template<typename Single_Graph, typename Axes>
 template< decltype( Single_Graph::x_units ) X, decltype( Single_Graph::y_units ) Y >
-const Single_Graph & Interactive_Graph<Single_Graph, Axes>::Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title, Labeled_Metadata meta )
+Single_Graph & Interactive_Graph<Single_Graph, Axes>::Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title, Labeled_Metadata meta )
 {
 	if( x_data.size() != y_data.size() )
 	{
@@ -647,6 +663,8 @@ const Single_Graph & Interactive_Graph<Single_Graph, Axes>::Graph( QVector<doubl
 		//if( current_info.x_data.size() == x_data.size() &&
 		//	current_info.y_data.size() == y_data.size() )
 		{
+			if( !graph_title.isEmpty() )
+				current_info.graph_pointer->setName( graph_title );
 			current_info.x_data = x_data;
 			current_info.y_data = y_data;
 			auto[ adjusted_x_data, adjusted_y_data ] = axes.Prepare_XY_Data( current_info );

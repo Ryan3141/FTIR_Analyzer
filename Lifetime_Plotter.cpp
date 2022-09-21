@@ -16,6 +16,28 @@
 
 #include "rangeless_helper.hpp"
 
+template<>
+Lifetime::Single_Graph& ::Interactive_Graph<Lifetime::Single_Graph, Lifetime::Axes>::FindDataFromGraphPointer( QCPGraph* graph_pointer )
+{
+	static Lifetime::Single_Graph nothing_selected;
+	auto result = std::find_if(
+		this->remembered_graphs.begin(),
+		this->remembered_graphs.end(),
+		[graph_pointer]( const auto& mo )
+		{
+			return mo.second.graph_pointer == graph_pointer
+				|| mo.second.early_fit_graph == graph_pointer
+				|| mo.second.late_fit_graph == graph_pointer;
+		} );
+
+	//RETURN VARIABLE IF FOUND
+	if ( result != this->remembered_graphs.end() )
+		return result->second;
+	else
+		return nothing_selected;
+}
+
+
 namespace Lifetime
 {
 
@@ -135,13 +157,47 @@ void Plotter::Initialize_Tree_Table()
 void Plotter::Initialize_Graph()
 {
 	ui.interactiveGraphToolbar->Connect_To_Graph( ui.customPlot );
-	connect( ui.customPlot, &FTIR::Interactive_Graph::Graph_Selected, [ this ]( QCPGraph* selected_graph )
+	connect( ui.customPlot, &Lifetime::Interactive_Graph::Graph_Selected, [ this ]( QCPGraph* selected_graph )
 	{
-		const auto & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+		Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
 		this->ui.selectedName_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "sample_name", "" ) );
 		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "temperature_in_k", "" ) );
 		this->ui.selectedCutoff_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "gain", "" ) );
 
+		std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {Info_Or_Default<QString>( measurement.meta, "measurement_id", "Unknown" ), measurement} };
+		std::vector<Graph_Double_Adjustment> label_type_value_list = {
+			{ "Lower Fit", measurement.lower_x_fit, [this, &measurement, graphs_for_fit]( double new_value )
+				{
+					measurement.lower_x_fit = new_value;
+					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->replot();
+				} },
+			{ "Middle Of Fit", measurement.upper_x_fit, [this, &measurement, graphs_for_fit]( double new_value )
+				{
+					measurement.upper_x_fit = new_value;
+					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->replot();
+				} },
+			{ "Upper Fit", measurement.upper_x_fit2, [this, &measurement, graphs_for_fit]( double new_value )
+				{
+					measurement.upper_x_fit2 = new_value;
+					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->replot();
+				} },
+		};
+		//std::vector<Graph_Adjustment> label_type_value_list = {
+		//	{ "Color", [this, &measurement]( const QColor & new_color )
+		//		{
+		//			auto Recolor_Graph = []( QCPGraph* g, QColor color )
+		//			{ QPen copy_pen = g->pen(); copy_pen.setColor( color ); g->setPen( copy_pen ); };
+		//			Recolor_Graph( measurement.graph_pointer, new_color );
+		//			Recolor_Graph( measurement.early_fit_graph, new_color );
+		//			Recolor_Graph( measurement.late_fit_graph, new_color );
+		//			ui.customPlot->replot();
+		//		} },
+		//};
+
+		ui.graphCustomizer->New_Graph_Selected( label_type_value_list );
 		//	QVector<double> cutoffs = Find_Zero_Crossings( x_data, y_data, *std::max_element( y_data.constBegin(), y_data.constEnd() ) / 2 );
 		//	if( !cutoffs.isEmpty() )
 		//	{
@@ -202,7 +258,7 @@ QString lookup( const Labeled_Metadata & metadata, const QString & lookup_name, 
 		return run_if_exists( lookup->second );
 }
 
-void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label )
+void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label )
 {
 	const auto &[ x_data, y_data ] = data[ measurement_id ];
 	QString used_legend_label = legend_label;
@@ -217,7 +273,8 @@ void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measureme
 		QString device_location = lookup( metadata, "device_location", "", to_string );
 		used_legend_label = QStringList{ sample_name, device_location, side_length_label, temperature_label, bias_label }.join( " " );
 	}
-	graph->Graph<X_Units::TIME_US, Y_Units::VOLTAGE_V>( x_data, y_data, measurement_id, used_legend_label, metadata );
+	Single_Graph & single_graph = graph->Graph<X_Units::TIME_US, Y_Units::VOLTAGE_V>( x_data, y_data, measurement_id, used_legend_label, metadata );
+	graph->Redo_Fits( { std::tuple<QString, Single_Graph&>{measurement_id, single_graph} } );
 	graph->replot();
 }
 

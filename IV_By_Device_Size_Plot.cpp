@@ -120,7 +120,7 @@ const Single_Graph & Interactive_Graph::Store_IV_Scatter_Plot( QString measureme
 	//	xy_scatter_graph->setName( graph_title );
 
 	// Remember data before changing it at all
-	remembered_graphs[ measurement_name ] = { std::move( metadata ), std::move( data ), xy_scatter_graph, line_fit_pointer };
+	remembered_graphs[ measurement_name ] = { X_Units::SIDE_LENGTH_UM, Y_Units::CURRENT_A, std::move( metadata ), std::move( data ), xy_scatter_graph, line_fit_pointer };
 	graphs_in_order.push_back( &( remembered_graphs[ measurement_name ] ) );
 	const QCPScatterStyle dot_styles[] = { QCPScatterStyle::ssPlus, QCPScatterStyle::ssCircle, QCPScatterStyle::ssStar, QCPScatterStyle::ssTriangleInverted, QCPScatterStyle::ssSquare, QCPScatterStyle::ssDiamond, QCPScatterStyle::ssCross, QCPScatterStyle::ssTriangle, QCPScatterStyle::ssCrossSquare, QCPScatterStyle::ssPlusSquare, QCPScatterStyle::ssCrossCircle, QCPScatterStyle::ssPlusCircle, QCPScatterStyle::ssPeace, QCPScatterStyle::ssDisc };
 	constexpr int style_count = sizeof( dot_styles ) / sizeof( QCPScatterStyle );

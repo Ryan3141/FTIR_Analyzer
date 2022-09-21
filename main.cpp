@@ -7,6 +7,7 @@
 #include "FTIR_Analyzer.h"
 #include "Lifetime_Plotter.h"
 #include "Report_Plots.h"
+//#include "cppad/ipopt/solve.hpp"
 
 #include "main.h"
 
@@ -65,13 +66,19 @@ void Main_Widget::Prepare_New_Tab( QLabel* statusLabel )
 	connect( ui.startReport_pushButton,   &QPushButton::clicked, [ this, prepare_new_tab2 ]( bool checked ) { prepare_new_tab2( new Report::Report_Plots( this ), "&Report" ); } );
 	connect( ui.startIVBySize_pushButton, &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new IV_By_Size::Plotter( this ), "IV By &Size" ); } );
 	connect( ui.startCV_pushButton,       &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new CV::Plotter( this ), "&CV" ); } );
+
+	ui.main_tabWidget->tabBar()->tabButton( 0, QTabBar::RightSide )->resize( 0, 0 );
 }
 
 #include "Optimize.h"
-
+bool get_started();
 int main(int argc, char *argv[])
 {
 	if constexpr( true )
+	{
+		get_started();
+	}
+	if constexpr( false )
 	{
 		auto func = []( const arma::vec & fit_params, const arma::vec & x ) -> arma::vec
 		{
@@ -360,3 +367,103 @@ int main(int argc, char *argv[])
 //	while( 1 );
 //	return 0;
 //}
+
+# include <cppad/ipopt/solve.hpp>
+
+namespace {
+	using CppAD::AD;
+
+	class FG_eval {
+	public:
+		typedef CPPAD_TESTVECTOR( AD<double> ) ADvector;
+		void operator()( ADvector& fg, const ADvector& x )
+		{
+			assert( fg.size() == 3 );
+			assert( x.size() == 4 );
+
+			// Fortran style indexing
+			AD<double> x1 = x[ 0 ];
+			AD<double> x2 = x[ 1 ];
+			AD<double> x3 = x[ 2 ];
+			AD<double> x4 = x[ 3 ];
+			// f(x)
+			fg[ 0 ] = x1 * x4 * (x1 + x2 + x3) + x3;
+			// g_1 (x)
+			fg[ 1 ] = x1 * x2 * x3 * x4;
+			// g_2 (x)
+			fg[ 2 ] = x1 * x1 + x2 * x2 + x3 * x3 + x4 * x4;
+			//
+			return;
+		}
+	};
+}
+
+bool get_started( void )
+{
+	size_t i;
+	using Dvector = arma::vec;
+
+	// number of independent variables (domain dimension for f and g)
+	size_t nx = 4;
+	// number of constraints (range dimension for g)
+	size_t ng = 2;
+	// initial value of the independent variables
+	Dvector xi = { 1.0, 5.0, 5.0, 1.0 };
+	Dvector xl = { 1.0, 1.0, 1.0, 1.0 };
+	Dvector xu = { 5.0, 5.0, 5.0, 5.0 };
+	// lower and upper limits for g
+	Dvector gl = { 25.0, 40.0 };
+	Dvector gu = { 1.0e19, 40.0 };
+
+	// object that computes objective and constraints
+	FG_eval fg_eval;
+
+	// options
+	std::string options;
+	// turn off any printing
+	options += "Integer print_level  0\n";
+	options += "String  sb           yes\n";
+	// maximum number of iterations
+	options += "Integer max_iter     10\n";
+	// approximate accuracy in first order necessary conditions;
+	// see Mathematical Programming, Volume 106, Number 1,
+	// Pages 25-57, Equation (6)
+	options += "Numeric tol          1e-6\n";
+	// derivative testing
+	options += "String  derivative_test            second-order\n";
+	// maximum amount of random pertubation; e.g.,
+	// when evaluation finite diff
+	options += "Numeric point_perturbation_radius  0.\n";
+
+	// place to return solution
+	CppAD::ipopt::solve_result<Dvector> solution;
+
+	// solve the problem
+	CppAD::ipopt::solve<Dvector, FG_eval>(
+		options, xi, xl, xu, gl, gu, fg_eval, solution
+		);
+	//
+	// Check some of the solution values
+	//
+	bool ok = solution.status == CppAD::ipopt::solve_result<Dvector>::success;
+	//
+	double check_x[] = { 1.000000, 4.743000, 3.82115, 1.379408 };
+	double check_zl[] = { 1.087871, 0.,       0.,      0. };
+	double check_zu[] = { 0.,       0.,       0.,      0. };
+	double rel_tol = 1e-6;  // relative tolerance
+	double abs_tol = 1e-6;  // absolute tolerance
+	for( i = 0; i < nx; i++ )
+	{
+		ok &= CppAD::NearEqual(
+			check_x[ i ], solution.x[ i ], rel_tol, abs_tol
+		);
+		ok &= CppAD::NearEqual(
+			check_zl[ i ], solution.zl[ i ], rel_tol, abs_tol
+		);
+		ok &= CppAD::NearEqual(
+			check_zu[ i ], solution.zu[ i ], rel_tol, abs_tol
+		);
+	}
+
+	return ok;
+}

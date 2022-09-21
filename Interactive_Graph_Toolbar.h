@@ -3,6 +3,8 @@
 #include <QWidget>
 #include "ui_Interactive_Graph_Toolbar.h"
 
+#include "qcustomplot.h"
+
 class Interactive_Graph_Toolbar : public QWidget
 {
 public:

@@ -89,7 +89,7 @@ private:
 				double dr = 1;
 
 				// Find zero
-				Evaluation eval( cos( M_PI * (i - 0.25) / (eDEGREE + 0.5) ) );
+				Evaluation eval( cos( M_PI * (i - 0.25) / (double(eDEGREE) + 0.5) ) );
 				do
 				{
 					dr = eval.v() / eval.d();

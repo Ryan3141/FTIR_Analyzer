@@ -15,6 +15,7 @@ enum class X_Units
 	TIME_US = 0,
 	TEMPERATURE_K,
 	FIT_TIME_US,
+	LOG_Y,
 	DONT_CHANGE
 };
 
@@ -23,10 +24,28 @@ enum class Y_Units
 	VOLTAGE_V = 0,
 	TIME_US,
 	FIT_VOLTAGE_V,
+	LOG_FIT_VOLTAGE_V,
 	DONT_CHANGE
 };
 
-using Single_Graph = Default_Single_Graph<X_Units, Y_Units>;
+struct Fit_Results
+{
+	double amplitude;
+	double x_offset;
+	double lifetime;
+};
+
+struct Single_Graph : public Default_Single_Graph<X_Units, Y_Units>
+{
+	Fit_Results early_fit;
+	Fit_Results late_fit;
+	QCPGraph* early_fit_graph = nullptr;
+	QCPGraph* late_fit_graph = nullptr;
+
+	double lower_x_fit = 1.0E-6;
+	double upper_x_fit = 4.0E-6;
+	double upper_x_fit2 = 20.0E-6;
+};
 
 struct Axes
 {
@@ -45,17 +64,18 @@ struct Axes
 	void Set_X_Units( X_Units units );
 	void Set_Y_Units( Y_Units units );
 
+	Prepared_Data Prepare_Any_Data( const arma::vec& x, const arma::vec& y, X_Units x_units ) const;
+	Prepared_Data Prepare_Fit_Data( const arma::vec& x, const arma::vec& y ) const;
 	Prepared_Data Prepare_XY_Data( const Single_Graph & graph_data ) const;
 	void Graph_XY_Data( QString measurement_name, const Single_Graph & graph );
 
 	QVector<double> background_x_data;
 	QVector<double> background_y_data;
 
-	const static double X_Unit_Sensible_Maximum[ 3 ];
-	const static QString X_Unit_Names[ 3 ];
-	const static QString Y_Unit_Names[ 3 ];
-	const static QString Change_To_X_Unit_Names[ 3 ];
-	const static QString Change_To_Y_Unit_Names[ 3 ];
+	const static QString X_Unit_Names[ 4 ];
+	const static QString Y_Unit_Names[ 4 ];
+	const static QString Change_To_X_Unit_Names[ 4 ];
+	const static QString Change_To_Y_Unit_Names[ 4 ];
 };
 
 using Graph_Base = ::Interactive_Graph<Single_Graph, Axes>;
@@ -63,8 +83,14 @@ using Graph_Base = ::Interactive_Graph<Single_Graph, Axes>;
 class Interactive_Graph :
 	public Graph_Base
 {
+private:
+	QSharedPointer<QCPAxisTicker> linearTicker;
+	QSharedPointer<QCPAxisTickerLog> logTicker;
+
 public:
 	Interactive_Graph( QWidget* parent = nullptr );
+	void Redo_Fits( std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit );
+	void Hide_Fit_Graphs( Single_Graph & single_graph, bool should_hide );
 
 	void Change_Axes( int index );
 };

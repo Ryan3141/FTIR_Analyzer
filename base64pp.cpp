@@ -118,7 +118,7 @@ Out_Iterator encode( const Iterator input )
         auto const base64_chars =
             encode_tripplet( raw_data[i * 3 + 0], raw_data[i * 3 + 1], raw_data[i * 3 + 2]);
         std::copy(
-            begin(base64_chars), end(base64_chars), back_inserter(output));
+            std::begin(base64_chars), std::end(base64_chars), std::back_inserter(output));
     }
 
     if (auto const remaining_chars = size - full_tripples * 3;

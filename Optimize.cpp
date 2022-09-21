@@ -231,17 +231,17 @@ arma::vec Fit_Data_To_Function( std::function<arma::vec( const arma::vec &, cons
 	arma::vec current_guess = ( upper_bounds + lower_bounds ) / 2;
 	const arma::vec resolution_vec = bounds_range * resolution;
 	//arma::vec previous_direction = arma::zeros( current_guess.size() );
-	auto error_function = [ &x_data, &y_data, function ]( const std::array<double, 3> & fit_params ) -> double {
+	auto error_function = [ &x_data, &y_data, function ]( const std::array<double, 6> & fit_params ) -> double {
 		arma::vec diff = y_data - function( to_vec( fit_params ), x_data );
 		std::cout << fit_params[0] << " " << fit_params[1] << " " << fit_params[2] << ": " << arma::dot( diff, diff ) << "\n";
 		return arma::dot( diff, diff );
 	};
 
-	nelder_mead_result<double, 3> result = nelder_mead<double, 3>(
+	nelder_mead_result<double, 6> result = nelder_mead<double, 6>(
 		error_function,
-		to_array<arma::vec, double, 3>( current_guess ),
+		to_array<arma::vec, double, 6>( current_guess ),
 		1.0e-25, // the terminating limit for the variance of function values
-		to_array<arma::vec, double, 3>( resolution_vec ) );
+		to_array<arma::vec, double, 6>( resolution_vec ), 1, 10000 );
 
 	return to_vec( result.xmin );
 	//return arma::min( upper_bounds, arma::max( lower_bounds, to_vec( result.xmin ) ) );

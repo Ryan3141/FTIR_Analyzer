@@ -279,6 +279,16 @@
               </widget>
              </item>
              <item>
+              <widget class="Graph_Customizer" name="graphCustomizer" native="true">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>100</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+             <item>
               <spacer name="verticalSpacer_4">
                <property name="orientation">
                 <enum>Qt::Vertical</enum>
@@ -429,6 +439,12 @@
    <class>Lifetime::Interactive_Graph</class>
    <extends>QWidget</extends>
    <header>Lifetime_Interactive_Graph.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>Graph_Customizer</class>
+   <extends>QWidget</extends>
+   <header>Graph_Customizer.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

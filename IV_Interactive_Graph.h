@@ -114,7 +114,7 @@ struct Axes
 
 };
 
-using Graph_Base = ::Interactive_Graph<Default_Single_Graph<X_Units, Y_Units>, Axes>;
+using Graph_Base = ::Interactive_Graph<Single_Graph, Axes>;
 
 class Interactive_Graph :
 	public Graph_Base

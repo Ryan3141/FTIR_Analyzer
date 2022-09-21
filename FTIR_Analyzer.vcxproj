@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -19,32 +19,55 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{1841BA43-1E4A-4F8E-9B42-648931DD9996}</ProjectGuid>
-    <Keyword>QtVS_v303</Keyword>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0.17763.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0.17763.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">10.0.17763.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">10.0.17763.0</WindowsTargetPlatformVersion>
+    <ProjectGuid>{8903B6BE-FBBF-4C9B-A827-A74F8F18CBCE}</ProjectGuid>
+    <Keyword>QtVS_v304</Keyword>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">10.0.19041.0</WindowsTargetPlatformVersion>
     <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
+    <Import Project="$(QtMsBuild)\qt_defaults.props" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
+    <QtInstall>5.15.2_msvc2019_64</QtInstall>
+    <QtModules>core;gui;printsupport;sql;svg;widgets</QtModules>
+    <QtBuildConfig>debug</QtBuildConfig>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
+    <QtInstall>5.15.2_msvc2019_64</QtInstall>
+    <QtModules>core;gui;printsupport;sql;svg;widgets</QtModules>
+    <QtBuildConfig>release</QtBuildConfig>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'" Label="QtSettings">
+    <QtInstall>5.15.2_msvc2019</QtInstall>
+    <QtModules>core;sql;gui;svg;widgets;printsupport</QtModules>
+    <QtBuildConfig>debug</QtBuildConfig>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'" Label="QtSettings">
+    <QtInstall>5.15.2_msvc2019</QtInstall>
+    <QtModules>core;sql;gui;svg;widgets;printsupport</QtModules>
+    <QtBuildConfig>release</QtBuildConfig>
+  </PropertyGroup>
   <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
     <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
   </Target>
@@ -52,20 +75,21 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
-    <Import Project="$(QtMsBuild)\qt_defaults.props" />
-  </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
@@ -74,69 +98,46 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <AdditionalDependencies>libopenblas.dll.a;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:\Code\OpenBLAS\lib;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-    </Link>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\armadillo-10.7.3\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Code\Ipopt\include;D:\Code\Boost\boost_1_74_0;C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\ucrt;C:\Code\armadillo-10.1.2\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>libopenblas.dll.a;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:\Code\OpenBLAS\lib;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\YAML_CPP\include;C:\Code\armadillo-8.600.0\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
-    </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>C:\Code\armadillo-10.1.2\examples\lib_win64;C:\Code\YAML_CPP\lib;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libopenblas.lib;yaml-cppd.lib;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Code\Ipopt\lib;C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\ucrt\x64;C:\Code\armadillo-10.1.2\examples\lib_win64;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ipopt.dll.lib;coinmumps.dll.lib;libopenblas.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Code\Boost\boost_1_74_0;C:\Code\YAML_CPP\include;C:\Code\armadillo-10.7.3\include;$(Qt_INCLUDEPATH_);.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Code\Ipopt\include;D:\Code\Boost\boost_1_74_0;C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\ucrt;C:\Code\armadillo-10.1.2\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>C:\Code\armadillo-10.7.3\examples\lib_win64;C:\Code\YAML_CPP\lib;$(Qt_LIBPATH_);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libopenblas.lib;yaml-cpp.lib;$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Code\Ipopt\lib;C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\ucrt\x64;C:\Code\armadillo-10.1.2\examples\lib_win64;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ipopt.dll.lib;coinmumps.dll.lib;libopenblas.lib;%(AdditionalDependencies);$(Qt_LIBS_)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
-    <QtInstall>5.14.2_msvc2017_64</QtInstall>
-    <QtModules>core;sql;gui;svg;widgets;printsupport</QtModules>
-    <QtBuildConfig>debug</QtBuildConfig>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
-    <QtInstall>5.14.2_msvc2017_64</QtInstall>
-    <QtModules>core;sql;gui;svg;widgets;printsupport</QtModules>
-    <QtBuildConfig>release</QtBuildConfig>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'" Label="QtSettings">
-    <QtInstall>5.14.2_msvc2017_32</QtInstall>
-    <QtModules>core;sql;gui;svg;widgets;printsupport</QtModules>
-    <QtBuildConfig>debug</QtBuildConfig>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'" Label="QtSettings">
-    <QtInstall>5.14.2_msvc2017_32</QtInstall>
-    <QtModules>core;sql;gui;svg;widgets;printsupport</QtModules>
-    <QtBuildConfig>release</QtBuildConfig>
-  </PropertyGroup>
-  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
-    <Import Project="$(QtMsBuild)\qt.props" />
-  </ImportGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Code\Ipopt_Debug\include;D:\Code\Boost\boost_1_74_0;C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\ucrt;C:\Code\armadillo-10.1.2\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>C:\Code\Ipopt_Debug\lib;C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\ucrt\x64;C:\Code\armadillo-10.1.2\examples\lib_win64;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ipopt.dll.lib;coinmumps.dll.lib;libopenblas.lib;%(AdditionalDependencies);$(Qt_LIBS_)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Code\Ipopt_Debug\include;D:\Code\Boost\boost_1_74_0;C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\ucrt;C:\Code\armadillo-10.1.2\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>C:\Code\Ipopt_Debug\lib;C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\ucrt\x64;C:\Code\armadillo-10.1.2\examples\lib_win64;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ipopt.dll.lib;coinmumps.dll.lib;libopenblas.lib;%(AdditionalDependencies);$(Qt_LIBS_)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
     <ClCompile>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
@@ -190,20 +191,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="base64pp.cpp" />
-    <ClCompile Include="CV_Interactive_Graph.cpp" />
-    <ClCompile Include="CV_Plotter.cpp" />
-    <ClCompile Include="CV_Theoretical.cpp" />
-    <ClCompile Include="Fit_DoubleSpinBox.cpp" />
-    <ClCompile Include="FTIR_Interactive_Graph.cpp" />
-    <ClCompile Include="III_V_Materials.cpp" />
-    <ClCompile Include="Interactive_Graph_Toolbar.cpp" />
-    <ClCompile Include="IV_By_Device_Size_Plot.cpp" />
-    <ClCompile Include="IV_By_Size_Plotter.cpp" />
-    <ClCompile Include="IV_Interactive_Graph.cpp" />
-    <ClCompile Include="IV_Plotter.cpp" />
-    <ClCompile Include="Lifetime_Interactive_Graph.cpp" />
-    <ClCompile Include="Lifetime_Plotter.cpp" />
     <ClCompile Include="Material_Layer_Widget.cpp" />
     <ClCompile Include="Optimize.cpp" />
     <ClCompile Include="qcustomplot.cpp" />
@@ -215,62 +202,66 @@
     <QtRcc Include="FTIR_Analyzer.qrc" />
     <QtUic Include="CV_Plotter.ui" />
     <QtUic Include="FTIR_Analyzer.ui" />
+    <QtMoc Include="FTIR_Analyzer.h" />
+    <ClCompile Include="base64pp.cpp" />
+    <ClCompile Include="CV_Interactive_Graph.cpp" />
+    <ClCompile Include="CV_Plotter.cpp" />
+    <ClCompile Include="CV_Theoretical.cpp" />
+    <ClCompile Include="Fit_DoubleSpinBox.cpp" />
+    <ClCompile Include="FTIR_Analyzer.cpp" />
+    <ClCompile Include="FTIR_Interactive_Graph.cpp" />
+    <ClCompile Include="Graph_Customizer.cpp" />
+    <ClCompile Include="III_V_Materials.cpp" />
+    <ClCompile Include="Interactive_Graph_Toolbar.cpp" />
+    <ClCompile Include="IV_By_Device_Size_Plot.cpp" />
+    <ClCompile Include="IV_By_Size_Plotter.cpp" />
+    <ClCompile Include="IV_Interactive_Graph.cpp" />
+    <ClCompile Include="IV_Plotter.cpp" />
+    <ClCompile Include="Layer_Builder.cpp" />
+    <ClCompile Include="Lifetime_Interactive_Graph.cpp" />
+    <ClCompile Include="Lifetime_Plotter.cpp" />
+    <ClCompile Include="main.cpp" />
+    <QtUic Include="Interactive_Graph_Toolbar.ui" />
     <QtUic Include="IV_By_Size_Plotter.ui" />
     <QtUic Include="IV_Plotter.ui" />
     <QtUic Include="Lifetime_Plotter.ui" />
-    <QtUic Include="Report_Plots.ui" />
-    <QtUic Include="skip_Fit_DoubleSpinBox.ui" />
     <QtUic Include="Main.ui" />
-    <QtMoc Include="FTIR_Analyzer.h" />
-    <ClCompile Include="FTIR_Analyzer.cpp" />
-    <ClCompile Include="Layer_Builder.cpp" />
-    <ClCompile Include="main.cpp">
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).moc</QtMocFileName>
-      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
-      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
-    </ClCompile>
-    <QtUic Include="Interactive_Graph_Toolbar.ui" />
     <QtUic Include="Material_Layer_Widget.ui" />
+    <QtUic Include="Report_Plots.ui" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base64pp.h" />
     <ClInclude Include="Blackbody_Radiation.h" />
-    <QtMoc Include="Fit_DoubleSpinBox.h" />
     <ClInclude Include="CV_Interactive_Graph.h" />
-    <QtMoc Include="CV_Plotter.h" />
+    <ClInclude Include="CV_Theoretical.h" />
     <ClInclude Include="FTIR_Interactive_Graph.h" />
     <ClInclude Include="Handy_Types_And_Conversions.h" />
-    <ClInclude Include="CV_Theoretical.h" />
-    <ClInclude Include="fn.hpp" />
     <ClInclude Include="III_V_Materials.h" />
-    <ClInclude Include="Interactive_Graph.cpp" />
+    <ClInclude Include="Interactive_Graph_Toolbar.h" />
     <ClInclude Include="IV_By_Device_Size_Plot.h" />
-    <QtMoc Include="IV_By_Size_Plotter.h" />
     <ClInclude Include="IV_Interactive_Graph.h" />
-    <QtMoc Include="IV_Plotter.h" />
-    <QtMoc Include="Lifetime_Plotter.h" />
     <ClInclude Include="Lifetime_Interactive_Graph.h" />
-    <QtMoc Include="main.h" />
     <ClInclude Include="nelder_mead.h" />
     <ClInclude Include="Optimize.h" />
-    <ClInclude Include="rangeless_helper.hpp" />
-    <ClInclude Include="Rational.h" />
-    <QtMoc Include="Report_Plots.h" />
     <ClInclude Include="SPA_File.h" />
-    <QtMoc Include="SQL_Tree_Widget.h" />
     <ClInclude Include="Units.h" />
     <QtMoc Include="Thin_Film_Interference.h" />
+    <QtMoc Include="SQL_Tree_Widget.h" />
     <QtMoc Include="SQL_Manager.h" />
+    <QtMoc Include="Report_Plots.h" />
     <QtMoc Include="qcustomplot.h" />
     <QtMoc Include="Material_Layer_Widget.h" />
+    <QtMoc Include="main.h" />
+    <QtMoc Include="Lifetime_Plotter.h" />
     <QtMoc Include="Layer_Builder.h" />
-    <ClInclude Include="Interactive_Graph_Toolbar.h" />
+    <QtMoc Include="IV_Plotter.h" />
+    <QtMoc Include="IV_By_Size_Plotter.h" />
     <QtMoc Include="Interactive_Graph.h" />
+    <QtMoc Include="Graph_Customizer.h" />
+    <QtMoc Include="Fit_DoubleSpinBox.h" />
+    <QtMoc Include="CV_Plotter.h" />
+    <ClInclude Include="fn.hpp" />
+    <ClInclude Include="rangeless_helper.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

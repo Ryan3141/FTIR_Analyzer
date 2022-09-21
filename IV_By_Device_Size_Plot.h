@@ -34,6 +34,8 @@ enum class Y_Units
 
 struct IV_Scatter_Plot
 {
+	X_Units x_units;
+	Y_Units y_units;
 	Structured_Metadata metadata;
 	ID_To_XY_Data data;
 	QCPGraph* graph_pointer;
