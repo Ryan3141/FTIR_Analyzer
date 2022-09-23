@@ -45,8 +45,18 @@ struct Single_Graph : public Default_Single_Graph<X_Units, Y_Units>
 	double lower_x_fit = 1.0E-6;
 	double upper_x_fit = 4.0E-6;
 	double upper_x_fit2 = 20.0E-6;
+	std::vector<QCPGraph*> Get_Graphs() const
+	{
+		return { graph_pointer, early_fit_graph };
+	}
+	void SetPen( const QPen& graphPen ) const
+	{
+		graph_pointer->setPen( graphPen );
+		early_fit_graph->setPen( graphPen );
+	}
 };
 
+const int units_count = 4;
 struct Axes
 {
 	using XY_Data = std::tuple< QVector<double>, QVector<double> >;
@@ -72,10 +82,10 @@ struct Axes
 	QVector<double> background_x_data;
 	QVector<double> background_y_data;
 
-	const static QString X_Unit_Names[ 4 ];
-	const static QString Y_Unit_Names[ 4 ];
-	const static QString Change_To_X_Unit_Names[ 4 ];
-	const static QString Change_To_Y_Unit_Names[ 4 ];
+	const static QString X_Unit_Names[ units_count ];
+	const static QString Y_Unit_Names[ units_count ];
+	const static QString Change_To_X_Unit_Names[ units_count ];
+	const static QString Change_To_Y_Unit_Names[ units_count ];
 };
 
 using Graph_Base = ::Interactive_Graph<Single_Graph, Axes>;
@@ -86,7 +96,8 @@ class Interactive_Graph :
 private:
 	QSharedPointer<QCPAxisTicker> linearTicker;
 	QSharedPointer<QCPAxisTickerLog> logTicker;
-
+	QCPRange remembered_ranges_x[ units_count ] = { { 0, 100 }, { 60, 320 }, { -1, 21 }, {   -1, 21 } };
+	QCPRange remembered_ranges_y[ units_count ] = { { 0,   5 }, {  0,  10 }, {  0,  1 }, { 1E-3,  1 } };
 public:
 	Interactive_Graph( QWidget* parent = nullptr );
 	void Redo_Fits( std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit );

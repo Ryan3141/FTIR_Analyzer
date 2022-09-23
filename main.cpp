@@ -74,7 +74,7 @@ void Main_Widget::Prepare_New_Tab( QLabel* statusLabel )
 bool get_started();
 int main(int argc, char *argv[])
 {
-	if constexpr( true )
+	if constexpr( false )
 	{
 		get_started();
 	}

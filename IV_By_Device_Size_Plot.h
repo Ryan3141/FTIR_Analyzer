@@ -46,6 +46,10 @@ struct IV_Scatter_Plot
 		graph_pointer->setPen( graphPen );
 		line_fit_pointer->setPen( graphPen );
 	}
+	std::vector<QCPGraph*> Get_Graphs() const
+	{
+		return { graph_pointer, line_fit_pointer };
+	}
 };
 
 template< typename FloatType >

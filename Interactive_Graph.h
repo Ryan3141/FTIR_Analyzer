@@ -27,6 +27,10 @@ struct Default_Single_Graph
 	{
 		graph_pointer->setPen( graphPen );
 	}
+	std::vector<QCPGraph*> Get_Graphs() const
+	{
+		return { graph_pointer };
+	}
 };
 
 struct Prepared_Data

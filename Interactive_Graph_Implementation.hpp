@@ -224,14 +224,18 @@ void Interactive_Graph<Single_Graph, Axes>::removeSelectedGraph()
 	if( this->selectedGraphs().size() == 0 )
 		return;
 
+	auto in = []( const auto& does_this_contain, auto this_thing ) {return std::find( does_this_contain.begin(), does_this_contain.end(), this_thing ) != does_this_contain.end(); };
 	QCPGraph* selected_graph = this->selectedGraphs().first();
 	graphs_in_order.erase( std::remove_if( graphs_in_order.begin(), graphs_in_order.end(),
-		[ selected_graph ]( const auto & x ) { return x->graph_pointer == selected_graph; } ), graphs_in_order.end() );
+		[ selected_graph, in ]( const auto & x ) { return in( x->Get_Graphs(), selected_graph ); } ), graphs_in_order.end() );
 	for( auto element = remembered_graphs.cbegin();
 		 element != remembered_graphs.cend(); )
 	{
-		if( element->second.graph_pointer == selected_graph )
+		auto graphs = element->second.Get_Graphs();
+		if( in( graphs, selected_graph ) )
 		{
+			for( QCPGraph* one_graph : graphs )
+				this->removeGraph( one_graph );
 			element = remembered_graphs.erase( element );
 			break;
 		}
@@ -239,7 +243,6 @@ void Interactive_Graph<Single_Graph, Axes>::removeSelectedGraph()
 			++element;
 	}
 
-	this->removeGraph( selected_graph );
 	this->replot();
 }
 

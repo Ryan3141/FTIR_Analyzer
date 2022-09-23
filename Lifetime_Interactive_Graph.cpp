@@ -12,8 +12,6 @@ void Axes::Set_X_Units( X_Units units )
 		return;
 
 	x_units = units;
-
-	graph_function();
 }
 
 void Axes::Set_Y_Units( Y_Units units )
@@ -22,8 +20,6 @@ void Axes::Set_Y_Units( Y_Units units )
 		return;
 
 	y_units = units;
-
-	graph_function();
 }
 
 
@@ -48,6 +44,7 @@ Prepared_Data Axes::Prepare_Any_Data( const arma::vec & x, const arma::vec & y, 
 	{
 		return { toQVec( x ), toQVec( y ) };
 	}
+
 	return { toQVec( 1E6 * x ), toQVec( y ) };
 }
 
@@ -109,13 +106,13 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 			const QClipboard *clipboard = QApplication::clipboard();
 			const QMimeData *mimeData = clipboard->mimeData();
 
-			if( mimeData->hasText() )
-			{
-				auto[ x_data, y_data ] = Load_XY_CSV_Data( mimeData->text().toStdString(), ",\t" );
-				this->Graph<X_Units::TIME_US, Y_Units::DONT_CHANGE>( toQVec( x_data ),
-																	toQVec( y_data ), "Clipboard Data", "Clipboard Data" );
-				this->replot();
-			}
+			if( !mimeData->hasText() )
+				return;
+			auto[ x_data, y_data ] = Load_XY_CSV_Data( mimeData->text().toStdString(), ",\t" );
+			static int clipboard_index = 0;
+			this->Graph<X_Units::TIME_US, Y_Units::DONT_CHANGE>( toQVec( x_data ), toQVec( y_data ),
+																	QString("Clipboard Data %1").arg( clipboard_index++ ), "Clipboard Data");
+			this->replot();
 		} );
 	} );
 }
@@ -134,41 +131,6 @@ const std::string ipopt_options =
 // maximum amount of random pertubation; e.g.,
 // when evaluation finite diff
 "Numeric point_perturbation_radius 0.\n";
-
-template< typename Vec_Type >
-arma::vec to_arma( Vec_Type vec )
-{
-	return arma::conv_to<arma::vec>::from( vec );
-}
-template<>
-arma::vec to_arma( QVector<double> vec )
-{
-	return arma::conv_to<arma::vec>::from( vec.toStdVector() );
-}
-template<>
-arma::vec to_arma( CppAD::vector< CppAD::AD<double> > vec )
-{
-	arma::vec out_vec( vec.size() );
-	for( int i = 0; i < vec.size(); i++ )
-		out_vec[ i ] = CppAD::Value( CppAD::Var2Par( vec[ i ] ) );
-	return out_vec;
-	//return arma::vec( reinterpret_cast<double*>( vec.data() ), vec.size(), true );
-}
-
-template< typename Vec_Type >
-Vec_Type from_arma( arma::vec vec )
-{
-	return arma::conv_to<Vec_Type>::from( vec );
-}
-
-template<>
-CppAD::vector< CppAD::AD<double> > from_arma( arma::vec vec )
-{
-	CppAD::vector< CppAD::AD<double> > out_vec{ vec.size() };
-	for( int i = 0; i < vec.size(); i++ )
-		out_vec[ i ] = vec[ i ];
-	return out_vec;
-}
 
 namespace {
 	using CppAD::AD;
@@ -271,9 +233,9 @@ std::array<Fit_Results, 2> Fit_Lifetime( const Single_Graph & graph )
 		//return { arma::dot( diff, diff ) };
 	};
 
-	const arma::vec initial_guess = { 1, 0E-6, 1E-6, 1, 0E-6, 1E-6 };
-	const arma::vec lower_limits = { 0.0, -20E-6, 500E-9, 0.0, -20E-6, 500E-9 };
-	const arma::vec upper_limits = { +10, +20E-6, 40E-6, +10, +20E-6, 40E-6 };
+	const arma::vec initial_guess = { 1.0,   0E-6,  1E-6, 1.0,   0E-6,  1E-6 };
+	const arma::vec lower_limits =  { 0.0, -20E-6,  5E-9, 0.0, -20E-6, 50E-9 };
+	const arma::vec upper_limits =  { +10, +20E-6, 40E-6, +10, +20E-6, 40E-6 };
 	//arma::vec fit_params = Fit_Data_To_Function( sum_of_exponential_functions, x( selection_region ), arma::log( y( selection_region ) ), lower_limits, upper_limits );
 	CppAD::ipopt::solve_result<arma::vec> solution;
 	FG_eval fg_eval{ error_function };
@@ -385,6 +347,9 @@ void Interactive_Graph::Change_Axes( int index )
 	//std::array<double, 2> bounds = { xAxis->range().lower, xAxis->range().upper };
 	//std::array<double, 2> original = { xAxis->range().lower, xAxis->range().upper };
 
+	remembered_ranges_x[ int( this->axes.x_units ) ] = xAxis->range();
+	remembered_ranges_y[ int( this->axes.y_units ) ] = yAxis->range();
+
 	if( X_Units::LOG_Y == x_units )
 	{
 		this->yAxis->setScaleType( QCPAxis::stLogarithmic );
@@ -435,8 +400,8 @@ void Interactive_Graph::Change_Axes( int index )
 		QVector<double> lifetimes_us = relevant_graphs % fn::transform( [ this ]( const auto & x )
 		{
 			const auto &[ name, graph ] = x;
-			auto [early_fit, late_fit] = Fit_Lifetime( graph );
-			auto[ amplitude, x_offset, lifetime ] = early_fit;
+			//auto [early_fit, late_fit] = Fit_Lifetime( graph );
+			auto[ amplitude, x_offset, lifetime ] = graph.early_fit;
 			return lifetime * 1E6;
 		} ) % fn::to( QVector<double>{} );
 
@@ -467,14 +432,14 @@ void Interactive_Graph::Change_Axes( int index )
 			else
 				this->Hide_Graph( name, true );
 
-		std::vector<name_value> relevant_graphs;
-		//remembered_graphs
-		//	% fn::where( []( const auto & x ) { const auto & [name, graph] = x; return graph.x_units == X_Units::TIME_US; } )
-		//	% fn::for_each( [&relevant_graphs]( std::tuple<QString&, Single_Graph&>& x ){ auto& [name, graph] = x; relevant_graphs.emplace_back( name, graph ); } );
-		for( auto & [name, graph] : remembered_graphs )
-			if( graph.x_units == X_Units::TIME_US )
-				relevant_graphs.emplace_back( name, graph );
-		Redo_Fits( relevant_graphs );
+		//std::vector<name_value> relevant_graphs;
+		////remembered_graphs
+		////	% fn::where( []( const auto & x ) { const auto & [name, graph] = x; return graph.x_units == X_Units::TIME_US; } )
+		////	% fn::for_each( [&relevant_graphs]( std::tuple<QString&, Single_Graph&>& x ){ auto& [name, graph] = x; relevant_graphs.emplace_back( name, graph ); } );
+		//for( auto & [name, graph] : remembered_graphs )
+		//	if( graph.x_units == X_Units::TIME_US )
+		//		relevant_graphs.emplace_back( name, graph );
+		//Redo_Fits( relevant_graphs );
 	}
 
 
@@ -494,6 +459,9 @@ void Interactive_Graph::Change_Axes( int index )
 
 	this->axes.Set_X_Units( x_units );
 	this->axes.Set_Y_Units( y_units );
+	xAxis->setRange( remembered_ranges_x[ int( this->axes.x_units ) ] );
+	yAxis->setRange( remembered_ranges_y[ int( this->axes.y_units ) ] );
+	this->axes.graph_function();
 	emit X_Units_Changed();
 	emit Y_Units_Changed();
 }
