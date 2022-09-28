@@ -236,6 +236,7 @@
     <ClInclude Include="CV_Theoretical.h" />
     <ClInclude Include="FTIR_Interactive_Graph.h" />
     <ClInclude Include="Handy_Types_And_Conversions.h" />
+    <ClInclude Include="HgCdTe.h" />
     <ClInclude Include="III_V_Materials.h" />
     <ClInclude Include="Interactive_Graph_Toolbar.h" />
     <ClInclude Include="IV_By_Device_Size_Plot.h" />

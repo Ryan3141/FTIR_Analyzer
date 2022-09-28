@@ -1,5 +1,5 @@
 ﻿#include "Lifetime_Interactive_Graph.h"
-# include <cppad/ipopt/solve.hpp>
+#include <cppad/ipopt/solve.hpp>
 
 #include "Optimize.h"
 

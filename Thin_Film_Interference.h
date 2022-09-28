@@ -11,6 +11,7 @@
 //#include <boost/units/systems/si.hpp>
 #include <QObject>
 #include <qmetatype.h>
+#include <cppad/ipopt/solve.hpp>
 
 #include "rangeless_helper.hpp"
 
@@ -44,18 +45,19 @@ extern std::map< Material, std::array< std::optional<double>, 4 > > defaults_per
 
 //using Length = boost::units::quantity<boost::units::si::length, double>;
 
-struct Optional_Material_Parameters
+template< typename Real >
+struct Optional_Material_Parameters_Type
 {
-	Optional_Material_Parameters() : all()
+	Optional_Material_Parameters_Type() : all()
 	{
 	}
 
-	Optional_Material_Parameters( std::string material_name,
-								  std::optional< double > temperature = {},
-								  std::optional< double > thickness = {},
-								  std::optional< double > composition = {},
-								  std::optional< double > tauts_gap_eV = {},
-								  std::optional< double > urbach_energy_eV = {} )
+	Optional_Material_Parameters_Type( std::string material_name,
+									   std::optional< Real > temperature = {},
+									   std::optional< Real > thickness = {},
+									   std::optional< Real > composition = {},
+									   std::optional< Real > tauts_gap_eV = {},
+									   std::optional< Real > urbach_energy_eV = {} )
 	{
 		this->material_name = material_name;
 		this->temperature = temperature;
@@ -64,24 +66,43 @@ struct Optional_Material_Parameters
 		this->tauts_gap_eV = tauts_gap_eV;
 		this->urbach_energy_eV = urbach_energy_eV;
 	}
+	~Optional_Material_Parameters_Type() = default;
 
 	std::string material_name;
-	std::optional< double > temperature;
+	std::optional< Real > temperature;
 	union
 	{
 		struct
 		{
-			std::optional< double > thickness;
-			std::optional< double > composition;
-			std::optional< double > tauts_gap_eV;
-			std::optional< double > urbach_energy_eV;
+			std::optional< Real > thickness;
+			std::optional< Real > composition;
+			std::optional< Real > tauts_gap_eV;
+			std::optional< Real > urbach_energy_eV;
 		};
 
-		std::optional< double > all[ 4 ];
+		std::optional< Real > all[ 4 ];
+	};
+};
+using Optional_Material_Parameters = Optional_Material_Parameters_Type< double >;
+
+template<>
+struct Optional_Material_Parameters_Type< CppAD::AD<double> >
+{
+	using Real = std::optional< typename CppAD::AD<double> >;
+
+	std::string material_name;
+	Real temperature;
+	struct
+	{
+		Real thickness;
+		Real composition;
+		Real tauts_gap_eV;
+		Real urbach_energy_eV;
 	};
 };
 
-inline std::ostream& operator<<( std::ostream& os, const Optional_Material_Parameters& params )
+template< typename Real >
+inline std::ostream& operator<<( std::ostream& os, const Optional_Material_Parameters_Type< Real >& params )
 {
 	return os << "material_name = " << params.material_name << "\n"
 		<< "temperature = "      << params.temperature     .value_or(-1.) << "\n"
@@ -176,9 +197,11 @@ public:
 	Thin_Film_Interference();
 
 	Result_Data Get_Expected_Transmission( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, Material_Layer backside_material ) const;
+	Result_Data Get_Expected_Transmission2( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, Material_Layer backside_material ) const;
 	//std::map< Material, std::function<arma::cx_double( Material, double, double )> > Get_Refraction_Index;
 
 	void Get_Best_Fit( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, const arma::vec & transmissions, Material_Layer backside_material );
+	void Get_Best_Fit2( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, const arma::vec & transmissions, Material_Layer backside_material );
 
 	inline arma::cx_vec Get_Refraction_Index( Material mat,
 											  const arma::vec & wavelengths,
