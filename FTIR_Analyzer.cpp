@@ -193,25 +193,26 @@ void FTIR_Analyzer::Run_Fit()
 	std::vector<Material_Layer> copy_layers = ui.simulated_listWidget->Build_Material_List( temperature_in_k );
 
 	double transmission_scale = ui.transmissionAmplitude_doubleSpinBox->value();
-	double subtractor = ui.transmissionSubtractor_doubleSpinBox->value();
-	transmission_data -= subtractor;
-	transmission_data /= transmission_scale;
+	//double subtractor = ui.transmissionSubtractor_doubleSpinBox->value();
+	//transmission_data -= subtractor;
+	//transmission_data /= transmission_scale;
 	arma::uvec filter_bounds = arma::find( wavelength_data >= bounds[ 0 ] && wavelength_data <= bounds[ 1 ] );
 
 	if( !arma::any( filter_bounds ) )
 		return; // Something went wrong and none of the data is in these bounds
 	arma::vec filtered_wavelength_data = wavelength_data( filter_bounds );
 	arma::vec filtered_transmission_data = transmission_data( filter_bounds );
-	double transmission_max = arma::max( filtered_transmission_data );
+	filtered_transmission_data /= 100;
+	//double transmission_max = arma::max( filtered_transmission_data );
 	//double transmission_max = 100.0;
-	std::optional< double > scaled_height = 1.0;
+	std::optional< double > scaled_height = transmission_scale;
 	auto fit_parameters = Get_Things_To_Fit( copy_layers );
 	fit_parameters.push_back( &scaled_height );
 	arma::vec solution = Ceres_Thin_Film_Fit( copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material );
 	for( int i = 0; std::optional< double >*parameter : fit_parameters )
 		*parameter = solution[ i++ ];
 	ui.simulated_listWidget->Make_From_Material_List( copy_layers );
-	ui.transmissionAmplitude_doubleSpinBox->setValue( 1 / scaled_height.value() );
+	ui.transmissionAmplitude_doubleSpinBox->setValue( scaled_height.value() );
 	this->Graph_Simulation( copy_layers, { true, false, false }, 100.0, backside_material);
 	if constexpr( false )
 	{ // Start the thread
@@ -226,7 +227,7 @@ void FTIR_Analyzer::Run_Fit()
 		auto test = connect( this->thin_film_manager, &Thin_Film_Interference::Updated_Guess, this, [ = ]( std::vector<Material_Layer> updated_layers )
 		{
 			ui.simulated_listWidget->Make_From_Material_List( updated_layers );
-			this->Graph_Simulation( updated_layers, { true, false, false }, transmission_max, backside_material );
+			this->Graph_Simulation( updated_layers, { true, false, false }, 100.0, backside_material );
 		} );
 		auto test2 = connect( thread, &QThread::started, this->thin_film_manager, [ = ] { this->thin_film_manager->Get_Best_Fit( copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material ); } );
 		auto test3 = connect( this->thin_film_manager, &Thin_Film_Interference::Debug_Plot, [ this ]( arma::vec wavelengths_m, arma::vec y_data )

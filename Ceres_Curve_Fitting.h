@@ -96,7 +96,7 @@ struct ThinFilmResidual {
 			*parameter = input_to_optimize[ i++ ];
 
 		Result_Data results = Get_Expected_Transmission( copy_layers, { wavelength }, backside_material);
-		residual[ 0 ] = results.transmission[ 0 ] - transmission * height_scale.value();
+		residual[ 0 ] = results.transmission[ 0 ] * height_scale.value() - transmission;
 
 		return true;
 	}
@@ -168,27 +168,19 @@ inline arma::vec Ceres_Thin_Film_Fit(
 	Material_Layer backside_material )
 {
 	std::vector<Material_Layer> copy_layers = layers;
-	const arma::vec scaled_transmissions = transmissions / 100.0;
-	std::cout << "Got here 3" << std::endl;
 	auto fit_parameters = Get_Things_To_Fit( copy_layers );
-	for( int i = 0; std::optional< double >*parameter : fit_parameters )
-		std::cout << i++ << ": " << (parameter->has_value() ? parameter->value() : -9999.0) << std::endl;
-	std::cout << "Got here 4" << std::endl;
 	//if( fit_parameters.empty() )
 	//	return {};
 	arma::vec fit_vars = arma::vec( fit_parameters.size() + 1 );
 	for( int i = 0; std::optional< double >*parameter : fit_parameters )
 		fit_vars[ i++ ] = parameter->value();
-	std::cout << "Got here 5" << std::endl;
 	fit_vars.back() = 1.0;
 	arma::vec initial_guess = fit_vars;
 	ceres::Problem problem;
-	std::cout << "Got here 6" << std::endl;
 	for( int i = 0; i < wavelengths.size(); ++i ) {
 		Dynamic_Fit_Parameters( problem, copy_layers, backside_material,
-			wavelengths[ i ], scaled_transmissions[ i ], fit_vars );
+			wavelengths[ i ], transmissions[ i ], fit_vars );
 	}
-	std::cout << "Got here 7" << std::endl;
 	for( int i = 0; i < fit_vars.size(); i++ )
 	{
 		problem.SetParameterLowerBound( fit_vars.memptr(), i, fit_vars[ i ] * 0.5 );
@@ -204,7 +196,6 @@ inline arma::vec Ceres_Thin_Film_Fit(
 	//std::cout << summary.FullReport() << "\n";
 	//std::cout << "Initial x: " << initial_guess << "\n";
 	//std::cout << "Final   x: " << fit_vars << "\n";
-	std::cout << "Got here 8" << std::endl;
 
 	return fit_vars;
 }
