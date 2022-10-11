@@ -23,9 +23,11 @@ struct Default_Single_Graph
 	Labeled_Metadata meta;
 	std::optional<double> x_location_for_y_alignment;
 
-	void SetPen( const QPen & graphPen ) const
+	void SetColor( const QColor & color ) const
 	{
-		graph_pointer->setPen( graphPen );
+		auto pen = graph_pointer->pen();
+		pen.setColor( color );
+		graph_pointer->setPen( pen );
 	}
 	std::vector<QCPGraph*> Get_Graphs() const
 	{

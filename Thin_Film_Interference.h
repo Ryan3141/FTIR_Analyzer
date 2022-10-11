@@ -45,19 +45,18 @@ extern std::map< Material, std::array< std::optional<double>, 4 > > defaults_per
 
 //using Length = boost::units::quantity<boost::units::si::length, double>;
 
-template< typename Real >
-struct Optional_Material_Parameters_Type
+struct Optional_Material_Parameters
 {
-	Optional_Material_Parameters_Type() : all()
+	Optional_Material_Parameters() : all()
 	{
 	}
 
-	Optional_Material_Parameters_Type( std::string material_name,
-									   std::optional< Real > temperature = {},
-									   std::optional< Real > thickness = {},
-									   std::optional< Real > composition = {},
-									   std::optional< Real > tauts_gap_eV = {},
-									   std::optional< Real > urbach_energy_eV = {} )
+	Optional_Material_Parameters( std::string material_name,
+								  std::optional< double > temperature = {},
+								  std::optional< double > thickness = {},
+								  std::optional< double > composition = {},
+								  std::optional< double > tauts_gap_eV = {},
+								  std::optional< double > urbach_energy_eV = {} )
 	{
 		this->material_name = material_name;
 		this->temperature = temperature;
@@ -66,29 +65,26 @@ struct Optional_Material_Parameters_Type
 		this->tauts_gap_eV = tauts_gap_eV;
 		this->urbach_energy_eV = urbach_energy_eV;
 	}
-	~Optional_Material_Parameters_Type() = default;
 
 	std::string material_name;
-	std::optional< Real > temperature;
+	std::optional< double > temperature;
 	union
 	{
 		struct
 		{
-			std::optional< Real > thickness;
-			std::optional< Real > composition;
-			std::optional< Real > tauts_gap_eV;
-			std::optional< Real > urbach_energy_eV;
+			std::optional< double > thickness;
+			std::optional< double > composition;
+			std::optional< double > tauts_gap_eV;
+			std::optional< double > urbach_energy_eV;
 		};
 
-		std::optional< Real > all[ 4 ];
+		std::optional< double > all[ 4 ];
 	};
 };
-using Optional_Material_Parameters = Optional_Material_Parameters_Type< double >;
 
-template<>
-struct Optional_Material_Parameters_Type< CppAD::AD<double> >
+struct Optional_Material_Parameters_AD
 {
-	using Real = std::optional< typename CppAD::AD<double> >;
+	using Real = std::optional< CppAD::AD<double> >;
 
 	std::string material_name;
 	Real temperature;
@@ -102,7 +98,7 @@ struct Optional_Material_Parameters_Type< CppAD::AD<double> >
 };
 
 template< typename Real >
-inline std::ostream& operator<<( std::ostream& os, const Optional_Material_Parameters_Type< Real >& params )
+inline std::ostream& operator<<( std::ostream& os, const Optional_Material_Parameters& params )
 {
 	return os << "material_name = " << params.material_name << "\n"
 		<< "temperature = "      << params.temperature     .value_or(-1.) << "\n"
@@ -135,10 +131,10 @@ inline std::vector<std::optional<double>*> Get_Things_To_Fit( std::vector< Mater
 	std::vector<std::optional<double>*> output;
 	for( Material_Layer & layer : layers )
 	{
-		for( auto [ should_fit, value ] : fn::zip( layer.what_to_fit, layer.parameters.all ) )
+		for( int i = 0; auto & value : layer.parameters.all )
 		{
-			if( should_fit )
-				output.emplace_back( &value );
+			if( layer.what_to_fit[ i++ ] )
+				output.push_back( &value );
 		}
 	}
 
@@ -196,35 +192,34 @@ signals:
 public:
 	Thin_Film_Interference();
 
-	Result_Data Get_Expected_Transmission( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, Material_Layer backside_material ) const;
-	Result_Data Get_Expected_Transmission2( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, Material_Layer backside_material ) const;
 	//std::map< Material, std::function<arma::cx_double( Material, double, double )> > Get_Refraction_Index;
 
 	void Get_Best_Fit( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, const arma::vec & transmissions, Material_Layer backside_material );
-	void Get_Best_Fit2( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, const arma::vec & transmissions, Material_Layer backside_material );
-
-	inline arma::cx_vec Get_Refraction_Index( Material mat,
-											  const arma::vec & wavelengths,
-											  Optional_Material_Parameters optional_parameters ) const
-	{
-		auto refraction_index_function = all_material_indices.find( mat );
-		if( refraction_index_function != all_material_indices.end() )
-			return refraction_index_function->second( wavelengths, optional_parameters );
-		else
-			throw "Material unavailable";
-	}
 
 	void Quit_Early();
 
 private:
-	using IndexFunction = std::function< arma::cx_vec( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) >;
-	std::map< Material, IndexFunction > all_material_indices;
 	bool quit_early = false;
 
 	static Material_To_Refraction_Component Attenuation_Coefficient;
 	static Material_To_Refraction_Component Refraction_Coefficient;
 
 };
+
+inline arma::cx_vec Get_Refraction_Index( Material mat,
+	const arma::vec& wavelengths,
+	Optional_Material_Parameters optional_parameters )
+{
+	using IndexFunction = std::function< arma::cx_vec( const arma::vec& wavelengths, Optional_Material_Parameters optional_parameters ) >;
+	extern std::map< Material, IndexFunction > all_material_indices;
+	auto refraction_index_function = all_material_indices.find( mat );
+	if( refraction_index_function != all_material_indices.end() )
+		return refraction_index_function->second( wavelengths, optional_parameters );
+	else
+		throw "Material unavailable";
+}
+
+Result_Data Get_Expected_Transmission( const std::vector<Material_Layer>& layers, const arma::vec& wavelengths, Material_Layer backside_material );
 
 //template < typename T, typename Compare = std::less<T> >
 //std::vector<std::size_t> make_sort_permutation(

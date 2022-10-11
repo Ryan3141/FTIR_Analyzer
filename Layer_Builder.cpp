@@ -159,8 +159,7 @@ std::vector<Material_Layer> Layer_Builder::Build_Material_List( std::optional< d
 
 void Layer_Builder::Make_From_Material_List( const std::vector<Material_Layer> & layers )
 {
-	int i = 0;
-	for( const Material_Layer & layer : layers )
+	for( int i = 0; const Material_Layer & layer : layers )
 	{
 		Material_Layer_Widget* layer_widget = static_cast<Material_Layer_Widget*>( this->itemWidget( this->item( i ) ) );
 

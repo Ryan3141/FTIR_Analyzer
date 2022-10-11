@@ -134,8 +134,8 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>C:\Code\Ipopt_Debug\lib;C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\ucrt\x64;C:\Code\armadillo-10.1.2\examples\lib_win64;</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ipopt.dll.lib;coinmumps.dll.lib;libopenblas.lib;%(AdditionalDependencies);$(Qt_LIBS_)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Code\vcpkg\installed\x64-windows\debug\lib;C:\Code\Ipopt_Debug\lib;C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\ucrt\x64;C:\Code\armadillo-10.1.2\examples\lib_win64;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>yaml-cppd.lib;ceres-debug.lib;ipopt.dll.lib;coinmumps.dll.lib;libopenblas.lib;%(AdditionalDependencies);$(Qt_LIBS_)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
@@ -191,6 +191,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Ceres_Curve_Fitting.cpp" />
+    <ClCompile Include="CppAD_Curve_Fitting.cpp" />
     <ClCompile Include="Material_Layer_Widget.cpp" />
     <ClCompile Include="Optimize.cpp" />
     <ClCompile Include="qcustomplot.cpp" />
@@ -232,6 +234,8 @@
   <ItemGroup>
     <ClInclude Include="base64pp.h" />
     <ClInclude Include="Blackbody_Radiation.h" />
+    <ClInclude Include="Ceres_Curve_Fitting.h" />
+    <ClInclude Include="CppAD_Curve_Fitting.h" />
     <ClInclude Include="CV_Interactive_Graph.h" />
     <ClInclude Include="CV_Theoretical.h" />
     <ClInclude Include="FTIR_Interactive_Graph.h" />

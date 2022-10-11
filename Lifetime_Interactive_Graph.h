@@ -49,10 +49,14 @@ struct Single_Graph : public Default_Single_Graph<X_Units, Y_Units>
 	{
 		return { graph_pointer, early_fit_graph };
 	}
-	void SetPen( const QPen& graphPen ) const
+	void SetColor( const QColor& color ) const
 	{
-		graph_pointer->setPen( graphPen );
-		early_fit_graph->setPen( graphPen );
+		QPen pen = graph_pointer->pen();
+		pen.setColor( color );
+		graph_pointer->setPen( pen );
+		QPen pen2 = early_fit_graph->pen();
+		pen2.setColor( color );
+		early_fit_graph->setPen( pen2 );
 	}
 };
 
@@ -98,12 +102,19 @@ private:
 	QSharedPointer<QCPAxisTickerLog> logTicker;
 	QCPRange remembered_ranges_x[ units_count ] = { { 0, 100 }, { 60, 320 }, { -1, 21 }, {   -1, 21 } };
 	QCPRange remembered_ranges_y[ units_count ] = { { 0,   5 }, {  0,  10 }, {  0,  1 }, { 1E-3,  1 } };
+	enum Fit_Technique
+	{
+		PIECEWISE = 0,
+		CPPAD = 1,
+		CERES = 2,
+	};
 public:
 	Interactive_Graph( QWidget* parent = nullptr );
 	void Redo_Fits( std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit );
 	void Hide_Fit_Graphs( Single_Graph & single_graph, bool should_hide );
 
 	void Change_Axes( int index );
+	Fit_Technique fit_technique = Fit_Technique::CERES;
 };
 
 template< typename FloatType >

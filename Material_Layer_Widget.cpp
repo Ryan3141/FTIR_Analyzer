@@ -109,6 +109,8 @@ std::tuple< Optional_Material_Parameters, std::array< bool, 4 > >  Material_Laye
 	{
 		if( widget->isEnabled() )
 			fit_bool = widget->use_in_fit;
+		else
+			fit_bool = false;
 	}
 
 	return { std::move( parameters ), std::move( should_fit ) };

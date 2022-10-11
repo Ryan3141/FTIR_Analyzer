@@ -1,7 +1,8 @@
-﻿#include "Lifetime_Interactive_Graph.h"
-#include <cppad/ipopt/solve.hpp>
-
+﻿#include "Ceres_Curve_Fitting.h"
+#include "CppAD_Curve_Fitting.h"
 #include "Optimize.h"
+
+#include "Lifetime_Interactive_Graph.h"
 
 namespace Lifetime
 {
@@ -117,40 +118,7 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 	} );
 }
 
-const std::string ipopt_options =
-"Integer print_level  1\n"
-"String  sb           yes\n"
-// maximum number of iterations
-"Integer max_iter     100\n"
-// approximate accuracy in first order necessary conditions;
-// see Mathematical Programming, Volume 106, Number 1,
-// Pages 25-57, Equation (6)
-"Numeric tol          1e-12\n"
-// derivative testing
-"String  derivative_test            second-order\n"
-// maximum amount of random pertubation; e.g.,
-// when evaluation finite diff
-"Numeric point_perturbation_radius 0.\n";
-
-namespace {
-	using CppAD::AD;
-
-	template< typename Minimizing_Function >
-	class FG_eval {
-	public:
-		Minimizing_Function func;
-		FG_eval( Minimizing_Function func ) : func( func ) {}
-		//using ADvector = std::vector<double>;
-		typedef CPPAD_TESTVECTOR( AD<double> ) ADvector;
-		void operator()( ADvector & fg, const ADvector & x )
-		{
-			fg = func( x );
-		}
-	};
-}
-
-
-std::array<Fit_Results, 2> Fit_Lifetime( const Single_Graph & graph )
+std::array<Fit_Results, 2> Fit_Lifetime_Piecewise( const arma::vec& initial_guess, const arma::vec& lower_limits, const arma::vec& upper_limits, const Single_Graph& graph )
 {
 	if( graph.x_data.empty() || graph.y_data.empty() )
 		return { arma::datum::nan, arma::datum::nan, arma::datum::nan };
@@ -160,92 +128,35 @@ std::array<Fit_Results, 2> Fit_Lifetime( const Single_Graph & graph )
 	double x_offset = x( y.index_max() ); // Align all of the peaks
 	x = x - x_offset;
 	y = y - y.min() + 1E-9;
-	//arma::vec q = x.elem(  );
-	//auto exponential_function = []( const arma::vec & fit_params, const arma::vec & time ) -> arma::vec
+
+	//auto exponential_function = []( const arma::vec& fit_params, const arma::vec& time ) -> arma::vec
 	//{
 	//	double amplitude = fit_params[ 0 ];
-	//	double offset    = fit_params[ 1 ];
-	//	double tau       = fit_params[ 2 ];
-	//	return amplitude * arma::exp( -( time - offset ) / tau );
+	//	double offset = fit_params[ 1 ];
+	//	double tau = fit_params[ 2 ];
+	//	return amplitude * arma::exp( -(time - offset) / tau );
 	//};
 
-	//auto exponential_function = []( const arma::vec & fit_params, const arma::vec & time ) -> arma::vec
-	//{
-	//	double ln_amplitude = fit_params[0];
-	//	double offset = fit_params[1];
-	//	double tau = fit_params[2];
-	//	return ln_amplitude + (-(time - offset) / tau);
-	//};
-
-	//auto selection_region = arma::find( x > graph.lower_x_fit && x < graph.upper_x_fit );
-	//arma::vec fit_params = Fit_Data_To_Function( exponential_function, x( selection_region ), arma::log( y( selection_region ) ), { -1E-3, -20E-6, 500E-9 }, { +100, +20E-6, 100E-6 } );
-	//auto selection_region2 = arma::find( x > graph.upper_x_fit && x < graph.upper_x_fit2 );
-	//arma::vec fit_params2 = Fit_Data_To_Function( exponential_function, x( selection_region2 ), arma::log( y( selection_region2 ) ), { -1E-3, -20E-6, 500E-9 }, { +100, +20E-6, 100E-6 } );
-	//return { Fit_Results{ std::exp( fit_params[0] ), fit_params[1], fit_params[2] }, Fit_Results{ std::exp( fit_params2[0] ), fit_params2[1], fit_params2[2] } };
-
-	//auto sum_of_exponential_functions = []( const arma::vec& fit_params, const arma::vec& time ) -> arma::vec
-	//{
-	//	double ln_A = fit_params[ 0 ];
-	//	double offset1 = fit_params[ 1 ];
-	//	double tau1 = fit_params[ 2 ];
-	//	double ln_B = fit_params[ 3 ];
-	//	double offset2 = fit_params[ 4 ];
-	//	double tau2 = fit_params[ 5 ];
-	//	arma::vec x1 = -(time - offset1) / tau1;
-	//	arma::vec x2 = -(time - offset2) / tau2;
-	//	//return arma::log( A * arma::exp( x1 ) + B * arma::exp( x2 ) );
-	//	return ln_B + x2 + arma::log( std::exp( ln_A - ln_B ) * arma::exp( x1 - x2 ) + 1 );
-	//};
-
-	using ADvector = CPPAD_TESTVECTOR( AD<double> );
-	auto sum_of_exponential_functions = []( const ADvector & fit_params, const arma::vec & time ) -> ADvector
+	auto exponential_function = []( const arma::vec & fit_params, const arma::vec & time ) -> arma::vec
 	{
-		AD<double> A = fit_params[ 0 ];
-		AD<double> offset1 = fit_params[ 1 ];
-		AD<double> tau1 = fit_params[ 2 ];
-		AD<double> B = fit_params[ 3 ];
-		AD<double> offset2 = fit_params[ 4 ];
-		AD<double> tau2 = fit_params[ 5 ];
-		ADvector result( time.size() );
-		for( auto i = 0; i < time.size(); i++ )
-			result[ i ] = A * CppAD::exp( -(time[ i ] - offset1) / tau1 ) + B * CppAD::exp( -(time[ i ] - offset2) / tau2 );
-		return result;
-		//return ln_B + x2 + arma::log( std::exp( ln_A - ln_B ) * arma::exp( x1 - x2 ) + 1 );
+		double ln_amplitude = fit_params[0];
+		double offset = fit_params[1];
+		double tau = fit_params[2];
+		return ln_amplitude + (-(time - offset) / tau);
 	};
+	arma::vec low_bound = lower_limits;
+	low_bound[ 0 ] = std::log( low_bound[ 0 ] );
+	arma::vec up_bound = upper_limits;
+	up_bound[ 0 ] = std::log( up_bound[ 0 ] );
 
-	arma::uvec selection_region = arma::find( x > graph.lower_x_fit && x < graph.upper_x_fit2 );
-	arma::vec x_fit_data = x( selection_region );
-	arma::vec y_fit_data = y( selection_region );
+	arma::uvec selection_region = arma::find( x > graph.lower_x_fit && x < graph.upper_x_fit );
+	arma::vec fit_params = Fit_Data_To_Function( exponential_function, x( selection_region ), arma::log( y( selection_region ) ), low_bound, up_bound );
+	arma::uvec selection_region2 = arma::find( x > graph.upper_x_fit && x < graph.upper_x_fit2 );
+	arma::vec fit_params2 = Fit_Data_To_Function( exponential_function, x( selection_region2 ), arma::log( y( selection_region2 ) ), low_bound, up_bound );
 
-	auto error_function = [&x_fit_data, &y_fit_data, sum_of_exponential_functions]( const ADvector & fit_params ) -> ADvector {
-		ADvector exp_results = sum_of_exponential_functions( fit_params, x_fit_data );
-		AD<double> sum_of_squares = 0;
-		for( auto i = 0; i < exp_results.size(); i++ )
-		{
-			auto difference = y_fit_data[ i ] - exp_results[ i ];
-			sum_of_squares += difference * difference;
-		}
-		ADvector results( 1 );
-		results[ 0 ] = sum_of_squares;
-		return results;
-		//arma::vec diff = y_fit_data - sum_of_exponential_functions( fit_params, x_fit_data );
-		//std::cout << fit_params[ 0 ] << " " << fit_params[ 1 ] << " " << fit_params[ 2 ] << ": " << arma::dot( diff, diff ) << "\n";
-		//return { arma::dot( diff, diff ) };
-	};
-
-	const arma::vec initial_guess = { 1.0,   0E-6,  1E-6, 1.0,   0E-6,  1E-6 };
-	const arma::vec lower_limits =  { 0.0, -20E-6,  5E-9, 0.0, -20E-6, 50E-9 };
-	const arma::vec upper_limits =  { +10, +20E-6, 40E-6, +10, +20E-6, 40E-6 };
 	//arma::vec fit_params = Fit_Data_To_Function( sum_of_exponential_functions, x( selection_region ), arma::log( y( selection_region ) ), lower_limits, upper_limits );
-	CppAD::ipopt::solve_result<arma::vec> solution;
-	FG_eval fg_eval{ error_function };
-	CppAD::ipopt::solve( ipopt_options, initial_guess, lower_limits, upper_limits, {}, {}, fg_eval, solution );
-	arma::vec fit_params = solution.x;
 
-	if( fit_params[ 2 ] < fit_params[ 5 ] )
-		return { Fit_Results{ ( fit_params[ 0 ] ), fit_params[ 1 ], fit_params[ 2 ] }, Fit_Results{ ( fit_params[ 3 ] ), fit_params[ 4 ], fit_params[ 5 ] } };
-	else
-		return { Fit_Results{ ( fit_params[ 3 ] ), fit_params[ 4 ], fit_params[ 5 ] }, Fit_Results{ ( fit_params[ 0 ] ), fit_params[ 1 ], fit_params[ 2 ] } };
+	return { Fit_Results{ std::exp(fit_params[ 0 ]), fit_params[ 1 ], fit_params[ 2 ] }, Fit_Results{ std::exp(fit_params2[ 0 ]), fit_params2[ 1 ], fit_params2[ 2 ] } };
 }
 
 void Interactive_Graph::Redo_Fits( std::vector<std::tuple<QString, Single_Graph &>> graphs_for_fit )
@@ -274,7 +185,15 @@ void Interactive_Graph::Redo_Fits( std::vector<std::tuple<QString, Single_Graph 
 	for( const auto & [name, graph] : graphs_for_fit )
 	{
 		arma::vec x = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
-		auto [early_fit, late_fit] = Fit_Lifetime( graph );
+		const arma::vec initial_guess = {  1.0,   0E-6,  1E-6, 1.0,   0E-6,  1E-6 };
+		const arma::vec lower_limits = { 1E-12, -20E-6,  5E-9, 0.0, -20E-6, 50E-9 };
+		const arma::vec upper_limits = {   +10, +20E-6, 40E-6, +10, +20E-6, 40E-6 };
+		//arma::vec fit_params = Fit_Data_To_Function( sum_of_exponential_functions, x( selection_region ), arma::log( y( selection_region ) ), lower_limits, upper_limits );
+		auto [early_fit, late_fit] = [&] { switch( fit_technique ) {
+			case Fit_Technique::CPPAD: return CppAD_Fit_Lifetime< Single_Graph, Fit_Results >( initial_guess, lower_limits, upper_limits, graph );
+			case Fit_Technique::CERES: return Ceres_Fit_Lifetime< Single_Graph, Fit_Results >( initial_guess, lower_limits, upper_limits, graph );
+			default:  return Fit_Lifetime_Piecewise( initial_guess, lower_limits, upper_limits, graph );
+		} }();
 		auto [amplitude, x_offset, lifetime] = early_fit;
 		auto [amplitude2, x_offset2, lifetime2] = late_fit;
 		graph.early_fit = early_fit;
@@ -283,6 +202,7 @@ void Interactive_Graph::Redo_Fits( std::vector<std::tuple<QString, Single_Graph 
 		//Graph<X_Units::TEMPERATURE_K, Y_Units::TIME_US>( toQVec( x( selection_region ) ), toQVec( exponential_function( { amplitude, x_offset, lifetime }, x )( selection_region ) ), "Vs_Temperature", "Lifetime vs Temperature", {} );
 		QPen copy_pen = graph.graph_pointer->pen();
 		copy_pen.setStyle( Qt::DashLine );
+		if( fit_technique != Fit_Technique::PIECEWISE )
 		{
 			arma::vec x_region = arma::linspace( graph.lower_x_fit, graph.upper_x_fit2, 201 );
 			QString label = "Lifetime = " + QString::number( graph.early_fit.lifetime * 1E6, 'f', 4 ) + " " + QString( QChar( 0x03BC ) ) + "s";
@@ -293,25 +213,26 @@ void Interactive_Graph::Redo_Fits( std::vector<std::tuple<QString, Single_Graph 
 			auto [x_fit, y_fit] = axes.Prepare_Fit_Data( x_region, sum_of_exponential_functions( { amplitude, x_offset, lifetime }, { amplitude2, x_offset2, lifetime2 }, x_region ) );
 			graph.early_fit_graph->setData( x_fit, y_fit );
 		}
-		if constexpr( false ) // 1st piece-wise fit
+		else
 		{
-			arma::vec x_region = arma::linspace( graph.lower_x_fit, graph.upper_x_fit, 201 );
-			QString label = "Lifetime = " + QString::number( graph.early_fit.lifetime * 1E6, 'f', 4 ) + " " + QString( QChar( 0x03BC ) ) + "s";
-			if( graph.early_fit_graph == nullptr ) graph.early_fit_graph = this->addGraph();
-			graph.early_fit_graph->setPen( copy_pen );
-			graph.early_fit_graph->setName( label );
-			auto [x_fit, y_fit] = axes.Prepare_Fit_Data( x_region, exponential_function( { amplitude, x_offset, lifetime }, x_region ) );
-			graph.early_fit_graph->setData( x_fit, y_fit );
-		}
-		if constexpr( false ) // 2nd piece-wise fit
-		{
-			arma::vec x_region2 = arma::linspace( graph.upper_x_fit, graph.upper_x_fit2, 201 );
-			QString label2 = "Lifetime = " + QString::number( graph.late_fit.lifetime * 1E6, 'f', 4 ) + " " + QString( QChar( 0x03BC ) ) + "s";
-			if( graph.late_fit_graph == nullptr ) graph.late_fit_graph = this->addGraph();
-			graph.late_fit_graph->setPen( copy_pen );
-			graph.late_fit_graph->setName( label2 );
-			auto [x_fit2, y_fit2] = axes.Prepare_Fit_Data( x_region2, exponential_function( { amplitude2, x_offset2, lifetime2 }, x_region2 ) );
-			graph.late_fit_graph->setData(  x_fit2, y_fit2 );
+			{ // 1st piece-wise fit
+				arma::vec x_region = arma::linspace( graph.lower_x_fit, graph.upper_x_fit, 201 );
+				QString label = "Lifetime = " + QString::number( graph.early_fit.lifetime * 1E6, 'f', 4 ) + " " + QString( QChar( 0x03BC ) ) + "s";
+				if( graph.early_fit_graph == nullptr ) graph.early_fit_graph = this->addGraph();
+				graph.early_fit_graph->setPen( copy_pen );
+				graph.early_fit_graph->setName( label );
+				auto [x_fit, y_fit] = axes.Prepare_Fit_Data( x_region, exponential_function( { amplitude, x_offset, lifetime }, x_region ) );
+				graph.early_fit_graph->setData( x_fit, y_fit );
+			}
+			{ // 2nd piece-wise fit
+				arma::vec x_region2 = arma::linspace( graph.upper_x_fit, graph.upper_x_fit2, 201 );
+				QString label2 = "Lifetime = " + QString::number( graph.late_fit.lifetime * 1E6, 'f', 4 ) + " " + QString( QChar( 0x03BC ) ) + "s";
+				if( graph.late_fit_graph == nullptr ) graph.late_fit_graph = this->addGraph();
+				graph.late_fit_graph->setPen( copy_pen );
+				graph.late_fit_graph->setName( label2 );
+				auto [x_fit2, y_fit2] = axes.Prepare_Fit_Data( x_region2, exponential_function( { amplitude2, x_offset2, lifetime2 }, x_region2 ) );
+				graph.late_fit_graph->setData( x_fit2, y_fit2 );
+			}
 		}
 	}
 }

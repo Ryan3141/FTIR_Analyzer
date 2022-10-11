@@ -41,10 +41,14 @@ struct IV_Scatter_Plot
 	QCPGraph* graph_pointer;
 	QCPGraph* line_fit_pointer;
 
-	void SetPen( const QPen & graphPen ) const
+	void SetColor( const QColor& color ) const
 	{
-		graph_pointer->setPen( graphPen );
-		line_fit_pointer->setPen( graphPen );
+		QPen pen = graph_pointer->pen();
+		pen.setColor( color );
+		graph_pointer->setPen( pen );
+		QPen pen2 = line_fit_pointer->pen();
+		pen2.setColor( color );
+		line_fit_pointer->setPen( pen2 );
 	}
 	std::vector<QCPGraph*> Get_Graphs() const
 	{

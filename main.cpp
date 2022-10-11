@@ -7,7 +7,6 @@
 #include "FTIR_Analyzer.h"
 #include "Lifetime_Plotter.h"
 #include "Report_Plots.h"
-//#include "cppad/ipopt/solve.hpp"
 
 #include "main.h"
 
@@ -70,10 +69,16 @@ void Main_Widget::Prepare_New_Tab( QLabel* statusLabel )
 	ui.main_tabWidget->tabBar()->tabButton( 0, QTabBar::RightSide )->resize( 0, 0 );
 }
 
+#include "Ceres_Curve_Fitting.h"
 #include "Optimize.h"
 bool get_started();
 int main(int argc, char *argv[])
 {
+	google::InitGoogleLogging( argv[ 0 ] );
+	if constexpr( true )
+	{
+		ceres_main( argc, argv );
+	}
 	if constexpr( false )
 	{
 		get_started();

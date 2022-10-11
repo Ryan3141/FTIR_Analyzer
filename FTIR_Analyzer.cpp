@@ -13,6 +13,7 @@
 #include "Blackbody_Radiation.h"
 //#include "Optimize.h"
 #include "FTIR_Interactive_Graph.h"
+#include "Ceres_Curve_Fitting.h"
 
 #include "rangeless_helper.hpp"
 
@@ -117,7 +118,7 @@ void FTIR_Analyzer::Graph_Refractive_Index( std::string material_name, Optional_
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 );
 	x_data_meters.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_METERS, x ); } );
 
-	arma::cx_vec refractive_index = Thin_Film_Interference().Get_Refraction_Index( name_to_material[ material_name ], x_data_meters, parameters );
+	arma::cx_vec refractive_index = Get_Refraction_Index( name_to_material[ material_name ], x_data_meters, parameters );
 	ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::real( refractive_index ) ), "Index (n)", "Index (n)" );
 	ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::imag( refractive_index ) ), "Index (k)", "Index (k)" );
 
@@ -141,7 +142,7 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, std::t
 		double transmission_subtractor = ui.transmissionSubtractor_doubleSpinBox->value();
 		double reflection_scale   = ui.reflectionAmplitude_doubleSpinBox->value();
 		double absorption_scale   = ui.absorptionAmplitude_doubleSpinBox->value();
-		auto[ transmission, reflection ] = tfi.Get_Expected_Transmission( layers, x_data_meters, backside_material );
+		auto[ transmission, reflection ] = Get_Expected_Transmission( layers, x_data_meters, backside_material );
 		transmission += transmission_subtractor;
 		transmission *= largest_transmission;
 		reflection *= largest_transmission;
@@ -181,9 +182,9 @@ void FTIR_Analyzer::Run_Fit()
 		std::swap( bounds[ 0 ], bounds[ 1 ] );
 
 	auto[ x_data, y_data ] = ui.customPlot->axes.Prepare_XY_Data( selected_graph );
-	arma::vec wavelength_data = arma::conv_to< arma::vec >::from( x_data.toStdVector() );
+	arma::vec wavelength_data   = arma::conv_to< arma::vec >::from( x_data.toStdVector() );
 	arma::vec transmission_data = arma::conv_to< arma::vec >::from( y_data.toStdVector() );
-	wavelength_data.transform( [ this ]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_MICRONS, x ) * 1E-6; } );
+	wavelength_data = Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_MICRONS, wavelength_data ) * 1E-6;
 	double temperature_in_k = Info_Or_Default( selected_graph.meta, "Temperature (K)", 300.0 );
 	if( temperature_in_k == 0.0 )
 		temperature_in_k = 300.0;
@@ -191,28 +192,28 @@ void FTIR_Analyzer::Run_Fit()
 	Material_Layer backside_material = Get_Backside_Material( temperature_in_k );
 	std::vector<Material_Layer> copy_layers = ui.simulated_listWidget->Build_Material_List( temperature_in_k );
 
-	//wavelength_data = wavelength_data % fn::where( [ lower_bound, upper_bound ]( double num ) { return lower_bound >= num && num <= upper_bound; } );
-	//arma::uvec debug1 = arma::find( lower_bound >= wavelength_data );
-	//arma::uvec debug2 = arma::find( wavelength_data <= upper_bound );
-	//arma::vec debug3 = wavelength_data.elem( debug1 );
-	//arma::uvec filter_visible = arma::find( lower_bound >= wavelength_data && wavelength_data <= upper_bound );
-	//wavelength_data = wavelength_data.subvec( filter_visible );
-	//transmission_data = transmission_data.elem( filter_visible );
-	//double debug[20];
-	//const auto test3 = fn::from( &debug[0], &debug[20] );
-	//const auto[ filtered_wavelength_data, filtered_transmission_data ] = fn::zip( fn::cfrom( wavelength_data ), fn::cfrom( transmission_data ) )
 	double transmission_scale = ui.transmissionAmplitude_doubleSpinBox->value();
 	double subtractor = ui.transmissionSubtractor_doubleSpinBox->value();
 	transmission_data -= subtractor;
 	transmission_data /= transmission_scale;
+	arma::uvec filter_bounds = arma::find( wavelength_data >= bounds[ 0 ] && wavelength_data <= bounds[ 1 ] );
 
-	const auto [ filtered_wavelength_data, filtered_transmission_data ] = fn::zip( wavelength_data, transmission_data )
-		% fn::where( [ bounds ]( auto x ) { auto[ wavelength, transmission ] = x; return wavelength >= bounds[ 0 ] && wavelength <= bounds[ 1 ]; } )
-		% fn::unzip( std::tuple < arma::vec, arma::vec >{} );
-	if( filtered_transmission_data.size() == 0 )
+	if( !arma::any( filter_bounds ) )
 		return; // Something went wrong and none of the data is in these bounds
-	//double transmission_max = arma::max( filtered_transmission_data );
-	double transmission_max = 100.0;
+	arma::vec filtered_wavelength_data = wavelength_data( filter_bounds );
+	arma::vec filtered_transmission_data = transmission_data( filter_bounds );
+	double transmission_max = arma::max( filtered_transmission_data );
+	//double transmission_max = 100.0;
+	std::optional< double > scaled_height = 1.0;
+	auto fit_parameters = Get_Things_To_Fit( copy_layers );
+	fit_parameters.push_back( &scaled_height );
+	arma::vec solution = Ceres_Thin_Film_Fit( copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material );
+	for( int i = 0; std::optional< double >*parameter : fit_parameters )
+		*parameter = solution[ i++ ];
+	ui.simulated_listWidget->Make_From_Material_List( copy_layers );
+	ui.transmissionAmplitude_doubleSpinBox->setValue( 1 / scaled_height.value() );
+	this->Graph_Simulation( copy_layers, { true, false, false }, 100.0, backside_material);
+	if constexpr( false )
 	{ // Start the thread
 		QThread* thread = new QThread;
 		this->thin_film_manager = new Thin_Film_Interference();
