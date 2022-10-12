@@ -81,34 +81,6 @@ std::array<Fit_Results, 2> Ceres_Fit_Lifetime( const arma::vec& initial_guess, c
 
 
 #include "Thin_Film_Interference.h"
-struct ThinFilmResidual {
-	ThinFilmResidual( const std::vector<Material_Layer> & layers, const Material_Layer & backside_mat,
-		double x, double y ) :
-		copy_layers( layers ), backside_material( backside_mat ), wavelength( x ), transmission( y )
-	{
-		fit_parameters = Get_Things_To_Fit( copy_layers );
-		fit_parameters.push_back( &height_scale );
-	}
-	//template <typename T>
-	//bool operator()( const T* const params, T* residual ) const {
-	bool operator()( const double* const input_to_optimize, double* residual ) const {
-		for( int i = 0; std::optional< double >* parameter : fit_parameters )
-			*parameter = input_to_optimize[ i++ ];
-
-		Result_Data results = Get_Expected_Transmission( copy_layers, { wavelength }, backside_material);
-		residual[ 0 ] = results.transmission[ 0 ] * height_scale.value() - transmission;
-
-		return true;
-	}
-private:
-	std::optional<double> height_scale;
-	std::vector<std::optional<double>*> fit_parameters;
-	std::vector<Material_Layer> copy_layers;
-	const Material_Layer backside_material;
-	const double wavelength;
-	const double transmission;
-};
-
 struct ThinFilmAllResiduals {
 	ThinFilmAllResiduals( const std::vector<Material_Layer> & layers, const Material_Layer & backside_mat,
 		const arma::vec & x, const arma::vec & y ) :
@@ -251,7 +223,6 @@ inline ceres::ResidualBlockId Dynamic_Fit_Parameters(
 }
 
 #include "Thin_Film_Interference.h"
-#include "numeric_diff_dynamic_cost_function.h"
 inline arma::vec Ceres_Thin_Film_Fit(
 	const std::vector<Material_Layer>& layers,
 	const arma::vec& wavelengths, // in meters
@@ -268,21 +239,8 @@ inline arma::vec Ceres_Thin_Film_Fit(
 	fit_vars.back() = 1.0;
 	arma::vec initial_guess = fit_vars;
 	ceres::Problem problem;
-	//for( int i = 0; i < wavelengths.size(); ++i ) {
-	//	Dynamic_Fit_Parameters( problem, copy_layers, backside_material,
-	//		wavelengths[ i ], transmissions[ i ], fit_vars );
-	//}
-	//double* parameter_groups[ 1 ] = { fit_vars.memptr() };
-	//problem.AddResidualBlock(
-	//	new ceres::NumericDiffDynamicCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC>(
-	//		new ThinFilmAllResiduals( layers,
-	//			backside_material,
-	//			wavelengths,
-	//			transmissions ), fit_vars.size(), ceres::TAKE_OWNERSHIP, transmissions.size() ),
-	//	nullptr, fit_vars.memptr() );
 	Dynamic_Fit_Parameters( problem, copy_layers, backside_material,
 				wavelengths, transmissions, fit_vars );
-	//problem.AddParameterBlock( fit_vars.memptr(), fit_vars.size() );
 	for( int i = 0; i < fit_vars.size(); i++ )
 	{
 		problem.SetParameterLowerBound( fit_vars.memptr(), i, fit_vars[ i ] * 0.5 );
