@@ -109,62 +109,153 @@ private:
 	const double transmission;
 };
 
+struct ThinFilmAllResiduals {
+	ThinFilmAllResiduals( const std::vector<Material_Layer> & layers, const Material_Layer & backside_mat,
+		const arma::vec & x, const arma::vec & y ) :
+		copy_layers( layers ), backside_material( backside_mat ), wavelengths( x ), transmissions( y )
+	{
+		fit_parameters = Get_Things_To_Fit( copy_layers );
+		fit_parameters.push_back( &height_scale );
+	}
+	//template <typename T>
+	//bool operator()( const T* const input_to_optimize, T* residuals ) const {
+	bool operator()( const double* const input_to_optimize, double* residuals ) const {
+		for( int i = 0; std::optional< double >* parameter : fit_parameters )
+			*parameter = input_to_optimize[i++];
+
+		Result_Data results = Get_Expected_Transmission( copy_layers, wavelengths, backside_material);
+		arma::vec residual_vec = results.transmission * height_scale.value() - transmissions;
+		for( int i = 0; double residual : residual_vec )
+			residuals[ i++ ] = residual;
+
+		return true;
+	}
+private:
+	std::optional<double> height_scale;
+	std::vector<std::optional<double>*> fit_parameters;
+	std::vector<Material_Layer> copy_layers;
+	const Material_Layer backside_material;
+	const arma::vec & wavelengths;
+	const arma::vec & transmissions;
+};
+
 
 inline ceres::ResidualBlockId Dynamic_Fit_Parameters(
 	ceres::Problem& problem, std::vector<Material_Layer>& layers, const Material_Layer& backside_material,
-	double wavelength, double transmission, arma::vec& fit_vars )
+	const arma::vec & wavelengths, const arma::vec & transmissions, arma::vec& fit_vars )
 {
 	switch( fit_vars.size() )
 	{
 	case 1: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 1>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 1>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+				ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	case 2: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 2>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 2>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	case 3: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 3>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 3>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	case 4: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 4>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 4>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	case 5: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 5>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 5>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	case 6: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 6>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 6>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	case 7: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 7>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 7>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	case 8: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 8>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 8>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	case 9: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 9>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 9>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	case 10: return problem.AddResidualBlock(
-		new ceres::NumericDiffCostFunction<ThinFilmResidual, ceres::CENTRAL, 1, 10>(
-			new ThinFilmResidual( layers, backside_material, wavelength, transmission ) ),
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 10>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 11: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 11>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 12: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 12>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 13: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 13>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 14: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 14>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 15: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 15>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 16: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 16>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 17: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 17>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 18: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 18>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 19: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 19>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
+		nullptr, fit_vars.memptr() );
+	case 20: return problem.AddResidualBlock(
+		new ceres::NumericDiffCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC, 20>(
+			new ThinFilmAllResiduals( layers, backside_material, wavelengths, transmissions ),
+			ceres::TAKE_OWNERSHIP, transmissions.size() ),
 		nullptr, fit_vars.memptr() );
 	default: return nullptr;
 	}
 }
 
 #include "Thin_Film_Interference.h"
+#include "numeric_diff_dynamic_cost_function.h"
 inline arma::vec Ceres_Thin_Film_Fit(
 	const std::vector<Material_Layer>& layers,
-	const arma::vec& wavelengths,
-	const arma::vec& transmissions,
+	const arma::vec& wavelengths, // in meters
+	const arma::vec& transmissions, // Scaled to between 0.0 and 1.0
 	Material_Layer backside_material )
 {
 	std::vector<Material_Layer> copy_layers = layers;
@@ -177,10 +268,21 @@ inline arma::vec Ceres_Thin_Film_Fit(
 	fit_vars.back() = 1.0;
 	arma::vec initial_guess = fit_vars;
 	ceres::Problem problem;
-	for( int i = 0; i < wavelengths.size(); ++i ) {
-		Dynamic_Fit_Parameters( problem, copy_layers, backside_material,
-			wavelengths[ i ], transmissions[ i ], fit_vars );
-	}
+	//for( int i = 0; i < wavelengths.size(); ++i ) {
+	//	Dynamic_Fit_Parameters( problem, copy_layers, backside_material,
+	//		wavelengths[ i ], transmissions[ i ], fit_vars );
+	//}
+	//double* parameter_groups[ 1 ] = { fit_vars.memptr() };
+	//problem.AddResidualBlock(
+	//	new ceres::NumericDiffDynamicCostFunction<ThinFilmAllResiduals, ceres::CENTRAL, ceres::DYNAMIC>(
+	//		new ThinFilmAllResiduals( layers,
+	//			backside_material,
+	//			wavelengths,
+	//			transmissions ), fit_vars.size(), ceres::TAKE_OWNERSHIP, transmissions.size() ),
+	//	nullptr, fit_vars.memptr() );
+	Dynamic_Fit_Parameters( problem, copy_layers, backside_material,
+				wavelengths, transmissions, fit_vars );
+	//problem.AddParameterBlock( fit_vars.memptr(), fit_vars.size() );
 	for( int i = 0; i < fit_vars.size(); i++ )
 	{
 		problem.SetParameterLowerBound( fit_vars.memptr(), i, fit_vars[ i ] * 0.5 );

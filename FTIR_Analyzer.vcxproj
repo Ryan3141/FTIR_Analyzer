@@ -247,6 +247,7 @@
     <ClInclude Include="IV_Interactive_Graph.h" />
     <ClInclude Include="Lifetime_Interactive_Graph.h" />
     <ClInclude Include="nelder_mead.h" />
+    <ClInclude Include="numeric_diff_dynamic_cost_function.h" />
     <ClInclude Include="Optimize.h" />
     <ClInclude Include="SPA_File.h" />
     <ClInclude Include="Units.h" />
