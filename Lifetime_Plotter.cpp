@@ -12,7 +12,7 @@
 #include "SPA_File.h"
 #include "Blackbody_Radiation.h"
 //#include "Optimize.h"
-#include "FTIR_Interactive_Graph.h"
+#include "HgCdTe.h"
 
 #include "rangeless_helper.hpp"
 
@@ -55,6 +55,18 @@ static QVector<double> Find_Zero_Crossings( QVector<double> x_data, QVector<doub
 	return output;
 }
 
+template< typename Func >
+void Graph_Theoretical_Lifetime( Func func_to_graph, Interactive_Graph* graph, double Cd_Composition, double doping, QString unique_name, QString legend_label )
+{
+	double lower_bound = std::max( 50.0, graph->xAxis->range().lower );
+	double upper_bound = std::max( 300.0, graph->xAxis->range().upper );
+	arma::vec temperature_data = arma::linspace( lower_bound, upper_bound, 2048 );
+	//temperature_data.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_MICRONS, x ) * 1E-6; } );
+	arma::vec tau_data = func_to_graph( Cd_Composition, temperature_data, doping );
+	Single_Graph& single_graph = graph->Graph<X_Units::TEMPERATURE_K, Y_Units::TIME_US>( toQVec( temperature_data ), toQVec( tau_data ), unique_name, legend_label, {} );
+	graph->replot();
+}
+
 Plotter::Plotter( QWidget *parent )
 	: QWidget( parent )
 {
@@ -75,6 +87,7 @@ Plotter::Plotter( QWidget *parent )
 	Initialize_SQL( config_filename );
 	Initialize_Tree_Table();
 	Initialize_Graph();
+	Initialize_Theoretical_Plots();
 }
 
 void Plotter::Initialize_SQL( QString config_filename )
@@ -210,6 +223,44 @@ void Plotter::Initialize_Graph()
 	} );
 }
 
+void Plotter::Initialize_Theoretical_Plots()
+{
+	auto replot_simulation = [this]
+	{
+		double doping_mantissa = ui.dopingMantissa_doubleSpinBox->value();
+		int doping_exponent = ui.dopingExponent_spinBox->value();
+		double doping = doping_mantissa * std::pow( 10, doping_exponent );
+		double temperature = ui.temperature_doubleSpinBox->value();
+		double Cd_Composition = ui.CdComposition_doubleSpinBox->value();
+
+		//if( ui.SRHEnable_checkBox->isChecked() )
+		//	Graph_Theoretical_Lifetime( &Auger_Intrinsic_Lifetimes, ui.customPlot, "SRH Lifetime", "SRH Lifetime" );
+		//else
+		//	ui.customPlot->Hide_Graph( "SRH Lifetime" );
+
+		//if( ui.RadiativeEnable_checkBox->isChecked() )
+		//else
+		//	ui.customPlot->Hide_Graph( "Radiative Lifetime" );
+		if( ui.Auger1Enable_checkBox->isChecked() )
+			Graph_Theoretical_Lifetime( &HgCdTe::Auger1_Lifetime<double, arma::vec, double>, ui.customPlot, Cd_Composition, doping, "Auger1 Lifetime", "Auger1 Lifetime" );
+		else
+			ui.customPlot->Hide_Graph( "Auger1 Lifetime" );
+		//if( ui.Auger7Enable_checkBox->isChecked() )
+		//else
+		//	ui.customPlot->Hide_Graph( "Auger7 Lifetime" );
+	};
+
+	connect( ui.customPlot->xAxis, qOverload<const QCPRange&>( &QCPAxis::rangeChanged ), [replot_simulation]( const QCPRange& ) { replot_simulation(); } );
+	connect( ui.SRHEnable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
+	connect( ui.RadiativeEnable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
+	connect( ui.Auger1Enable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
+	connect( ui.Auger7Enable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
+
+	connect( ui.dopingMantissa_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation]( double ) { replot_simulation(); } );
+	connect( ui.dopingExponent_spinBox, qOverload<int>( &QSpinBox::valueChanged ), [replot_simulation]( int ) { replot_simulation(); } );
+	connect( ui.temperature_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation]( double ) { replot_simulation(); } );
+}
+
 void Plotter::treeContextMenuRequest( QPoint pos )
 {
 	QMenu *menu = new QMenu( this );
@@ -277,6 +328,5 @@ void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString me
 	graph->Redo_Fits( { std::tuple<QString, Single_Graph&>{measurement_id, single_graph} } );
 	graph->replot();
 }
-
 
 }

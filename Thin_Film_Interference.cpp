@@ -22,7 +22,6 @@ namespace fs = std::filesystem;
 using namespace arma;
 using namespace std::complex_literals;
 
-//arma::cx_vec MCT_Index( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters );
 
 using IndexFunction = std::function< arma::cx_vec( const arma::vec& wavelengths, Optional_Material_Parameters optional_parameters ) >;
 std::map< Material, IndexFunction > all_material_indices;
@@ -46,14 +45,14 @@ std::map<std::string, Material> name_to_material =
 	{ "Air"         ,  Material::Air },
 	{ "AlAs"        ,  Material::AlAs },
 	{ "GaAs"        ,  Material::GaAs },
-	{ "InAs"        ,  Material::InAs },
+	//{ "InAs"        ,  Material::InAs },
 	{ "Mirror"      ,  Material::Mirror }
 };
 
 std::map< Material, std::array< std::optional<double>, 4 > > defaults_per_material =
 { /*  Material    , thickness,  composition,    tauts_gap, urbach_energy */
 	{ Material::Si    , { 1.0, std::nullopt, std::nullopt, std::nullopt } },
-	{ Material::HgCdTe, { 1.0,          0.5, std::nullopt, std::nullopt } },
+	{ Material::HgCdTe, { 1.0,          0.3,        100.0,         10.0 } },
 	{ Material::CdTe  , { 1.0, std::nullopt, std::nullopt, std::nullopt } },
 	{ Material::ZnSe  , { 1.0, std::nullopt, std::nullopt, std::nullopt } },
 	{ Material::ZnS   , { 1.0, std::nullopt, std::nullopt, std::nullopt } },
@@ -88,12 +87,12 @@ Thin_Film_Interference::Thin_Film_Interference()
 		};
 	}
 	//Optional_Material_Parameters_AD test_params;
-	//ADCVector test = MCT_Index_AD( arma::vec{}, test_params );
-	all_material_indices[ Material::HgCdTe ] = MCT_Index< double >;
+	//ADCVector test = HgCdTe::Refractive_Index_AD( arma::vec{}, test_params );
+	all_material_indices[ Material::HgCdTe ] = HgCdTe::Refractive_Index< double >;
 	all_material_indices[ Material::AlAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_AlAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
 	all_material_indices[ Material::GaAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_GaAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
-	all_material_indices[ Material::InAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_InAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
-	all_material_indices[ Material::CdTe ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { optional_parameters.composition = 1.0; return MCT_Index( wavelengths, optional_parameters ); };
+	//all_material_indices[ Material::InAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_InAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
+	all_material_indices[ Material::CdTe ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { optional_parameters.composition = 1.0; return HgCdTe::Refractive_Index( wavelengths, optional_parameters ); };
 
 	all_material_indices[ Material::Air ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return arma::cx_vec( arma::size( wavelengths ), arma::fill::ones ); };
 	all_material_indices[ Material::Mirror ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters )

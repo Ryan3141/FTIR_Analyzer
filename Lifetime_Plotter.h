@@ -35,6 +35,7 @@ private:
 
 	void Initialize_Tree_Table();
 	void Initialize_Graph();
+	void Initialize_Theoretical_Plots();
 	void Initialize_SQL( QString config_filename );
 
 	void Graph_Data( const ID_To_Metadata & selected_data );

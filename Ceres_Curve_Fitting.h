@@ -113,7 +113,7 @@ private:
 
 
 inline ceres::ResidualBlockId Dynamic_Fit_Parameters(
-	ceres::Problem& problem, std::vector<Material_Layer>& layers, const Material_Layer& backside_material,
+	ceres::Problem& problem, const std::vector<Material_Layer> & layers, const Material_Layer& backside_material,
 	const arma::vec & wavelengths, const arma::vec & transmissions, arma::vec& fit_vars )
 {
 	switch( fit_vars.size() )
@@ -224,22 +224,20 @@ inline ceres::ResidualBlockId Dynamic_Fit_Parameters(
 
 #include "Thin_Film_Interference.h"
 inline arma::vec Ceres_Thin_Film_Fit(
+	const std::vector<std::optional<double>*> & initial_guess,
 	const std::vector<Material_Layer>& layers,
 	const arma::vec& wavelengths, // in meters
 	const arma::vec& transmissions, // Scaled to between 0.0 and 1.0
 	Material_Layer backside_material )
 {
-	std::vector<Material_Layer> copy_layers = layers;
-	auto fit_parameters = Get_Things_To_Fit( copy_layers );
 	//if( fit_parameters.empty() )
 	//	return {};
-	arma::vec fit_vars = arma::vec( fit_parameters.size() + 1 );
-	for( int i = 0; std::optional< double >*parameter : fit_parameters )
+	arma::vec fit_vars = arma::vec( initial_guess.size() );
+	for( int i = 0; std::optional< double >* parameter : initial_guess )
 		fit_vars[ i++ ] = parameter->value();
-	fit_vars.back() = 1.0;
-	arma::vec initial_guess = fit_vars;
+	//arma::vec initial_guess_vec = fit_vars;
 	ceres::Problem problem;
-	Dynamic_Fit_Parameters( problem, copy_layers, backside_material,
+	Dynamic_Fit_Parameters( problem, layers, backside_material,
 				wavelengths, transmissions, fit_vars );
 	for( int i = 0; i < fit_vars.size(); i++ )
 	{

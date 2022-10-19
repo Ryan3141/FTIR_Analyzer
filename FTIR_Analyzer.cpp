@@ -208,7 +208,7 @@ void FTIR_Analyzer::Run_Fit()
 	std::optional< double > scaled_height = transmission_scale;
 	auto fit_parameters = Get_Things_To_Fit( copy_layers );
 	fit_parameters.push_back( &scaled_height );
-	arma::vec solution = Ceres_Thin_Film_Fit( copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material );
+	arma::vec solution = Ceres_Thin_Film_Fit( fit_parameters, copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material );
 	for( int i = 0; std::optional< double >*parameter : fit_parameters )
 		*parameter = solution[ i++ ];
 	ui.simulated_listWidget->Make_From_Material_List( copy_layers );
