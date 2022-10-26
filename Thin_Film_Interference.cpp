@@ -23,10 +23,6 @@ using namespace arma;
 using namespace std::complex_literals;
 
 
-using IndexFunction = std::function< arma::cx_vec( const arma::vec& wavelengths, Optional_Material_Parameters optional_parameters ) >;
-std::map< Material, IndexFunction > all_material_indices;
-
-
 std::map<std::string, Material> name_to_material =
 {
 	{ "Si"          ,  Material::Si },
@@ -70,15 +66,15 @@ std::map< Material, std::array< std::optional<double>, 4 > > defaults_per_materi
 Material_To_Refraction_Component Load_Index_Of_Refraction_Files( const fs::path & directory, const char* indicator );
 std::ofstream debug_file( "Debug.txt" );
 
-Thin_Film_Interference::Thin_Film_Interference()
+std::map< Material, Thin_Film_Interference::IndexFunction > Thin_Film_Interference::CreateIndexFunctions()
 {
-	qRegisterMetaType< std::vector<Material_Layer> >();
-	for( const auto &[ material, x_y_data ] : Refraction_Coefficient )
+	std::map< Material, Thin_Film_Interference::IndexFunction > index_functions;
+	for( const auto &[ material, x_y_data ] : Thin_Film_Interference::Refraction_Coefficient )
 	{
-		const X_And_Y_Data & n_vs_lambda = Refraction_Coefficient[ material ];
-		const X_And_Y_Data & k_vs_lambda = Attenuation_Coefficient[ material ];
+		const X_And_Y_Data & n_vs_lambda = Thin_Film_Interference::Refraction_Coefficient[ material ];
+		const X_And_Y_Data & k_vs_lambda = Thin_Film_Interference::Attenuation_Coefficient[ material ];
 
-		all_material_indices[ material ] = [&n_vs_lambda, &k_vs_lambda]( const arma::vec & wavelengths, Optional_Material_Parameters optional )
+		index_functions[ material ] = [&n_vs_lambda, &k_vs_lambda]( const arma::vec & wavelengths, Optional_Material_Parameters optional )
 		{
 			arma::vec scaled_wavelengths = 1E6 * wavelengths;
 			auto n = Find_Closest_Datapoint( scaled_wavelengths, std::get<0>( n_vs_lambda ), std::get<1>( n_vs_lambda ) );
@@ -88,17 +84,18 @@ Thin_Film_Interference::Thin_Film_Interference()
 	}
 	//Optional_Material_Parameters_AD test_params;
 	//ADCVector test = HgCdTe::Refractive_Index_AD( arma::vec{}, test_params );
-	all_material_indices[ Material::HgCdTe ] = HgCdTe::Refractive_Index< double >;
-	all_material_indices[ Material::AlAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_AlAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
-	all_material_indices[ Material::GaAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_GaAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
-	//all_material_indices[ Material::InAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_InAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
-	all_material_indices[ Material::CdTe ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { optional_parameters.composition = 1.0; return HgCdTe::Refractive_Index( wavelengths, optional_parameters ); };
+	index_functions[ Material::HgCdTe ] = HgCdTe::Refractive_Index< double >;
+	index_functions[ Material::AlAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_AlAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
+	index_functions[ Material::GaAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_GaAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
+	//index_functions[ Material::InAs ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return III_V_Data::Get_InAs_Refraction_Index( wavelengths, optional_parameters.temperature.value() ); };
+	index_functions[ Material::CdTe ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { optional_parameters.composition = 1.0; return HgCdTe::Refractive_Index( wavelengths, optional_parameters ); };
 
-	all_material_indices[ Material::Air ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return arma::cx_vec( arma::size( wavelengths ), arma::fill::ones ); };
-	all_material_indices[ Material::Mirror ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters )
+	index_functions[ Material::Air ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters ) { return arma::cx_vec( arma::size( wavelengths ), arma::fill::ones ); };
+	index_functions[ Material::Mirror ] = []( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters )
 	{
 		return arma::cx_vec( arma::size( wavelengths ) ).fill( 1E15 ); // Really big number that we can still do math with
 	};
+	return index_functions;
 	if constexpr(false) // Debug output
 	{
 		//double temperature_k = 300.0;
@@ -309,6 +306,7 @@ void Thin_Film_Interference::Quit_Early()
 
 Material_To_Refraction_Component Thin_Film_Interference::Attenuation_Coefficient{ Load_Index_Of_Refraction_Files(fs::path("./Refractive_Index"), "_k" ) };
 Material_To_Refraction_Component Thin_Film_Interference::Refraction_Coefficient{ Load_Index_Of_Refraction_Files(fs::path("./Refractive_Index"), "_n" ) };
+std::map< Material, Thin_Film_Interference::IndexFunction > Thin_Film_Interference::all_material_indices{ Thin_Film_Interference::CreateIndexFunctions() };
 
 arma::cx_vec SiO2_Index( const arma::vec & wavelengths )
 {

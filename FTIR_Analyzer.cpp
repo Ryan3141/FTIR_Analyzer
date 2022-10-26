@@ -1,4 +1,6 @@
-﻿#include "FTIR_Analyzer.h"
+﻿// https://webbook.nist.gov/cgi/cbook.cgi?ID=C124389&Units=SI&Type=IR-SPEC&Index=1#IR-SPEC
+// https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185&Units=SI&Type=IR-SPEC&Index=0#IR-SPEC
+#include "FTIR_Analyzer.h"
 
 #include <QSettings>
 #include <QFileDialog>
@@ -133,7 +135,6 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, std::t
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 ); // Remove zero x value (to avoid divide by zero type errors)
 	x_data_meters.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_MICRONS, x ) * 1E-6; } );
 
-	Thin_Film_Interference tfi;
 	try
 	{
 		constexpr auto X = FTIR::X_Units::WAVELENGTH_METERS;

@@ -190,15 +190,18 @@ signals:
 	void Debug_Plot( arma::vec wavelengths, arma::vec y_data );
 
 public:
-	Thin_Film_Interference();
+	using IndexFunction = std::function< arma::cx_vec( const arma::vec& wavelengths, Optional_Material_Parameters optional_parameters ) >;
 
 	//std::map< Material, std::function<arma::cx_double( Material, double, double )> > Get_Refraction_Index;
 
 	void Get_Best_Fit( const std::vector<Material_Layer> & layers, const arma::vec & wavelengths, const arma::vec & transmissions, Material_Layer backside_material );
 
 	void Quit_Early();
+	static std::map< Material, IndexFunction > all_material_indices;
 
 private:
+	static std::map< Material, IndexFunction > CreateIndexFunctions();
+
 	bool quit_early = false;
 
 	static Material_To_Refraction_Component Attenuation_Coefficient;
@@ -211,9 +214,8 @@ inline arma::cx_vec Get_Refraction_Index( Material mat,
 	Optional_Material_Parameters optional_parameters )
 {
 	using IndexFunction = std::function< arma::cx_vec( const arma::vec& wavelengths, Optional_Material_Parameters optional_parameters ) >;
-	extern std::map< Material, IndexFunction > all_material_indices;
-	auto refraction_index_function = all_material_indices.find( mat );
-	if( refraction_index_function != all_material_indices.end() )
+	auto refraction_index_function = Thin_Film_Interference::all_material_indices.find( mat );
+	if( refraction_index_function != Thin_Film_Interference::all_material_indices.end() )
 		return refraction_index_function->second( wavelengths, optional_parameters );
 	else
 		throw "Material unavailable";
