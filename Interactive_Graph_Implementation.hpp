@@ -383,18 +383,21 @@ void Interactive_Graph<Single_Graph, Axes>::RegraphAll()
 template<typename Single_Graph, typename Axes>
 void Interactive_Graph<Single_Graph, Axes>::Recolor_Graphs( QCPColorGradient::GradientPreset gradient )
 {
-	int color_index = 0;
+	QCPColorGradient gradient_used( gradient );
+	gradient_used.setPeriodic( true );
+	const int number_of_graphs_shown = std::count_if( this->graphs_in_order.begin(), this->graphs_in_order.end(),
+		[]( const auto & x ) { return x->graph_pointer->visible(); } );
 	//this->graph( 0 );
-	for( const auto graph : this->graphs_in_order )
+	for( int color_index = 0; const auto graph : this->graphs_in_order )
 	{
+		if( !graph->graph_pointer->visible() )
+			continue;
 		//QPen graphPen;
 		//QCPColorGradient gradient( QCPColorGradient::gpPolar );
-		QCPColorGradient gradient_used( gradient );
-		gradient_used.setPeriodic( true );
 		//gradient.setLevelCount( 10 );
 		//const QVector< Qt::PenStyle > patterns = { Qt::SolidLine, Qt::DotLine, Qt::DashLine, Qt::DashDotDotLine, Qt::DashDotLine };
 		const QVector< Qt::PenStyle > patterns = { Qt::SolidLine };
-		QColor color = gradient_used.color( double( color_index ) / std::max( 1, int( remembered_graphs.size() ) - 1 ), QCPRange( -0.1, 1.1 ) );
+		QColor color = gradient_used.color( double( color_index ) / number_of_graphs_shown, QCPRange( -0.1, 1.1 ) );
 		//graphPen.setColor( color );
 		//graphPen.setStyle( patterns[ color_index % patterns.size() ] );
 		//graphPen.setWidthF( 2 ); Changing width currently causes massive performance issues
@@ -676,7 +679,6 @@ Single_Graph & Interactive_Graph<Single_Graph, Axes>::Graph( QVector<double> x_d
 			current_info.graph_pointer->setData( adjusted_x_data, adjusted_y_data );
 			current_info.graph_pointer->setVisible( true );
 			current_info.graph_pointer->addToLegend();
-
 		}
 
 		if( !meta.empty() )
@@ -713,6 +715,12 @@ Single_Graph & Interactive_Graph<Single_Graph, Axes>::Graph( QVector<double> x_d
 		//gradient.setLevelCount( 10 );
 		//const QVector< Qt::PenStyle > patterns = { Qt::SolidLine, Qt::DotLine, Qt::DashLine, Qt::DashDotDotLine, Qt::DashDotLine };
 		const QVector< Qt::PenStyle > patterns = { Qt::SolidLine };
+		QColor c = gradient.color( color_index / 10.0, QCPRange( 0.0, 1.0 ) );
+		int h;
+		int s;
+		int l;
+		c.getHsl( &h, &s, &l );
+		c.setHsl( h, 255, l );
 		graphPen.setColor( gradient.color( color_index / 10.0, QCPRange( 0.0, 1.0 ) ) );
 		graphPen.setStyle( patterns[ color_index % patterns.size() ] );
 		//graphPen.setWidthF( 2 ); Changing width currently causes massive performance issues

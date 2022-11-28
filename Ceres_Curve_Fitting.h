@@ -41,6 +41,9 @@ std::array<Fit_Results, 2> Ceres_Fit_Lifetime( const arma::vec& initial_guess, c
 	x = x - x_offset;
 	y = y - y.min() + 1E-9;
 	arma::uvec selection_region = arma::find( x > graph.lower_x_fit && x < graph.upper_x_fit2 );
+	if( selection_region.size() < 2 )
+		return { Fit_Results{ arma::datum::nan, arma::datum::nan, arma::datum::nan }, Fit_Results{ arma::datum::nan, arma::datum::nan, arma::datum::nan } };
+	//return { Fit_Results{ (initial_guess[ 0 ]), initial_guess[ 1 ], initial_guess[ 2 ] }, Fit_Results{ (initial_guess[ 3 ]), initial_guess[ 4 ], initial_guess[ 5 ] } };
 	x = x( selection_region );
 	y = y( selection_region );
 	using ceres::AutoDiffCostFunction;

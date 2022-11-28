@@ -473,16 +473,12 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 	{
 		menu->addAction( "Set As Background", [this, selected]
 		{
-			auto [measurement_id, metadata] = *selected.begin();
-			sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this, [ this, measurement_id=measurement_id, metadata=metadata ]( ID_To_XY_Data data )
-			{
-				XY_Data background_data = data[ measurement_id ];
-				ui.customPlot->axes.Set_As_Background( std::move( background_data ) );
-			}, config.sorting_strategy );
+			auto [background_id, metadata] = *selected.begin();
+			this->Set_Background( background_id );
 		} );
 	}
 
-	menu->addAction( "Clear Background", ui.customPlot, [ this ] { ui.customPlot->axes.Set_Y_Units( FTIR::Y_Units::RAW_SENSOR ); } );
+	menu->addAction( "Clear Background", ui.customPlot, [ this ]{ this->Clear_Background(); } );
 
 	menu->addAction( "Save to csv file", [this, selected]
 	{
@@ -510,6 +506,23 @@ void FTIR_Analyzer::treeContextMenuRequest( QPoint pos )
 	} );
 
 	menu->popup( ui.treeWidget->mapToGlobal( pos ) );
+}
+
+void FTIR_Analyzer::Set_Background( QString background_id )
+{
+	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { background_id }, this, [this, background_id]( ID_To_XY_Data data )
+		{
+			XY_Data & background_data = data[ background_id ];
+			ui.customPlot->axes.Set_As_Background( std::move( background_data ) );
+			if( ui.customPlot->axes.y_units == FTIR::Y_Units::RAW_SENSOR )
+				ui.customPlot->Change_Y_Axis( FTIR::Y_Units::TRANSMISSION );
+			ui.customPlot->replot();
+		}, config.sorting_strategy );
+}
+
+void FTIR_Analyzer::Clear_Background()
+{
+	ui.customPlot->Change_Y_Axis( FTIR::Y_Units::RAW_SENSOR );
 }
 
 void FTIR_Analyzer::Save_To_CSV( const ID_To_Metadata & things_to_save )
@@ -611,7 +624,7 @@ QString lookup( const Labeled_Metadata & metadata, const QString & lookup_name, 
 		return run_if_exists( lookup->second );
 }
 
-void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label )
+void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label, QString background_id )
 {
 	const auto &[ x_data, y_data ] = data[ measurement_id ];
 	QString used_legend_label = legend_label;
@@ -627,6 +640,13 @@ void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measureme
 		used_legend_label = QStringList{ sample_name, device_location, side_length_label, temperature_label, bias_label }.join( " " );
 	}
 	graph->Graph<FTIR::X_Units::WAVE_NUMBER, FTIR::Y_Units::RAW_SENSOR>( x_data, y_data, measurement_id, used_legend_label, metadata );
+	if( !background_id.isEmpty() )
+	{
+		auto & background_data = data[ background_id ];
+		graph->axes.Set_As_Background( std::move( background_data ) );
+		if( graph->axes.y_units == FTIR::Y_Units::RAW_SENSOR )
+			graph->Change_Y_Axis( FTIR::Y_Units::TRANSMISSION );
+	}
 	graph->replot();
 }
 

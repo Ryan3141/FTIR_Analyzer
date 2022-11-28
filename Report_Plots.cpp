@@ -7,6 +7,7 @@
 #include "IV_By_Size_Plotter.h"
 #include "FTIR_Analyzer.h"
 #include "IV_Plotter.h"
+#include "Lifetime_Plotter.h"
 
 namespace Report
 {
@@ -44,6 +45,17 @@ void Report_Plots::Initialize_SQL( QString config_filename )
 		config.sorting_strategy = "ORDER BY measurement_id, wavenumber ASC";
 		config.columns_to_show = 8;
 		this->ftir_sql_config = this->spectral_response_sql_config;
+	}
+
+	{
+		auto& config = this->lifetime_sql_config;
+		config.header_titles = QStringList{ "Sample Name", "T Gain", "Location", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Bias (V)", "Temperature (K)", "Date", "Time of Day", "measurement_id" };
+		config.what_to_collect = QStringList{ "sample_name", "transimpedance_gain", "device_location", "device_side_length_um", "bias_v", "temperature_in_k", "date(time)", "time(time)", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
+		config.sql_table = "lifetime_measurements";
+		config.raw_data_columns = QStringList{ "measurement_id","time_s","voltage_v" };
+		config.raw_data_table = "lifetime_raw_data";
+		config.sorting_strategy = "";
+		config.columns_to_show = 8;
 	}
 
 	sql_manager = new SQL_Manager_With_Local_Cache( this, config_filename, "Report" );
@@ -218,13 +230,17 @@ QWidget* Spectral_Response( YAML::Node main_plot_node, Request_Data_Func get_the
 		data_remaining--;
 		if( !one_plot[ "measurement_id" ] )
 			continue;
-		QString legend_label = lookup( one_plot[ "title" ], QString{} );
+		QString legend_label = lookup( one_plot[ "background_id" ], QString{} );
 		QString measurement_id = one_plot[ "measurement_id" ].as<QString>();
-
-		get_the_data( { measurement_id },
-		[ interactive_graph, measurement_id, legend_label, main_plot_node, save_file_name, data_remaining ]( Structured_Metadata metadata, ID_To_XY_Data data ) mutable
+		QString background_id = lookup( one_plot[ "background_id" ], QString{} );
+		QStringList ids = { measurement_id };
+		if( !background_id.isEmpty() )
+			ids.append( background_id );
+		get_the_data( ids,
+		[ interactive_graph, measurement_id, background_id, legend_label, main_plot_node, save_file_name, data_remaining ]( Structured_Metadata metadata, ID_To_XY_Data data ) mutable
 		{
-			FTIR::Graph_Measurement( std::move( data ), interactive_graph, measurement_id, Label_Metadata( metadata.data[ 0 ], metadata.column_names ), legend_label );
+			FTIR::Graph_Measurement( std::move( data ), interactive_graph, measurement_id, Label_Metadata( metadata.data[ 0 ], metadata.column_names ), legend_label, background_id );
+
 			interactive_graph->axisRect()->insetLayout()->setInsetAlignment( 0, Qt::AlignTop | Qt::AlignLeft );
 			set_graph_limits( main_plot_node, interactive_graph );
 			interactive_graph->Recolor_Graphs( QCPColorGradient::gpSpectrum );
@@ -232,6 +248,41 @@ QWidget* Spectral_Response( YAML::Node main_plot_node, Request_Data_Func get_the
 			if( data_remaining == 0 && !save_file_name.isEmpty() )
 				interactive_graph->saveAsStandardPdf( save_file_name );
 		} );
+	}
+	return interactive_graph;
+}
+
+QWidget* Lifetime( YAML::Node main_plot_node, Request_Data_Func get_the_data )
+{
+	auto interactive_graph = new Lifetime::Interactive_Graph();
+
+	set_graph_title( main_plot_node, interactive_graph );
+	QString save_file_name = lookup( main_plot_node[ "save_file_name" ], QString{} );
+
+	auto plots = main_plot_node[ "plots" ];
+	if( !plots || !plots.IsSequence() )
+		return interactive_graph;
+
+	auto data_remaining = plots.size(); // Workaround to async sequencing
+	for( const auto& one_plot : plots )
+	{
+		//data_remaining--;
+		//if( !one_plot[ "measurement_id" ] )
+		//	continue;
+		//QString legend_label = lookup( one_plot[ "title" ], QString{} );
+		//QString measurement_id = one_plot[ "measurement_id" ].as<QString>();
+
+		//get_the_data( { measurement_id },
+		//	[interactive_graph, measurement_id, legend_label, main_plot_node, save_file_name, data_remaining]( Structured_Metadata metadata, ID_To_XY_Data data ) mutable
+		//	{
+		//		Lifetime::Graph_Measurement( std::move( data ), interactive_graph, measurement_id, Label_Metadata( metadata.data[ 0 ], metadata.column_names ), legend_label );
+		//		interactive_graph->axisRect()->insetLayout()->setInsetAlignment( 0, Qt::AlignTop | Qt::AlignLeft );
+		//		set_graph_limits( main_plot_node, interactive_graph );
+		//		interactive_graph->Recolor_Graphs( QCPColorGradient::gpSpectrum );
+		//		interactive_graph->replot();
+		//		if( data_remaining == 0 && !save_file_name.isEmpty() )
+		//			interactive_graph->saveAsStandardPdf( save_file_name );
+		//	} );
 	}
 	return interactive_graph;
 }
@@ -275,9 +326,10 @@ void Report_Plots::Load_Report( QFileInfo file )
 	};
 
 	std::map< QString, Function_And_Config > function_for_graph_type = {
-		{ "current_voltage", { &Dark_Current, iv_sql_config } },
-		{ "by_device_size", { &By_Device_Size, iv_by_size_sql_config } },
+		{ "current_voltage"  , { &Dark_Current     , iv_sql_config } },
+		{ "by_device_size"   , { &By_Device_Size   , iv_by_size_sql_config } },
 		{ "spectral_response", { &Spectral_Response, ftir_sql_config } },
+		{ "lifetime"         , { &Lifetime         , lifetime_sql_config } },
 	};
 
 	for( auto replace_widget : replace_functions )

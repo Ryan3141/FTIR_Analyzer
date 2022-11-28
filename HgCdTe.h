@@ -2,6 +2,9 @@
 
 #include <armadillo>
 #include <cppad/ipopt/solve.hpp>
+#include <fstream>
+
+#include "Thin_Film_Interference.h"
 
 namespace HgCdTe
 {
@@ -19,23 +22,23 @@ namespace HgCdTe
 //	using Return = arma::vec;
 //};
 
-template< typename Real, typename Real2 >
-struct Deduce_Types
-{
-	using Return = Real;
-};
-
-template< typename Real >
-struct Deduce_Types< Real, arma::vec >
-{
-	using Return = arma::vec;
-};
-
-template< typename Real >
-struct Deduce_Types< arma::vec, Real >
-{
-	using Return = arma::vec;
-};
+//template< typename Real, typename Real2 >
+//struct Deduce_Types
+//{
+//	using Return = Real;
+//};
+//
+//template< typename Real >
+//struct Deduce_Types< Real, arma::vec >
+//{
+//	using Return = arma::vec;
+//};
+//
+//template< typename Real >
+//struct Deduce_Types< arma::vec, Real >
+//{
+//	using Return = arma::vec;
+//};
 
 
 template< typename Real, std::enable_if_t<std::is_convertible<Real, arma::vec>::value, bool> = true >
@@ -73,31 +76,31 @@ arma::vec exp_( Real && power )
 }
 
 template< typename Real, typename Real2 >
-typename Deduce_Types<Real, Real2>::Return E_g_Hansen( const Real & x, const Real2 & T )
+arma::vec E_g_Hansen( const Real & x, const Real2 & T )
 {
 	return -0.302 + 1.930 * x + 5.35E-4 * T * (1 - 2 * x) - 0.810 * x * x + 0.832 * x * x * x;
 }
-template< typename Real, typename Real2, std::enable_if_t<std::is_convertible<Real, arma::vec>::value, bool> = true >
-typename Deduce_Types<Real, Real2>::Return E_g_Hansen( const Real& x, const Real2& T )
-{
-	return -0.302 + 1.930 * x + 5.35E-4 * T * (1 - 2 * x) - 0.810 * x % x + 0.832 * x % x % x;
-}
+//template< typename Real, typename Real2, std::enable_if_t<std::is_convertible<Real, arma::vec>::value, bool> = true >
+//arma::vec E_g_Hansen( const Real& x, const Real2& T )
+//{
+//	return -0.302 + 1.930 * x + 5.35E-4 * T * (1 - 2 * x) - 0.810 * x % x + 0.832 * x % x % x;
+//}
 
 template< typename Real, typename Real2, std::enable_if_t< (std::is_floating_point_v<Real> || std::is_integral_v<Real>)
 														&& (std::is_floating_point_v<Real2> || std::is_integral_v<Real2>), bool> = true >
-typename Deduce_Types<Real, Real2>::Return E_g_Laurenti( const Real& x, const Real2& T )
+arma::vec E_g_Laurenti( const Real& x, const Real2& T )
 {
 	return -0.303 * (1 - x) + 1.606 * x - 0.132 * x * (1 - x) + (6.3 * (1 - x) - 3.25 * x - 5.92 * x * (1 - x)) * 1E-4 * T * T / (11 * (1 - x) + 78.7 * x + T);
 }
 
 template< typename Real, typename Real2, std::enable_if_t<std::is_convertible<Real2, arma::vec>::value && !std::is_convertible<Real, arma::vec>::value, bool> = true >
-typename Deduce_Types<Real, Real2>::Return E_g_Laurenti( const Real& x, const Real2& T )
+arma::vec E_g_Laurenti( const Real& x, const Real2& T )
 {
 	return -0.303 * (1 - x) + 1.606 * x - 0.132 * x * (1 - x) + (6.3 * (1 - x) - 3.25 * x - 5.92 * x * (1 - x)) * 1E-4 * T % T / (11 * (1 - x) + 78.7 * x + T);
 }
 
 template< typename Real, typename Real2, std::enable_if_t<std::is_convertible<Real, arma::vec>::value && !std::is_convertible<Real2, arma::vec>::value, bool> = true >
-typename Deduce_Types<Real, Real2>::Return E_g_Laurenti( const Real& x, const Real2& T )
+arma::vec E_g_Laurenti( const Real& x, const Real2& T )
 {
 	return -0.303 * (1 - x) + 1.606 * x - 0.132 * x % (1 - x) + (6.3 * (1 - x) - 3.25 * x - 5.92 * x % (1 - x)) * 1E-4 * pow_( T, 2 ) / (11 * (1 - x) + 78.7 * x + T);
 }
@@ -266,11 +269,11 @@ inline double Heavy_Hole_Relative_Effective_Mass( double Cd_composition, double 
 }
 
 template< typename Real, typename Real2 >
-typename Deduce_Types<Real, Real2>::Return Electron_Relative_Effective_Mass( const Real & Cd_composition, const Real2 & temperature_in_K ) // # in cm ^ -3 / s
+arma::vec Electron_Relative_Effective_Mass( const Real & Cd_composition, const Real2 & temperature_in_K ) // # in cm ^ -3 / s
 {
-	using RReal = typename Deduce_Types<Real, Real2>::Return;
+	using RReal = arma::vec;
 	// From : https ://iopscience.iop.org/article/10.1088/0268-1242/8/6S/005/meta
-	RReal E_g = E_g_Laurenti<Real, Real2>( Cd_composition, temperature_in_K );
+	RReal E_g = E_g_Hansen<Real, Real2>( Cd_composition, temperature_in_K );
 	const double F = -0.8;
 	const double delta = 1.0; // eV
 	const double E_p = 19; // eV
@@ -279,37 +282,33 @@ typename Deduce_Types<Real, Real2>::Return Electron_Relative_Effective_Mass( con
 }
 
 template< typename Real, typename Real2 >
-typename Deduce_Types<Real, Real2>::Return Intrinsic_Carrier_Concentration( const Real& Cd_composition, const Real2& temperature_in_K )
+arma::vec Intrinsic_Carrier_Concentration( const Real& Cd_composition, const Real2& temperature_in_K )
 {
 	// From : https ://doi.org/10.1063/1.5000116
-	auto E_g = E_g_Laurenti<Real, Real2>( Cd_composition, temperature_in_K );
-	auto x = Cd_composition;
-	auto x2 = x * x;
-	auto T = temperature_in_K;
-	auto T2 = T % T;
+	arma::vec E_g = E_g_Hansen<Real, Real2>( Cd_composition, temperature_in_K );
+	double x = Cd_composition;
+	double x2 = x * x;
+	arma::vec T = temperature_in_K;
+	arma::vec T2 = T % T;
 
-	auto n_i = (5.24256 - 3.5729 * x - 4.74019E-4 * T + 1.25942E-2 * x * T - 5.77046 * x2 - 4.24123E-6 * T2)
-		* 1E14 % pow_( E_g, 0.75 ) % pow_( T, 1.5 ) % exp_( -E_g / (2 * (arma::datum::k / arma::datum::ec) % T) );
+	arma::vec n_i = ((5.24256 - 3.5729 * x - 4.74019E-4 * T + 1.25942E-2 * x * T - 5.77046 * x2 - 4.24123E-6 * T2)
+		* 1E14) % pow_( E_g, 0.75 ) % pow_( T, 1.5 ) % exp_( -E_g / (2 * arma::datum::k_evk * T) );
 	return n_i;
 }
 
-template< typename Real >
-struct Auger_Lifetimes
-{
-	Real A1;
-	//Real A7;
-};
+arma::vec Auger1_to_7_Lifetime_Ratio( double Cd_composition, const arma::vec & temperature_in_K ); // in cm^-3 / s
 
 template< typename Real, typename Real2 >
-typename Deduce_Types<Real, Real2>::Return Auger_Intrinsic_Lifetimes( const Real& Cd_composition, const Real2& temperature_in_K ) // # in cm ^ -3 / s
+arma::vec Auger_Intrinsic_Lifetimes( const Real& Cd_composition, const Real2& temperature_in_K ) // # in cm ^ -3 / s
 {
-	using RReal = typename Deduce_Types<Real, Real2>::Return;
+	using RReal = arma::vec;
 	constexpr auto k_B = arma::datum::k / arma::datum::eV;
 	RReal m_e_rel = Electron_Relative_Effective_Mass( Cd_composition, temperature_in_K );
 	RReal m_hh_rel = Heavy_Hole_Relative_Effective_Mass( Cd_composition, temperature_in_K );
 	constexpr double m_e = arma::datum::m_e * pow_<2>( arma::datum::c_0 ) / arma::datum::eV;
 	RReal μ = m_e_rel / m_hh_rel;
-	RReal E_g = E_g_Laurenti<Real, Real2>( Cd_composition, temperature_in_K );
+	RReal E_g = E_g_Hansen<Real, Real2>( Cd_composition, temperature_in_K );
+	//RReal E_g = E_g_Laurenti<Real, Real2>( Cd_composition, temperature_in_K );
 	// E_g = HgCdTe.Bandgap_eV( Cd_composition, temperature_in_K ) - HgCdTe.Ec_minus_Ei( Cd_composition, temperature_in_K )
 	Real ε = Dielectric_Relative_Constant_Infinite( Cd_composition );
 	const double F1F2 = 0.15; // Overlap integral of the Bloch functions typically between 0.1 and 0.3
@@ -329,13 +328,94 @@ typename Deduce_Types<Real, Real2>::Return Auger_Intrinsic_Lifetimes( const Real
 	return τ_A1_i;
 }
 
+template< typename Real, typename Real2 >
+arma::vec Radiative_Recombination_Rate( const Real& Cd_composition, const Real2& temperature_in_K ) // in m^3 / s
+{
+	using RReal = arma::vec;
+	arma::vec T = temperature_in_K;
+	constexpr auto k_B = arma::datum::k / arma::datum::eV;
+	RReal m_e_rel = Electron_Relative_Effective_Mass( Cd_composition, temperature_in_K );
+	RReal m_hh_rel = Heavy_Hole_Relative_Effective_Mass( Cd_composition, temperature_in_K );
+	// m_e = sc.electron_mass
+	RReal E_g = E_g_Hansen<Real, Real2>( Cd_composition, temperature_in_K );
+	Real ε = Dielectric_Relative_Constant_Infinite( Cd_composition );
+
+	arma::vec recombination = 5.8E-13 * pow_( ε, 0.5 ) * pow_( 1 / (m_e_rel + m_hh_rel), 1.5 )
+		% (1 + 1 / m_e_rel + 1 / m_hh_rel)
+		% pow_(300 / T, 1.5) % ( pow_(E_g, 2) + 3 * k_B * T % E_g + 3.75 * pow_(k_B * T, 2) );
+
+	// C = 8 * np.pi / (sc.h**3 * sc.c**2) \
+	// 	* 2**(2/3) / (3 * sc.epsilon_0**0.5) \
+	// 	* sc.m_e * sc.elementary_charge**2 / sc.hbar**2
+
+	// recombination2 = 1E6 * 8.685E28 * ε**0.5 * (1/m_e_rel + 1/m_hh_rel)**-1.5 \
+	// 				* (1 + 1/m_e_rel + 1/m_hh_rel) * np.exp( -E_g / (k_B * T) ) \
+	// 				* (k_B * T)**1.5 * (E_g**2 + 3 * k_B * T * E_g + 3.75 * (k_B * T)**2)
+
+	return recombination;
+}
+
 template< typename Real, typename Real2, typename Real3 >
-typename Deduce_Types<Real, Real2>::Return Auger1_Lifetime( const Real& Cd_composition, const Real2& temperature_in_K, const Real3& N_d ) // # in cm ^ -3 / s
+arma::vec Auger1_Lifetime( const Real& Cd_composition, const Real2& temperature_in_K, const Real3& N_d ) // # in cm ^ -3 / s
 {
 	arma::vec n_i = Intrinsic_Carrier_Concentration( Cd_composition, temperature_in_K ) * 1E6;
 	arma::vec τ_A1_i = Auger_Intrinsic_Lifetimes( Cd_composition, temperature_in_K );
 	arma::vec τ_A1 = 2 * pow_( n_i, 2 ) % τ_A1_i / ((N_d + pow_( n_i, 2 ) / N_d) * N_d);
 	return τ_A1;
+}
+
+template< typename Real, typename Real2, typename Real3 >
+arma::vec Auger7_Lifetime( const Real& Cd_composition, const Real2& temperature_in_K, const Real3& N_d ) // # in cm ^ -3 / s
+{
+	arma::vec n_i = Intrinsic_Carrier_Concentration( Cd_composition, temperature_in_K ) * 1E6;
+	arma::vec τ_A7_i = Auger_Intrinsic_Lifetimes( Cd_composition, temperature_in_K ) % Auger1_to_7_Lifetime_Ratio( Cd_composition, temperature_in_K );
+	arma::vec N_a = pow_( n_i, 2 ) / N_d;
+	arma::vec τ_A7 = 2 * pow_( n_i, 2 ) % τ_A7_i / ((N_d + N_a) % N_a);
+	return τ_A7;
+}
+
+template< typename Real, typename Real2, typename Real3 >
+arma::vec Radiative_Lifetime( const Real& Cd_composition, const Real2& temperature_in_K, const Real3& N_d )
+{
+	arma::vec n_i = Intrinsic_Carrier_Concentration( Cd_composition, temperature_in_K ) * 1E6;
+	arma::vec G_R = Radiative_Recombination_Rate( Cd_composition, temperature_in_K );
+	arma::vec τ_R = 1E6 / ((N_d + pow_( n_i, 2 ) / N_d) % G_R);
+	return τ_R;
+}
+
+template< bool is_n_not_p, typename Real >
+arma::vec SRH_Lifetimes( double Cd_composition, const Real & temperature_in_K, double N_d,
+	double N_t, double E_t_E_g_ratio, double τ_n0, double τ_p0 )
+{
+	arma::vec n_i = Intrinsic_Carrier_Concentration( Cd_composition, temperature_in_K ) * 1E6;
+	double x = Cd_composition;
+	const auto& T = temperature_in_K;
+	double n_0 = N_d;
+	arma::vec p_0 = arma::square( n_i ) / N_d;
+	// N_t = 1E15 * 1E6
+	const auto π = arma::datum::pi;
+	const auto k_B = arma::datum::k;
+	const auto m_e = arma::datum::m_e;
+	const auto h = arma::datum::h;
+	const auto eV = arma::datum::eV;
+	arma::vec E_g = E_g_Hansen<double, Real>( Cd_composition, temperature_in_K );
+	arma::vec E_t = E_t_E_g_ratio * E_g;
+	arma::vec N_c = 2 * pow_( (2 * π * Electron_Relative_Effective_Mass( x, T ) * m_e * k_B % T / pow_( h, 2 )), 1.5 );
+	arma::vec N_v = 2 * pow_( (2 * π * Heavy_Hole_Relative_Effective_Mass( x, T ) * m_e * k_B % T / pow_( h, 2 )), 1.5 );
+	arma::vec n_1 = N_c % exp_( -E_t / (k_B / eV * T) );
+	arma::vec p_1 = N_v % exp_( -(E_g - E_t) / (k_B / eV * T) );
+	if constexpr( is_n_not_p )
+	{
+		arma::vec τ_SRH_n = (τ_p0 * (n_0 + n_1) + τ_n0 * (p_0 + p_1) + τ_n0 * N_t / (1 + p_0 / p_1))
+			/ (n_0 + p_0 + N_t / (1 + p_0 / p_1) / (1 + p_1 / p_0));
+		return τ_SRH_n;
+	}
+	else
+	{
+		arma::vec τ_SRH_p = (τ_n0 * (p_0 + p_1) + τ_p0 * (n_0 + n_1) + τ_p0 * N_t / (1 + n_0 / n_1))
+			/ (n_0 + p_0 + N_t / (1 + n_0 / n_1) / (1 + n_1 / n_0));
+		return τ_SRH_p;
+	}
 }
 
 using ADCVector = CPPAD_TESTVECTOR( CppAD::AD< std::complex<double> > );

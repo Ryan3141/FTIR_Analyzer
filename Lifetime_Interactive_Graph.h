@@ -14,6 +14,7 @@ enum class X_Units
 {
 	TIME_US = 0,
 	TEMPERATURE_K,
+	THOUSAND_OVER_TEMPERATURE_K,
 	FIT_TIME_US,
 	LOG_Y,
 	DONT_CHANGE
@@ -23,6 +24,7 @@ enum class Y_Units
 {
 	VOLTAGE_V = 0,
 	TIME_US,
+	TIME_US2,
 	FIT_VOLTAGE_V,
 	LOG_FIT_VOLTAGE_V,
 	DONT_CHANGE
@@ -54,13 +56,16 @@ struct Single_Graph : public Default_Single_Graph<X_Units, Y_Units>
 		QPen pen = graph_pointer->pen();
 		pen.setColor( color );
 		graph_pointer->setPen( pen );
-		QPen pen2 = early_fit_graph->pen();
-		pen2.setColor( color );
-		early_fit_graph->setPen( pen2 );
+		if( early_fit_graph != nullptr )
+		{
+			QPen pen2 = early_fit_graph->pen();
+			pen2.setColor( color );
+			early_fit_graph->setPen( pen2 );
+		}
 	}
 };
 
-const int units_count = 4;
+const int units_count = 5;
 struct Axes
 {
 	using XY_Data = std::tuple< QVector<double>, QVector<double> >;
@@ -100,8 +105,8 @@ class Interactive_Graph :
 private:
 	QSharedPointer<QCPAxisTicker> linearTicker;
 	QSharedPointer<QCPAxisTickerLog> logTicker;
-	QCPRange remembered_ranges_x[ units_count ] = { { 0, 100 }, { 60, 320 }, { -1, 21 }, {   -1, 21 } };
-	QCPRange remembered_ranges_y[ units_count ] = { { 0,   5 }, {  0,  10 }, {  0,  1 }, { 1E-3,  1 } };
+	QCPRange remembered_ranges_x[ units_count ] = { { 0, 100 }, { 60, 320 }, { 1.0/320, 1.0/60 }, { -1, 21 }, {   -1, 21 } };
+	QCPRange remembered_ranges_y[ units_count ] = { { 0,   5 }, {  0,  10 }, {       0,     10 }, {  0,  1 }, { 1E-3,  1 } };
 	enum Fit_Technique
 	{
 		PIECEWISE = 0,

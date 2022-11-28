@@ -170,7 +170,11 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 
 void Interactive_Graph::Change_X_Axis( int index )
 {
-	X_Units x_units = X_Units( index );
+	Change_X_Axis( X_Units( index ) );
+}
+
+void Interactive_Graph::Change_X_Axis( X_Units x_units )
+{
 	std::array<double, 2> bounds = { xAxis->range().lower, xAxis->range().upper };
 	std::array<double, 2> original = { xAxis->range().lower, xAxis->range().upper };
 
@@ -189,11 +193,15 @@ void Interactive_Graph::Change_X_Axis( int index )
 
 void Interactive_Graph::Change_Y_Axis( int index )
 {
-	Y_Units y_units = Y_Units( index );
+	Change_Y_Axis( Y_Units( index ) );
+}
+
+void Interactive_Graph::Change_Y_Axis( Y_Units y_units )
+{
 	this->yAxis->setLabel( Axes::Y_Unit_Names[ int( y_units ) ] );
-	if( this->axes.y_units == Y_Units::RAW_SENSOR &&
-		( y_units == Y_Units::RAW_SENSOR || y_units == Y_Units::RAW_SENSOR ) )
-		yAxis->setRange( 0.0, 100.0 );
+	//if( this->axes.y_units == Y_Units::RAW_SENSOR &&
+	//	( y_units == Y_Units::TRANSMISSION || y_units == Y_Units::ABSORPTION ) )
+	//	yAxis->setRange( 0.0, 100.0 );
 
 	this->axes.Set_Y_Units( y_units );
 	emit Y_Units_Changed();

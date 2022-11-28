@@ -24,6 +24,7 @@ public:
 	SQL_Configuration ftir_sql_config;
 	SQL_Configuration iv_by_size_sql_config;
 	SQL_Configuration spectral_response_sql_config;
+	SQL_Configuration lifetime_sql_config;
 	SQL_Manager_With_Local_Cache* sql_manager;
 
 private:

@@ -1,4 +1,4 @@
-#include "Lifetime_Plotter.h"
+﻿#include "Lifetime_Plotter.h"
 
 #include <QSettings>
 #include <QFileDialog>
@@ -55,16 +55,20 @@ static QVector<double> Find_Zero_Crossings( QVector<double> x_data, QVector<doub
 	return output;
 }
 
-template< typename Func >
-void Graph_Theoretical_Lifetime( Func func_to_graph, Interactive_Graph* graph, double Cd_Composition, double doping, QString unique_name, QString legend_label )
+template< int num_points, typename Func >
+arma::vec Graph_Theoretical_Lifetime( Func func_to_graph, Interactive_Graph* graph, double Cd_Composition, double doping, QString unique_name, QString legend_label )
 {
-	double lower_bound = std::max( 50.0, graph->xAxis->range().lower );
-	double upper_bound = std::max( 300.0, graph->xAxis->range().upper );
-	arma::vec temperature_data = arma::linspace( lower_bound, upper_bound, 2048 );
+	//double lower_bound = std::max( 50.0, graph->xAxis->range().lower );
+	//double upper_bound = std::min( 300.0, graph->xAxis->range().upper );
+	double lower_bound = 50.0;
+	double upper_bound = 300.0;
+	arma::vec temperature_data = arma::linspace( lower_bound, upper_bound, num_points );
 	//temperature_data.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_MICRONS, x ) * 1E-6; } );
-	arma::vec tau_data = func_to_graph( Cd_Composition, temperature_data, doping );
+	arma::vec tau_data = func_to_graph( Cd_Composition, temperature_data, doping ) * 1E6;
 	Single_Graph& single_graph = graph->Graph<X_Units::TEMPERATURE_K, Y_Units::TIME_US>( toQVec( temperature_data ), toQVec( tau_data ), unique_name, legend_label, {} );
 	graph->replot();
+
+	return tau_data;
 }
 
 Plotter::Plotter( QWidget *parent )
@@ -229,36 +233,85 @@ void Plotter::Initialize_Theoretical_Plots()
 	{
 		double doping_mantissa = ui.dopingMantissa_doubleSpinBox->value();
 		int doping_exponent = ui.dopingExponent_spinBox->value();
-		double doping = doping_mantissa * std::pow( 10, doping_exponent );
-		double temperature = ui.temperature_doubleSpinBox->value();
+		double doping = 1E6 * doping_mantissa * std::pow( 10, doping_exponent );
 		double Cd_Composition = ui.CdComposition_doubleSpinBox->value();
+		double N_t = 1E6 * ui.NtMantissa_doubleSpinBox->value() * std::pow( 10, ui.NtExponent_spinBox->value() );;
+		double τ_n0 = ui.SRHtaun0Mantissa_doubleSpinBox->value() * std::pow( 10, ui.SRHtaun0Exponent_spinBox->value() );;
+		double τ_p0 = ui.SRHtaup0Mantissa_doubleSpinBox->value() * std::pow( 10, ui.SRHtaup0Exponent_spinBox->value() );;
+		double E_t_E_g_ratio = ui.EtRatio_doubleSpinBox->value();
+		constexpr int N = 2048;
+		arma::vec sum_of_one_overs( N, arma::fill::zeros );
+		if( ui.SRHnEnable_checkBox->isChecked() )
+		{
+			sum_of_one_overs += 1 / Graph_Theoretical_Lifetime<N>(
+				[N_t, E_t_E_g_ratio, τ_n0, τ_p0]( double Cd_composition, const arma::vec& temperature_in_K, double N_d )
+				{
+					return HgCdTe::SRH_Lifetimes<true>( Cd_composition, temperature_in_K, N_d,
+						N_t, E_t_E_g_ratio, τ_n0, τ_p0 );
+				}, ui.customPlot, Cd_Composition, doping, "SRH n Lifetime", "SRH n Lifetime" );
+		}
+		else
+			ui.customPlot->Hide_Graph( "SRH n Lifetime" );
 
-		//if( ui.SRHEnable_checkBox->isChecked() )
-		//	Graph_Theoretical_Lifetime( &Auger_Intrinsic_Lifetimes, ui.customPlot, "SRH Lifetime", "SRH Lifetime" );
-		//else
-		//	ui.customPlot->Hide_Graph( "SRH Lifetime" );
+		if( ui.SRHpEnable_checkBox->isChecked() )
+		{
+			sum_of_one_overs += 1 / Graph_Theoretical_Lifetime<N>(
+				[N_t, E_t_E_g_ratio, τ_n0, τ_p0]( double Cd_composition, const arma::vec& temperature_in_K, double N_d )
+				{
+					return HgCdTe::SRH_Lifetimes<false>( Cd_composition, temperature_in_K, N_d,
+						N_t, E_t_E_g_ratio, τ_n0, τ_p0 );
+				}, ui.customPlot, Cd_Composition, doping, "SRH p Lifetime", "SRH p Lifetime" );
+		}
+		else
+			ui.customPlot->Hide_Graph( "SRH p Lifetime" );
 
-		//if( ui.RadiativeEnable_checkBox->isChecked() )
-		//else
-		//	ui.customPlot->Hide_Graph( "Radiative Lifetime" );
+		if( ui.RadiativeEnable_checkBox->isChecked() )
+		{
+			sum_of_one_overs += 1 / Graph_Theoretical_Lifetime<N>( &HgCdTe::Radiative_Lifetime<double, arma::vec, double>, ui.customPlot, Cd_Composition, doping, "Radiative Lifetime", "Radiative Lifetime" );
+		}
+		else
+			ui.customPlot->Hide_Graph( "Radiative Lifetime" );
 		if( ui.Auger1Enable_checkBox->isChecked() )
-			Graph_Theoretical_Lifetime( &HgCdTe::Auger1_Lifetime<double, arma::vec, double>, ui.customPlot, Cd_Composition, doping, "Auger1 Lifetime", "Auger1 Lifetime" );
+		{
+			sum_of_one_overs += 1 / Graph_Theoretical_Lifetime<N>( &HgCdTe::Auger1_Lifetime<double, arma::vec, double>, ui.customPlot, Cd_Composition, doping, "Auger1 Lifetime", "Auger1 Lifetime" );
+		}
 		else
 			ui.customPlot->Hide_Graph( "Auger1 Lifetime" );
-		//if( ui.Auger7Enable_checkBox->isChecked() )
-		//else
-		//	ui.customPlot->Hide_Graph( "Auger7 Lifetime" );
+		if( ui.Auger7Enable_checkBox->isChecked() )
+		{
+			sum_of_one_overs += 1 / Graph_Theoretical_Lifetime<N>( &HgCdTe::Auger7_Lifetime<double, arma::vec, double>, ui.customPlot, Cd_Composition, doping, "Auger7 Lifetime", "Auger7 Lifetime" );
+		}
+		else
+			ui.customPlot->Hide_Graph( "Auger7 Lifetime" );
+		if( ui.CombinedEnable_checkBox->isChecked() )
+		{
+			Graph_Theoretical_Lifetime<N>( [&sum_of_one_overs]( double Cd_composition, const arma::vec& temperature_in_K, double N_d )
+				{
+					return 1E-6 / sum_of_one_overs;
+				}, ui.customPlot, Cd_Composition, doping, "Overall Lifetime", "Overall Lifetime" );
+		}
+		else
+			ui.customPlot->Hide_Graph( "Overall Lifetime" );
 	};
 
-	connect( ui.customPlot->xAxis, qOverload<const QCPRange&>( &QCPAxis::rangeChanged ), [replot_simulation]( const QCPRange& ) { replot_simulation(); } );
-	connect( ui.SRHEnable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
+	//connect( ui.customPlot->xAxis, qOverload<const QCPRange&>( &QCPAxis::rangeChanged ), [replot_simulation]( const QCPRange& ) { replot_simulation(); } );
+	connect( ui.SRHnEnable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
+	connect( ui.SRHpEnable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
 	connect( ui.RadiativeEnable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
 	connect( ui.Auger1Enable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
 	connect( ui.Auger7Enable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
+	connect( ui.CombinedEnable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
 
 	connect( ui.dopingMantissa_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation]( double ) { replot_simulation(); } );
 	connect( ui.dopingExponent_spinBox, qOverload<int>( &QSpinBox::valueChanged ), [replot_simulation]( int ) { replot_simulation(); } );
-	connect( ui.temperature_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation]( double ) { replot_simulation(); } );
+	connect( ui.CdComposition_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation]( double ) { replot_simulation(); } );
+	connect( ui.NtMantissa_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation]( double ) { replot_simulation(); } );
+	connect( ui.NtExponent_spinBox, qOverload<int>( &QSpinBox::valueChanged ), [replot_simulation]( int ) { replot_simulation(); } );
+	connect( ui.SRHtaun0Mantissa_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation]( double ) { replot_simulation(); } );
+	connect( ui.SRHtaun0Exponent_spinBox, qOverload<int>( &QSpinBox::valueChanged ), [replot_simulation]( int ) { replot_simulation(); } );
+	connect( ui.SRHtaup0Mantissa_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation]( double ) { replot_simulation(); } );
+	connect( ui.SRHtaup0Exponent_spinBox, qOverload<int>( &QSpinBox::valueChanged ), [replot_simulation]( int ) { replot_simulation(); } );
+	connect( ui.EtRatio_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_simulation]( double ) { replot_simulation(); } );
 }
 
 void Plotter::treeContextMenuRequest( QPoint pos )

@@ -60,27 +60,27 @@ void Interactive_Graph::Change_Y_Axis( int index )
 	if( Y_Units::LOG_CURRENT_A == this->axes.y_units ||
 		Y_Units::LOG_CURRENT_A_PER_AREA_CM == this->axes.y_units )
 	{
-		this->yAxis->setScaleType( QCPAxis::stLogarithmic );
-		this->yAxis->setTicker( logTicker );
-		this->yAxis2->setTicker( logTicker );
-		this->yAxis->setNumberFormat( "ebd" );
-		this->yAxis2->setNumberFormat( "ebd" );
-		this->yAxis->setNumberPrecision( 0 );
-		this->yAxis2->setNumberPrecision( 0 );
-		if( this->yAxis->range().lower < 0 )
-			this->yAxis->setRangeLower( 1E-15 );
-		if( this->yAxis->range().upper < 0 )
-			this->yAxis->setRangeUpper( 1E-3 + this->yAxis->range().lower );
+		for( auto axis : { this->yAxis, this->yAxis2 } )
+		{
+			axis->setScaleType( QCPAxis::stLogarithmic );
+			axis->setTicker( logTicker );
+			axis->setNumberFormat( "ebd" );
+			axis->setNumberPrecision( 0 );
+			if( axis->range().lower < 0 )
+				axis->setRangeLower( 1E-15 );
+			if( axis->range().upper < 0 )
+				axis->setRangeUpper( 1E-3 + axis->range().lower );
+		}
 	}
 	else
 	{
-		this->yAxis->setScaleType( QCPAxis::stLinear );
-		this->yAxis->setTicker( linearTicker );
-		this->yAxis2->setTicker( linearTicker );
-		this->yAxis->setNumberFormat( "gbd" );
-		this->yAxis2->setNumberFormat( "gbd" );
-		this->yAxis->setNumberPrecision( 6 );
-		this->yAxis2->setNumberPrecision( 6 );
+		for( auto axis : { this->yAxis, this->yAxis2 } )
+		{
+			axis->setScaleType( QCPAxis::stLinear );
+			axis->setTicker( linearTicker );
+			axis->setNumberFormat( "gbd" );
+			axis->setNumberPrecision( 6 );
+		}
 	}
 	const QString & axis_name = Axes::Y_Unit_Names[ static_cast<int>( y_units ) ];
 	this->yAxis->setLabel( axis_name );

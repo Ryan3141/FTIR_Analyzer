@@ -49,6 +49,8 @@ private:
 	//void Graph( QString measurement_id, const QVector<double> & x_data, const QVector<double> & y_data, QString data_title = QString(), bool allow_y_scaling = true, Metadata meta = Metadata() );
 	void Run_Fit();
 
+	void Set_Background( QString background_id );
+	void Clear_Background();
 	void Save_To_CSV( const ID_To_Metadata & things_to_save );
 
 	QLabel* statusLabel;
@@ -57,6 +59,6 @@ private:
 	SQL_Configuration config;
 };
 
-void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label = "" );
+void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label = "", QString background_id = "");
 
 }

@@ -472,38 +472,14 @@
                <property name="suffix">
                 <string> cm⁻³</string>
                </property>
+               <property name="minimum">
+                <number>-23</number>
+               </property>
                <property name="maximum">
                 <number>23</number>
                </property>
                <property name="value">
                 <number>14</number>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_3">
-             <item>
-              <widget class="QLabel" name="label_3">
-               <property name="text">
-                <string>Temperature:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QDoubleSpinBox" name="temperature_doubleSpinBox">
-               <property name="suffix">
-                <string> K</string>
-               </property>
-               <property name="minimum">
-                <double>1.000000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>500.000000000000000</double>
-               </property>
-               <property name="value">
-                <double>80.000000000000000</double>
                </property>
               </widget>
              </item>
@@ -546,34 +522,285 @@
             </layout>
            </item>
            <item>
-            <widget class="QCheckBox" name="SRHEnable_checkBox">
-             <property name="text">
-              <string>Shockley Read Hall</string>
+            <widget class="QGroupBox" name="groupBox_2">
+             <property name="title">
+              <string>SRH Only Parameters</string>
              </property>
+             <layout class="QVBoxLayout" name="verticalLayout_6">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_3">
+                <item>
+                 <widget class="QLabel" name="label_3">
+                  <property name="toolTip">
+                   <string extracomment="Number of trap states in the bandgap"/>
+                  </property>
+                  <property name="text">
+                   <string>Nₜ</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="NtMantissa_doubleSpinBox">
+                  <property name="minimum">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>10.000000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>5.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_10">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>24</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>x10^</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="NtExponent_spinBox">
+                  <property name="suffix">
+                   <string> cm⁻³</string>
+                  </property>
+                  <property name="minimum">
+                   <number>-23</number>
+                  </property>
+                  <property name="maximum">
+                   <number>23</number>
+                  </property>
+                  <property name="value">
+                   <number>14</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_5">
+                <item>
+                 <widget class="QLabel" name="label_11">
+                  <property name="text">
+                   <string>Eₜ/Eg</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="EtRatio_doubleSpinBox">
+                  <property name="toolTip">
+                   <string extracomment="Eₜ as a fraction of the bandgap (0.5 would mean the trap energies sit in the center of the bandgap)"/>
+                  </property>
+                  <property name="prefix">
+                   <string/>
+                  </property>
+                  <property name="suffix">
+                   <string/>
+                  </property>
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>1.000000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.010000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>0.300000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_6">
+                <item>
+                 <widget class="QLabel" name="label_12">
+                  <property name="text">
+                   <string>τₙ₀</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="SRHtaun0Mantissa_doubleSpinBox">
+                  <property name="minimum">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>10.000000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>5.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_14">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>24</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>x10^</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="SRHtaun0Exponent_spinBox">
+                  <property name="suffix">
+                   <string> s</string>
+                  </property>
+                  <property name="minimum">
+                   <number>-12</number>
+                  </property>
+                  <property name="maximum">
+                   <number>0</number>
+                  </property>
+                  <property name="value">
+                   <number>-6</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_7">
+                <item>
+                 <widget class="QLabel" name="label_13">
+                  <property name="text">
+                   <string>τₚ₀</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="SRHtaup0Mantissa_doubleSpinBox">
+                  <property name="minimum">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>10.000000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>5.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_15">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>24</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>x10^</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSpinBox" name="SRHtaup0Exponent_spinBox">
+                  <property name="suffix">
+                   <string> s</string>
+                  </property>
+                  <property name="minimum">
+                   <number>-12</number>
+                  </property>
+                  <property name="maximum">
+                   <number>0</number>
+                  </property>
+                  <property name="value">
+                   <number>-6</number>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="RadiativeEnable_checkBox">
-             <property name="text">
-              <string>Radiative</string>
+            <widget class="QGroupBox" name="groupBox">
+             <property name="title">
+              <string>Enable Lifetime Plots</string>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="Auger1Enable_checkBox">
-             <property name="text">
-              <string>Auger 1</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="Auger7Enable_checkBox">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>Auger 7</string>
-             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_5">
+              <item>
+               <widget class="QCheckBox" name="SRHnEnable_checkBox">
+                <property name="text">
+                 <string>Shockley Read Hall (n)</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="SRHpEnable_checkBox">
+                <property name="text">
+                 <string>Shockley Read Hall (p)</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="RadiativeEnable_checkBox">
+                <property name="text">
+                 <string>Radiative</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="Auger1Enable_checkBox">
+                <property name="text">
+                 <string>Auger 1</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="Auger7Enable_checkBox">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="text">
+                 <string>Auger 7</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="CombinedEnable_checkBox">
+                <property name="text">
+                 <string>Combined Lifetimes</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
            <item>
@@ -584,7 +811,7 @@
              <property name="sizeHint" stdset="0">
               <size>
                <width>20</width>
-               <height>376</height>
+               <height>404</height>
               </size>
              </property>
             </spacer>

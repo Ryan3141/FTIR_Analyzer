@@ -71,6 +71,8 @@ public:
 
 	void Change_X_Axis( int index );
 	void Change_Y_Axis( int index );
+	void Change_X_Axis( X_Units x_units );
+	void Change_Y_Axis( Y_Units y_units );
 };
 
 template< typename FloatType >

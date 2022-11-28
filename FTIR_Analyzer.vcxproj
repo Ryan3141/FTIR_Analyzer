@@ -193,6 +193,7 @@
   <ItemGroup>
     <ClCompile Include="Ceres_Curve_Fitting.cpp" />
     <ClCompile Include="CppAD_Curve_Fitting.cpp" />
+    <ClCompile Include="HgCdTe.cpp" />
     <ClCompile Include="Material_Layer_Widget.cpp" />
     <ClCompile Include="Optimize.cpp" />
     <ClCompile Include="qcustomplot.cpp" />
@@ -242,6 +243,7 @@
     <ClInclude Include="Handy_Types_And_Conversions.h" />
     <ClInclude Include="HgCdTe.h" />
     <ClInclude Include="III_V_Materials.h" />
+    <ClInclude Include="Interactive_Graph_Implementation.hpp" />
     <ClInclude Include="Interactive_Graph_Toolbar.h" />
     <ClInclude Include="IV_By_Device_Size_Plot.h" />
     <ClInclude Include="IV_Interactive_Graph.h" />

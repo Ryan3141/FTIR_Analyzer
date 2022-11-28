@@ -45,6 +45,10 @@ Prepared_Data Axes::Prepare_Any_Data( const arma::vec & x, const arma::vec & y, 
 	{
 		return { toQVec( x ), toQVec( y ) };
 	}
+	else if( this->x_units == X_Units::THOUSAND_OVER_TEMPERATURE_K )
+	{
+		return { toQVec( 1000 / x ), toQVec( y ) };
+	}
 
 	return { toQVec( 1E6 * x ), toQVec( y ) };
 }
@@ -271,35 +275,35 @@ void Interactive_Graph::Change_Axes( int index )
 	remembered_ranges_x[ int( this->axes.x_units ) ] = xAxis->range();
 	remembered_ranges_y[ int( this->axes.y_units ) ] = yAxis->range();
 
-	if( X_Units::LOG_Y == x_units )
+	if( X_Units::LOG_Y == x_units || X_Units::TEMPERATURE_K == x_units || X_Units::THOUSAND_OVER_TEMPERATURE_K == x_units )
 	{
-		this->yAxis->setScaleType( QCPAxis::stLogarithmic );
-		this->yAxis->setTicker( logTicker );
-		this->yAxis2->setTicker( logTicker );
-		this->yAxis->setNumberFormat( "ebd" );
-		this->yAxis2->setNumberFormat( "ebd" );
-		this->yAxis->setNumberPrecision( 0 );
-		this->yAxis2->setNumberPrecision( 0 );
-		if( this->yAxis->range().lower < 0 )
-			this->yAxis->setRangeLower( 1E-15 );
-		if( this->yAxis->range().upper < 0 )
-			this->yAxis->setRangeUpper( 1E-3 + this->yAxis->range().lower );
+		for( auto axis : { this->yAxis, this->yAxis2 } )
+		{
+			axis->setScaleType( QCPAxis::stLogarithmic );
+			axis->setTicker( logTicker );
+			axis->setNumberFormat( "ebd" );
+			axis->setNumberPrecision( 0 );
+			if( axis->range().lower < 0 )
+				axis->setRangeLower( 1E-15 );
+			if( axis->range().upper < 0 )
+				axis->setRangeUpper( 1E-3 + axis->range().lower );
+		}
 	}
 	else
 	{
-		this->yAxis->setScaleType( QCPAxis::stLinear );
-		this->yAxis->setTicker( linearTicker );
-		this->yAxis2->setTicker( linearTicker );
-		this->yAxis->setNumberFormat( "gbd" );
-		this->yAxis2->setNumberFormat( "gbd" );
-		this->yAxis->setNumberPrecision( 6 );
-		this->yAxis2->setNumberPrecision( 6 );
+		for( auto axis : { this->yAxis, this->yAxis2 } )
+		{
+			axis->setScaleType( QCPAxis::stLinear );
+			axis->setTicker( linearTicker );
+			axis->setNumberFormat( "gbd" );
+			axis->setNumberPrecision( 6 );
+		}
 	}
 
 
 	using name_value = std::tuple<QString, Single_Graph&>;
 
-	if( x_units == X_Units::TEMPERATURE_K )
+	if( x_units == X_Units::TEMPERATURE_K || x_units == X_Units::THOUSAND_OVER_TEMPERATURE_K )
 	{
 		for( auto& [name, graph] : remembered_graphs )
 			if( graph.x_units == X_Units::TIME_US || graph.x_units == X_Units::FIT_TIME_US )
@@ -387,24 +391,28 @@ void Interactive_Graph::Change_Axes( int index )
 	emit Y_Units_Changed();
 }
 
-const QString Axes::X_Unit_Names[ 4 ] = { "Time (" + QString( QChar( 0x03BC ) ) + "s)",
+const QString Axes::X_Unit_Names[ 5 ] = { "Time (" + QString( QChar( 0x03BC ) ) + "s)",
 										  "Temperature (K)",
+										  "1000 / Temperature (K)",
 										  "Time (" + QString( QChar( 0x03BC ) ) + "s)",
 										  "Time (" + QString( QChar( 0x03BC ) ) + "s)", };
 											//"1/Temperature (K" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + ")" };
 
-const QString Axes::Y_Unit_Names[ 4 ] = { "Voltage (V)",
+const QString Axes::Y_Unit_Names[ 5 ] = { "Voltage (V)",
+										  "Lifetime (" + QString( QChar( 0x03BC ) ) + "s)",
 										  "Lifetime (" + QString( QChar( 0x03BC ) ) + "s)",
 										  "Voltage (V)",
 										  "Voltage (V)", };
 
-const QString Axes::Change_To_X_Unit_Names[ 4 ] = { "Change to Time",
+const QString Axes::Change_To_X_Unit_Names[ 5 ] = { "Change to Time",
 													"Change to Temperature",
+													"Change to 1000 / Temperature",
 													"Change to Fit",
 													"Change to Log Fit", };
 
-const QString Axes::Change_To_Y_Unit_Names[ 4 ] = { "Change to Voltage",
-													"Change to Lifetime",
+const QString Axes::Change_To_Y_Unit_Names[ 5 ] = { "Change to Voltage",
+													"Change to Lifetime vs T",
+													"Change to Lifetime vs 1000 / T",
 													"Change to Fit",
 													"Change to Log Fit", };
 
