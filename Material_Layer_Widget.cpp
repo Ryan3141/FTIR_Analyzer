@@ -27,8 +27,9 @@ Material_Layer_Widget::Material_Layer_Widget( QWidget *parent, const QStringList
 		} );
 	}
 
-	connect( ui.material_comboBox, qOverload<const QString &>( &QComboBox::currentIndexChanged ), [ this ]( const QString & new_value )
+	connect( ui.material_comboBox, qOverload<int>( &QComboBox::currentIndexChanged ), [ this ]( int index )
 	{
+		const QString & new_value = ui.material_comboBox->itemText( index );
 		if( new_value == "Delete" )
 			emit Delete_Requested();
 		else

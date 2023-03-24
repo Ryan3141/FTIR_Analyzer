@@ -1,5 +1,5 @@
 ﻿#include "Ceres_Curve_Fitting.h"
-#include "CppAD_Curve_Fitting.h"
+// #include "CppAD_Curve_Fitting.h"
 #include "Optimize.h"
 
 #include "Lifetime_Interactive_Graph.h"
@@ -24,24 +24,30 @@ void Axes::Set_Y_Units( Y_Units units )
 }
 
 
-Prepared_Data Axes::Prepare_Any_Data( const arma::vec & x, const arma::vec & y, X_Units x_units ) const
+Prepared_Data Axes::Prepare_Any_Data( const arma::vec & x, const arma::vec & y, X_Units datas_x_units, double x_offset, double y_offset ) const
 {
+	if( x.empty() || y.empty() )
+		return { {}, {} };
 	//if( x_units == X_Units::TEMPERATURE_K )
 	//	return { toQVec( 1E6 * x ), graph_data.y_data };
 
-	if ( this->x_units == X_Units::FIT_TIME_US || this->x_units == X_Units::LOG_Y )
+	if( this->x_units == X_Units::FIT_TIME_US || this->x_units == X_Units::FIT_TIME_US2 )
 	{
-		if ( x_units == X_Units::FIT_TIME_US )
+		if( datas_x_units == X_Units::FIT_TIME_US ) // Original data was in fit units so don't modify it
 			return { toQVec( 1E6 * x ), toQVec( y ) };
-		else if ( x_units == X_Units::TIME_US )
+		else if( datas_x_units == X_Units::TIME_US ) // Original data was in time units, so adjust it to be centered on the peak
 		{
-			double x_offset = x( y.index_max() ); // Align all of the peaks
-			arma::vec x_adjusted = 1E6 * (x - x_offset);
-			arma::vec y_adjusted = y - y.min();
+			double x_loc_of_max = x( y.index_max() ); // Align all of the peaks
+			arma::vec x_adjusted = 1E6 * (x - x_loc_of_max + x_offset);
+			arma::vec y_adjusted;
+			// if( this->x_units == X_Units::FIT_TIME_US2 )
+				y_adjusted = y - y.min() + y_offset;
+			// else
+			// 	y_adjusted = y;
 			return { toQVec( x_adjusted ), toQVec( y_adjusted ) };
 		}
 	}
-	else if ( this->x_units == X_Units::TEMPERATURE_K )
+	else if( this->x_units == X_Units::TEMPERATURE_K )
 	{
 		return { toQVec( x ), toQVec( y ) };
 	}
@@ -49,8 +55,12 @@ Prepared_Data Axes::Prepare_Any_Data( const arma::vec & x, const arma::vec & y, 
 	{
 		return { toQVec( 1000 / x ), toQVec( y ) };
 	}
+	else if( this->x_units == X_Units::TIME_US && datas_x_units == X_Units::TIME_US )
+	{ // Center the original data
+		return { toQVec( 1E6 * (x - (x.max() - x.min()) / 2 + x_offset) ), toQVec( (y + y_offset) ) };
+	}
 
-	return { toQVec( 1E6 * x ), toQVec( y ) };
+	return { toQVec( 1E6 * (x + x_offset) ), toQVec( (y + y_offset) ) };
 }
 
 Prepared_Data Axes::Prepare_Fit_Data( const arma::vec & x, const arma::vec & y ) const
@@ -60,9 +70,9 @@ Prepared_Data Axes::Prepare_Fit_Data( const arma::vec & x, const arma::vec & y )
 
 Prepared_Data Axes::Prepare_XY_Data( const Single_Graph & graph_data ) const
 {
-	arma::vec x = arma::conv_to<arma::vec>::from( graph_data.x_data.toStdVector() );
-	arma::vec y = arma::conv_to<arma::vec>::from( graph_data.y_data.toStdVector() );
-	return Prepare_Any_Data( x, y, graph_data.x_units );
+	arma::vec x = fromQVec( graph_data.x_data );
+	arma::vec y = fromQVec( graph_data.y_data );
+	return Prepare_Any_Data( x, y, graph_data.x_units, graph_data.x_offset, graph_data.y_offset );
 }
 
 void Axes::Graph_XY_Data( QString measurement_name, const Single_Graph & graph )
@@ -126,8 +136,8 @@ std::array<Fit_Results, 2> Fit_Lifetime_Piecewise( const arma::vec& initial_gues
 {
 	if( graph.x_data.empty() || graph.y_data.empty() )
 		return { arma::datum::nan, arma::datum::nan, arma::datum::nan };
-	arma::vec x = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
-	arma::vec y = arma::conv_to<arma::vec>::from( graph.y_data.toStdVector() );
+	arma::vec x = fromQVec( graph.x_data );
+	arma::vec y = fromQVec( graph.y_data );
 
 	double x_offset = x( y.index_max() ); // Align all of the peaks
 	x = x - x_offset;
@@ -188,13 +198,13 @@ void Interactive_Graph::Redo_Fits( std::vector<std::tuple<QString, Single_Graph 
 
 	for( const auto & [name, graph] : graphs_for_fit )
 	{
-		arma::vec x = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
+		arma::vec x = fromQVec( graph.x_data );
 		const arma::vec initial_guess = {  1.0,   0E-6,  1E-6, 1.0,   0E-6,  1E-6 };
 		const arma::vec lower_limits = { 1E-12, -20E-6,  5E-9, 0.0, -20E-6, 50E-9 };
-		const arma::vec upper_limits = {   +10, +20E-6, 40E-6, +10, +20E-6, 40E-6 };
+		const arma::vec upper_limits = {   +10, +20E-6, 100E-6, +10, +20E-6, 100E-6 };
 		//arma::vec fit_params = Fit_Data_To_Function( sum_of_exponential_functions, x( selection_region ), arma::log( y( selection_region ) ), lower_limits, upper_limits );
 		auto [early_fit, late_fit] = [&] { switch( fit_technique ) {
-			case Fit_Technique::CPPAD: return CppAD_Fit_Lifetime< Single_Graph, Fit_Results >( initial_guess, lower_limits, upper_limits, graph );
+			// case Fit_Technique::CPPAD: return CppAD_Fit_Lifetime< Single_Graph, Fit_Results >( initial_guess, lower_limits, upper_limits, graph );
 			case Fit_Technique::CERES: return Ceres_Fit_Lifetime< Single_Graph, Fit_Results >( initial_guess, lower_limits, upper_limits, graph );
 			default:  return Fit_Lifetime_Piecewise( initial_guess, lower_limits, upper_limits, graph );
 		} }();
@@ -246,16 +256,16 @@ void Interactive_Graph::Hide_Fit_Graphs( Single_Graph & single_graph, bool shoul
 	std::array< QCPGraph*, 2 > graphs = { single_graph.early_fit_graph, single_graph.late_fit_graph };
 	for ( QCPGraph* graph : graphs )
 	{
-		if ( should_hide )
+		if( should_hide )
 		{
-			if ( graph == nullptr || !graph->visible() ) // Already invisible, nothing to do
+			if( graph == nullptr || !graph->visible() ) // Already invisible, nothing to do
 				continue;
 			graph->setVisible( false );
 			graph->removeFromLegend();
 		}
 		else
 		{
-			if ( graph == nullptr || graph->visible() ) // Already invisible, nothing to do
+			if( graph == nullptr || graph->visible() ) // Already invisible, nothing to do
 				continue;
 			graph->setVisible( true );
 			graph->addToLegend();
@@ -275,7 +285,7 @@ void Interactive_Graph::Change_Axes( int index )
 	remembered_ranges_x[ int( this->axes.x_units ) ] = xAxis->range();
 	remembered_ranges_y[ int( this->axes.y_units ) ] = yAxis->range();
 
-	if( X_Units::LOG_Y == x_units || X_Units::TEMPERATURE_K == x_units || X_Units::THOUSAND_OVER_TEMPERATURE_K == x_units )
+	if( X_Units::FIT_TIME_US2 == x_units || X_Units::TEMPERATURE_K == x_units || X_Units::THOUSAND_OVER_TEMPERATURE_K == x_units )
 	{
 		for( auto axis : { this->yAxis, this->yAxis2 } )
 		{
@@ -346,7 +356,7 @@ void Interactive_Graph::Change_Axes( int index )
 		}
 		//this->Hide_Graph( "Vs_Temperature", true );
 	}
-	else if( x_units == X_Units::FIT_TIME_US || x_units == X_Units::LOG_Y )
+	else if( x_units == X_Units::FIT_TIME_US || x_units == X_Units::FIT_TIME_US2 )
 	{
 		for( auto & [name, graph] : remembered_graphs )
 			if( graph.x_units == X_Units::TIME_US || graph.x_units == X_Units::FIT_TIME_US )

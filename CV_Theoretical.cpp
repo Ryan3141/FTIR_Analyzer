@@ -21,7 +21,6 @@ using namespace Units;
 
 namespace Rosetta // Code from: https://rosettacode.org/wiki/Numerical_integration/Gauss-Legendre_Quadrature
 {
-double M_PI = arma::datum::pi;
 /*! Implementation of Gauss-Legendre quadrature
 *  http://en.wikipedia.org/wiki/Gaussian_quadrature
 *  http://rosettacode.org/wiki/Numerical_integration/Gauss-Legendre_Quadrature
@@ -89,7 +88,7 @@ private:
 				double dr = 1;
 
 				// Find zero
-				Evaluation eval( cos( M_PI * (i - 0.25) / (double(eDEGREE) + 0.5) ) );
+				Evaluation eval( cos( arma::datum::pi * (i - 0.25) / (double(eDEGREE) + 0.5) ) );
 				do
 				{
 					dr = eval.v() / eval.d();

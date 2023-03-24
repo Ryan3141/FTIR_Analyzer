@@ -13348,7 +13348,7 @@ void QCustomPlot::setOpenGl(bool enabled, int multisampling)
   setupPaintBuffers();
 #else
   Q_UNUSED(enabled)
-  qDebug() << Q_FUNC_INFO << "QCustomPlot can't use OpenGL because QCUSTOMPLOT_USE_OPENGL was not defined during compilation (add 'DEFINES += QCUSTOMPLOT_USE_OPENGL' to your qmake .pro file)";
+//   qDebug() << Q_FUNC_INFO << "QCustomPlot can't use OpenGL because QCUSTOMPLOT_USE_OPENGL was not defined during compilation (add 'DEFINES += QCUSTOMPLOT_USE_OPENGL' to your qmake .pro file)";
 #endif
 }
 

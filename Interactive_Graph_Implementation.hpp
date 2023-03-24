@@ -369,8 +369,6 @@ void Interactive_Graph<Single_Graph, Axes>::RegraphAll()
 	for( const auto &[ name, graph ] : remembered_graphs )
 	{
 		axes.Graph_XY_Data( name, graph );
-
-		//this->UpdateGraph( graph.graph_pointer, x_data, y_data );
 	}
 
 	//this->rescaleAxes();
@@ -585,20 +583,6 @@ bool Interactive_Graph<Single_Graph, Axes>::savePdf( const QString &fileName, in
 	return success;
 }
 
-
-template<typename Single_Graph, typename Axes>
-void Interactive_Graph<Single_Graph, Axes>::UpdateGraph( QCPGraph* existing_graph, QVector<double> x_data, QVector<double> y_data )
-{
-	//double previous_upper_limit = this->yAxis->range().upper;
-	existing_graph->setData( x_data, y_data );
-	//this->rescaleAxes();
-	//this->yAxis->setRangeLower( 0 );
-	//double upper = this->yAxis->range().upper;
-	//this->yAxis->setRangeUpper( std::max( previous_upper_limit, std::min( upper, 1. ) ) );
-
-	//this->yAxis->setRange( -10, 110 );
-	this->replot();
-}
 
 template<typename Single_Graph, typename Axes>
 const Single_Graph & Interactive_Graph<Single_Graph, Axes>::GetSelectedGraphData() const

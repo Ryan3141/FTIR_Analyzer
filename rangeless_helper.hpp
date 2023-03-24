@@ -249,24 +249,24 @@ struct unzip_gen
 	Out_Type operator()( impl::seq<Gen> r ) const
 	{
 		Iterable1 out1;
-		std::vector< Iterable1::value_type > temp1;
+		std::vector< typename Iterable1::value_type > temp1;
 		Iterable2 out2;
-		std::vector< Iterable2::value_type > temp2;
+		std::vector< typename Iterable2::value_type > temp2;
 		for( auto && x : r )
 		{
-			if constexpr( has_emplace_back< Iterable1, Iterable1::value_type( Iterable1::value_type ) >::value )
+			if constexpr( has_emplace_back< Iterable1, typename Iterable1::value_type( typename Iterable1::value_type ) >::value )
 				out1.emplace_back( std::move( std::get<0>( x ) ) );
 			else
 				temp1.emplace_back( std::move( std::get<0>( x ) ) );
 
-			if constexpr( has_emplace_back< Iterable2, Iterable2::value_type( Iterable2::value_type ) >::value )
+			if constexpr( has_emplace_back< Iterable2, typename Iterable2::value_type( typename Iterable2::value_type ) >::value )
 				out2.emplace_back( std::move( std::get<1>( x ) ) );
 			else
 				temp2.emplace_back( std::move( std::get<1>( x ) ) );
 		}
-		if constexpr( !has_emplace_back< Iterable1, Iterable1::value_type( Iterable1::value_type ) >::value )
+		if constexpr( !has_emplace_back< Iterable1, typename Iterable1::value_type( typename Iterable1::value_type ) >::value )
 			out1 = arma::conv_to<Iterable1>::from( temp1 );
-		if constexpr( !has_emplace_back< Iterable2, Iterable2::value_type( Iterable2::value_type ) >::value )
+		if constexpr( !has_emplace_back< Iterable2, typename Iterable2::value_type( typename Iterable2::value_type ) >::value )
 			out2 = arma::conv_to<Iterable1>::from( temp2 );
 
 		return Out_Type{ std::move( out1 ), std::move( out2 ) };

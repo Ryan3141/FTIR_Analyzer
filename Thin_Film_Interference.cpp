@@ -214,9 +214,9 @@ Result_Data Get_Expected_Transmission( const std::vector<Material_Layer> & layer
 			//return vec( real( reflection_amplitude % conj( reflection_amplitude ) ) );
 		}();
 		Debug_Print( "Overall Matrix", Overall_Matrix.slice( 0 ) );
-		auto transmission_amplitude = Overall_Matrix.tube( 0, 0 ) - Overall_Matrix.tube( 0, 1 ) % Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
+		cx_vec transmission_amplitude = Overall_Matrix.tube( 0, 0 ) - Overall_Matrix.tube( 0, 1 ) % Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
 		vec transmission = exit_backside_amount % vec( real( transmission_amplitude % conj( transmission_amplitude ) ) );
-		auto reflection_amplitude = Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
+		cx_vec reflection_amplitude = Overall_Matrix.tube( 1, 0 ) / Overall_Matrix.tube( 1, 1 );
 		vec reflection = real( reflection_amplitude % conj( reflection_amplitude ) );
 		// debug_file << "Here 3\n";
 

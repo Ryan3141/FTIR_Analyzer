@@ -67,7 +67,16 @@ bool SQL_Manager::Initialize_DB_Connection()
 {
 	sql_db = QSqlDatabase::addDatabase( database_type, this->unique_name );
 	if( database_type == "QMYSQL" )
-		sql_db.setConnectOptions( "MYSQL_OPT_RECONNECT=1" );
+	{
+		// std::cout << "Using MySQL" << std::endl;
+		// sql_db.setConnectOptions( "MYSQL_OPT_RECONNECT=1" );
+		// sql_db.setConnectOptions( "CLIENT_SSL=1" );
+		sql_db.setConnectOptions( "MYSQL_OPT_RECONNECT=1;CLIENT_SSL=1" );
+		// sql_db.setConnectOptions( "MYSQL_OPT_SSL_VERIFY_SERVER_CERT=false;MYSQL_OPT_RECONNECT=1" );
+		// sql_db.setConnectOptions( "CLIENT_SSL=1;MYSQL_OPT_RECONNECT=1" );
+		// sql_db.setConnectOptions( "SSL_CA=certs/ca-cert.pem;MYSQL_OPT_RECONNECT=1" );
+		// sql_db.setConnectOptions( "SSL_KEY=certs/client-key.pem;SSL_CERT=certs/client-cert.pem;SSL_CA=certs/ca-cert.pem;MYSQL_OPT_RECONNECT=1" );
+	}
 
 	if( !host_location.isEmpty() )
 		sql_db.setHostName( host_location );
@@ -79,7 +88,10 @@ bool SQL_Manager::Initialize_DB_Connection()
 
 	bool sql_worked = sql_db.open();
 	if( sql_worked )
+	{
 		qInfo() << QString( "Connected to %1 Database %2" ).arg( host_location ).arg( database_name );
+		emit Database_Opened();
+	}
 	else
 	{
 		const QSqlError & problem = sql_db.lastError();
@@ -278,10 +290,8 @@ void SQL_Manager::Write_SQL_Metadata( const ID_To_Metadata & meta_data, const QS
 			% fn::transform( []( const QString & s ) { return QString( s + "=?" ); } )
 			% fn::to( QStringList{} );
 
-		QString question_marks = QStringList::fromVector(
-			QVector<QString>::fromStdVector(
-				std::vector<QString>( what_to_write.size(), "?" )
-			) ).join( ',' );
+		std::vector<QString> lots_of_qs( what_to_write.size(), "?" );
+		QString question_marks = QStringList::fromVector( QVector<QString>(lots_of_qs.begin(), lots_of_qs.end()) ).join( ',' );
 		query.prepare( QString( "INSERT INTO %1 (%2) SELECT %3 EXCEPT SELECT %2 FROM %1 WHERE %4;" )
 					   .arg( table_name,
 							 what_to_write.join( ',' ),
@@ -318,10 +328,8 @@ void SQL_Manager::Write_SQL_XY_Data_No_Duplicates( const ID_To_XY_Data & data, c
 				% fn::transform( []( const QString & s ) { return QString( s + "=?" ); } )
 				% fn::to( QStringList{} );
 
-			QString question_marks = QStringList::fromVector(
-				QVector<QString>::fromStdVector(
-					std::vector<QString>( what_to_write.size(), "?" )
-				) ).join( ',' );
+			std::vector<QString> lots_of_qs( what_to_write.size(), "?" );
+			QString question_marks = QStringList::fromVector( QVector<QString>(lots_of_qs.begin(), lots_of_qs.end()) ).join( ',' );
 			query.prepare( QString( "INSERT INTO %1 (%2) SELECT %3 EXCEPT SELECT %2 FROM %1 WHERE %4;" )
 						   .arg( table_name,
 								 what_to_write.join( ',' ),
@@ -338,10 +346,8 @@ void SQL_Manager::Write_SQL_XY_Data_No_Duplicates( const ID_To_XY_Data & data, c
 				return { std::move( output1 ), std::move( output2 ) };
 			};
 			const auto [ x_data, y_data ] = to_variant_list( xy_data );
-			QVariantList measurement_id_copies = QVariantList::fromVector(
-				QVector<QVariant>::fromStdVector(
-					std::vector<QVariant>( x_data.size(), measurement_id.toInt() )
-				) );
+			std::vector<QVariant> lots_of_ids( x_data.size(), measurement_id.toInt() );
+			QVariantList measurement_id_copies = QVariantList::fromVector( QVector<QVariant>(lots_of_qs.begin(), lots_of_qs.end()) );
 
 			for( int i = 0; i < 2; i++ )
 			{
@@ -378,10 +384,8 @@ void SQL_Manager::Write_SQL_XY_Blob_Data( const ID_To_XY_Data & data, const QStr
 		// Write each set of xy_data one measurement_id at a time
 		for( const auto &[ measurement_id, xy_data ] : data )
 		{
-			QString question_marks = QStringList::fromVector(
-				QVector<QString>::fromStdVector(
-					std::vector<QString>( what_to_write.size(), "?" )
-				) ).join( ',' );
+			std::vector<QString> lots_of_qs( what_to_write.size(), "?" );
+			QString question_marks = QStringList::fromVector( QVector<QString>(lots_of_qs.begin(), lots_of_qs.end()) ).join( ',' );
 			query.prepare( QString( "INSERT INTO %1 (%2) SELECT %3;" )
 						   .arg( table_name,
 								 what_to_write.join( ',' ),
@@ -416,10 +420,10 @@ void SQL_Manager::Write_SQL_XY_Data( const ID_To_XY_Data & data, const QStringLi
 		// Write each set of xy_data one measurement_id at a time
 		for( const auto &[ measurement_id, xy_data ] : data )
 		{
+			std::vector<QString> many_qs( what_to_write.size(), "?" );
 			QString question_marks = QStringList::fromVector(
-				QVector<QString>::fromStdVector(
-					std::vector<QString>( what_to_write.size(), "?" )
-				) ).join( ',' );
+				QVector<QString>( many_qs.begin(), many_qs.end() )
+				).join( ',' );
 			query.prepare( QString( "INSERT INTO %1 (%2) SELECT %3;" )
 						   .arg( table_name,
 								 what_to_write.join( ',' ),
@@ -435,11 +439,9 @@ void SQL_Manager::Write_SQL_XY_Data( const ID_To_XY_Data & data, const QStringLi
 				return { std::move( output1 ), std::move( output2 ) };
 			};
 			const auto[ x_data, y_data ] = to_variant_list( xy_data );
+			std::vector<QVariant> many_ids( x_data.size(), measurement_id.toInt() );
 			QVariantList measurement_id_copies = QVariantList::fromVector(
-				QVector<QVariant>::fromStdVector(
-					std::vector<QVariant>( x_data.size(), measurement_id.toInt() )
-				) );
-
+				QVector<QVariant>( many_ids.begin(), many_ids.end() ) );
 			{
 				query.addBindValue( measurement_id_copies );
 				query.addBindValue( x_data );
@@ -464,8 +466,8 @@ void SQL_Manager::Write_SQL_XY_Data( const ID_To_XY_Data & data, const QStringLi
 }
 
 SQL_Manager_With_Local_Cache::SQL_Manager_With_Local_Cache( QObject* parent, QFileInfo config_filename, QString unique_name, QString config_category ) :
-	remote_sql( this, config_filename, unique_name, config_category ),
-	local_sql(  this, config_filename, unique_name + "_local", "Local_SQL_Cache" )
+	local_sql(  this, config_filename, unique_name + "_local", "Local_SQL_Cache" ),
+	remote_sql( this, config_filename, unique_name, config_category )
 {
 }
 
@@ -473,6 +475,7 @@ void SQL_Manager_With_Local_Cache::Start_Thread()
 {
 	local_sql.Start_Thread();
 	remote_sql.Start_Thread();
+	connect( &remote_sql, &SQL_Manager::Database_Opened, this, &SQL_Manager_With_Local_Cache::Database_Opened );
 }
 
 void SQL_Manager_With_Local_Cache::Grab_SQL_XY_Blob_Data_From_Measurement_IDs( const QStringList & what_to_collect, const QString & table_name,

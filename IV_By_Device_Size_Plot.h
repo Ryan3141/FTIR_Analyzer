@@ -86,7 +86,7 @@ constexpr FloatType Convert_Units( X_Units original, X_Units converted, FloatTyp
 	break;
 	};
 
-	throw "Error with datatype in " __FUNCTION__;
+	throw std::string("Error with datatype in ") + __func__;
 }
 
 struct Linear_Equation
@@ -119,8 +119,8 @@ struct Axes
 			y_Qdata = std::move( y_built_data );
 		}
 
-		arma::vec side_lengths_um = arma::conv_to<arma::vec>::from( x_Qdata.toStdVector() );
-		arma::vec currents_a = arma::conv_to<arma::vec>::from( y_Qdata.toStdVector() );
+		arma::vec side_lengths_um = fromQVec( x_Qdata );
+		arma::vec currents_a = fromQVec( y_Qdata );
 		switch( this->y_units )
 		{
 			case Y_Units::CURRENT_A:
@@ -167,8 +167,8 @@ struct Axes
 
 	inline Prepared_Data_And_Name Prepare_Linear_Fit_Data( QVector<double> alread_scaled_x_Qdata, QVector<double> alread_scaled_y_Qdata )
 	{
-		arma::vec x_data = arma::conv_to<arma::vec>::from( alread_scaled_x_Qdata.toStdVector() );
-		arma::vec y_data = arma::conv_to<arma::vec>::from( alread_scaled_y_Qdata.toStdVector() );
+		arma::vec x_data = fromQVec( alread_scaled_x_Qdata );
+		arma::vec y_data = fromQVec( alread_scaled_y_Qdata );
 		auto [ b, m ] = Linear_Regression( x_data, y_data );
 
 		double x_max = arma::max( x_data );

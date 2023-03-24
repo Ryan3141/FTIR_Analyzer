@@ -39,7 +39,7 @@ struct Axes
 	Y_Units y_units = default_y_units;
 	std::function<void()> graph_function;
 
-	FTIR::Axes( std::function<void()> regraph_function ) : graph_function( regraph_function )
+	Axes( std::function<void()> regraph_function ) : graph_function( regraph_function )
 	{
 	}
 
@@ -140,7 +140,7 @@ constexpr FloatType Convert_Units( FTIR::X_Units original, FTIR::X_Units convert
 	break;
 	};
 
-	throw "Error with datatype in " __FUNCTION__;
+	throw std::string("Error with datatype in ") + __func__;
 	//return -INFINITY;
 }
 

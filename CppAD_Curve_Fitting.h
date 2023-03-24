@@ -29,8 +29,8 @@ std::array<Fit_Results, 2> CppAD_Fit_Lifetime( const arma::vec& initial_guess, c
 {
 	if( graph.x_data.empty() || graph.y_data.empty() )
 		return { Fit_Results{ arma::datum::nan, arma::datum::nan, arma::datum::nan }, Fit_Results{ arma::datum::nan, arma::datum::nan, arma::datum::nan } };
-	arma::vec x = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
-	arma::vec y = arma::conv_to<arma::vec>::from( graph.y_data.toStdVector() );
+	arma::vec x = fromQVec( graph.x_data );
+	arma::vec y = fromQVec( graph.y_data );
 
 	double x_offset = x( y.index_max() ); // Align all of the peaks
 	x = x - x_offset;

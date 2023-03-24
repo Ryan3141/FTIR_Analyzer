@@ -75,7 +75,7 @@ Prepared_Data Axes::Prepare_XY_Data( const Single_Graph & graph_data ) const
 
 			if( this->y_units == Y_Units::ABSORPTION )
 			{
-				arma::cx_vec ft = arma::fft( arma::conv_to<arma::vec>::from( graph_data.y_data.toStdVector() ) );
+				arma::cx_vec ft = arma::fft( fromQVec( graph_data.y_data ) );
 				return toQVec( arma::imag( ft ) );
 				double max_transmission = *std::max_element( transmission_data.constBegin(), transmission_data.constEnd() );
 				QVector<double> & absorption_data = transmission_data;
@@ -100,7 +100,7 @@ Prepared_Data Axes::Prepare_XY_Data( const Single_Graph & graph_data ) const
 			( this->y_units == Y_Units::RAW_SENSOR && graph_data.y_units == Y_Units::TRANSMISSION ) )
 			return graph_data.y_data;
 
-		throw "Didn't consider this condition in " __FILE__ " in function " __FUNCTION__;
+		throw std::string("Didn't consider this condition in " __FILE__ " in function ") + __func__;
 	}( );
 
 	return { std::move( x_data ), std::move( y_data ) };

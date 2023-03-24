@@ -10,7 +10,9 @@ struct Graph_Double_Adjustment
 	double initial_value;
 	std::function<void( double )> action;
 	double min_value = 0.0;
-	double max_value = 0.0;
+	double max_value = 50.0;
+	double step = 0.1;
+	QString suffix = " " + QString( QChar( 0x03BC ) ) + "s";
 };
 
 struct Graph_Color_Adjustment

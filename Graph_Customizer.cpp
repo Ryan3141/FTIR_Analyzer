@@ -28,18 +28,18 @@ void Graph_Customizer::New_Graph_Selected( const std::vector<Graph_Double_Adjust
 	clearLayout();
 
 	int i = 0;
-	for( auto& [text, initial_value, action, min, max] : label_type_value_list )
+	for( auto& [text, initial_value, action, min, max, step, suffix] : label_type_value_list )
 	{
 		QLabel* label = new QLabel( text, this );
 		layout.addWidget( label, i, 0 );
 		auto* spinbox = new QDoubleSpinBox( this );
-		spinbox->setMinimum( 0.0 );
-		spinbox->setMaximum( 50.0 );
-		spinbox->setSingleStep( 0.1 );
-		spinbox->setSuffix( " " + QString( QChar( 0x03BC ) ) + "s" );
-		spinbox->setValue( initial_value * 1E6 );
+		spinbox->setMinimum( min );
+		spinbox->setMaximum( max );
+		spinbox->setSingleStep( step );
+		spinbox->setSuffix( suffix );
+		spinbox->setValue( initial_value );
 		layout.addWidget( spinbox, i++, 1);
-		connect( spinbox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ action ]( double new_value ){ action( new_value * 1E-6 ); } );
+		connect( spinbox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ action ]( double new_value ){ action( new_value ); } );
 	}
 
 	QPushButton* color_button = new QPushButton( this );

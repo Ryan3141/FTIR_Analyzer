@@ -34,6 +34,7 @@ signals:
 	void Error_Connecting_To_SQL( const QSqlError & error_message );
 	void SQL_XY_Data_Ready( ID_To_XY_Data data_per_id );
 	void SQL_Meta_Data_Ready( ID_To_Metadata data_per_id );
+	void Database_Opened();
 
 public slots:
 	void Start_Thread();
@@ -85,6 +86,7 @@ signals:
 	void Error_Connecting_To_SQL( const QSqlError & error_message );
 	void SQL_XY_Data_Ready( ID_To_XY_Data data_per_id );
 	void SQL_Meta_Data_Ready( ID_To_Metadata data_per_id );
+	void Database_Opened();
 
 public slots:
 	void Start_Thread();
@@ -102,8 +104,8 @@ public:
 								std::function< void( Structured_Metadata ) > callback, const QString & extra_filtering = "" );
 
 private:
-	SQL_Manager remote_sql;
 	SQL_Manager local_sql;
+	SQL_Manager remote_sql;
 };
 
 //class SQL_Buffered_Manager

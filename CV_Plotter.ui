@@ -253,7 +253,7 @@
        <item>
         <widget class="QTabWidget" name="settings_tabWidget">
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="graphSettings_tab">
           <attribute name="title">
@@ -635,7 +635,7 @@
               <item row="5" column="1">
                <widget class="QLineEdit" name="semiconductorAffinity_lineEdit">
                 <property name="toolTip">
-                 <string>Work Function of the Semiconductor</string>
+                 <string>Electron Affinity of the Semiconductor</string>
                 </property>
                 <property name="readOnly">
                  <bool>true</bool>
@@ -704,6 +704,9 @@
               </item>
               <item row="0" column="1">
                <widget class="QLineEdit" name="bandgap_lineEdit">
+                <property name="toolTip">
+                 <string>Bandgap of the Semiconductor</string>
+                </property>
                 <property name="readOnly">
                  <bool>true</bool>
                 </property>

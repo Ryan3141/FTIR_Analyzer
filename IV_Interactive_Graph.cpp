@@ -82,9 +82,9 @@ const QString Axes::Change_To_Y_Unit_Names[ 7 ] = { "Change to current",
 								QString::fromWCharArray( L"Change to resistance per area" ) };
 const QString Axes::Y_Unit_Names[ 7 ] = { "Current (A)",
 								QString::fromWCharArray( L"Current (A/cm\u00B2)" ),
-								QString::fromWCharArray( L"Current (|A|))" ),
-								QString::fromWCharArray( L"Current (|A/cm\u00B2|)" ),
-								QString::fromWCharArray( L"Current (|A/cm\u00B2|)" ),
+								QString::fromWCharArray( L"Current |A|" ),
+								QString::fromWCharArray( L"Current |A/cm\u00B2|" ),
+								QString::fromWCharArray( L"Current |A/cm\u00B2|" ),
 								QString::fromWCharArray( L"Resistance (\u03A9)" ),
 								QString::fromWCharArray( L"Resistance (\u03A9/cm\u00B2)" ) };
 //QString::fromWCharArray( L"Current (log\u2081\u2080(|A|/cm\u00B2))" ),

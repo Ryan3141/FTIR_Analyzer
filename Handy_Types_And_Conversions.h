@@ -22,12 +22,27 @@ using Labeled_Metadata = std::map<QString, QVariant>;
 template<typename FloatType>
 constexpr QVector<FloatType> toQVec( const std::vector<FloatType> & input )
 {
-	return QVector<FloatType>::fromStdVector( input );
+	return QVector<FloatType>( input.begin(), input.end() );
+	// return QVector<FloatType>::fromStdVector( input );
 }
 
 inline QVector<double> toQVec( const arma::vec & input )
 {
 	return toQVec( arma::conv_to<std::vector<double>>::from( input ) );
+}
+
+// template<typename OutputType, typename FloatType>
+// OutputType fromQVec( const QVector<FloatType> & input )
+// {
+// 	return OutputType( input.begin(), input.end() );
+// 	// return QVector<FloatType>::fromStdVector( input );
+// }
+
+template<typename FloatType>
+arma::Col<FloatType> fromQVec( const QVector<FloatType> & input )
+{
+	return arma::Col<FloatType>( input.data(), std::distance(input.begin(), input.end()) );
+	// return QVector<FloatType>::fromStdVector( input );
 }
 
 template< typename T >

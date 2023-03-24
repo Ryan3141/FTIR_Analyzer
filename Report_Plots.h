@@ -17,7 +17,11 @@ class Report_Plots : public QWidget
 	Q_OBJECT
 
 public:
-	Report_Plots(QWidget *parent = Q_NULLPTR);
+signals:
+	void Change_Tab_Name( QString new_name );
+
+public:
+	Report_Plots(QWidget *parent = Q_NULLPTR, QString initial_configuration = "" );
 	void Get_SQL_Data( const SQL_Configuration & config, QStringList measurement_ids, Data_Is_Returned_Func run_on_data );
 		
 	SQL_Configuration iv_sql_config;
@@ -31,6 +35,8 @@ private:
 	void Initialize_SQL( QString config_filename );
 	void Initialize_Graph();
 	void Load_Report( QFileInfo file );
+
+	QMetaObject::Connection temporary_connection;
 
 public:
 	Ui::Report_Plots ui;

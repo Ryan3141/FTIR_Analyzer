@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <armadillo>
-#include <cppad/ipopt/solve.hpp>
 #include <fstream>
 
 #include "Thin_Film_Interference.h"
@@ -226,6 +225,20 @@ typename arma::cx_vec Refractive_Index( const arma::vec& wavelengths, Optional_M
 	return arma::cx_vec( n, k );
 }
 
+inline double Index_Of_Refraction( double wavelength, double composition, double temperature_k )
+{
+	double λ² = wavelength * wavelength;
+	double x = composition;
+	double x² = x * x;
+	double A1 = 13.173 - 9.852 * x + 2.909 * x² + 1E-3 * (300 - temperature_k);
+	double B1 = 0.83 - 0.246 * x - 0.0961 * x² + 8E-4 * (300 - temperature_k);
+	double C1 = 6.706 - 14.437 * x + 8.531 * x² + 7E-4 * (300 - temperature_k);
+	double D1 = 1.953E-4 - 0.00128 * x + 1.853E-4 * x²;
+
+	return std::sqrt(A1 + B1 / (1 - C1 * C1 / λ²) + D1 * λ²);
+}
+
+
 template< typename Real >
 Real Dielectric_Relative_Constant( const Real & Cd_composition )
 {
@@ -302,10 +315,10 @@ template< typename Real, typename Real2 >
 arma::vec Auger_Intrinsic_Lifetimes( const Real& Cd_composition, const Real2& temperature_in_K ) // # in cm ^ -3 / s
 {
 	using RReal = arma::vec;
-	constexpr auto k_B = arma::datum::k / arma::datum::eV;
+	const auto k_B = arma::datum::k / arma::datum::eV;
 	RReal m_e_rel = Electron_Relative_Effective_Mass( Cd_composition, temperature_in_K );
 	RReal m_hh_rel = Heavy_Hole_Relative_Effective_Mass( Cd_composition, temperature_in_K );
-	constexpr double m_e = arma::datum::m_e * pow_<2>( arma::datum::c_0 ) / arma::datum::eV;
+	const double m_e = arma::datum::m_e * pow_<2>( arma::datum::c_0 ) / arma::datum::eV;
 	RReal μ = m_e_rel / m_hh_rel;
 	RReal E_g = E_g_Hansen<Real, Real2>( Cd_composition, temperature_in_K );
 	//RReal E_g = E_g_Laurenti<Real, Real2>( Cd_composition, temperature_in_K );
@@ -333,7 +346,7 @@ arma::vec Radiative_Recombination_Rate( const Real& Cd_composition, const Real2&
 {
 	using RReal = arma::vec;
 	arma::vec T = temperature_in_K;
-	constexpr auto k_B = arma::datum::k / arma::datum::eV;
+	const auto k_B = arma::datum::k / arma::datum::eV;
 	RReal m_e_rel = Electron_Relative_Effective_Mass( Cd_composition, temperature_in_K );
 	RReal m_hh_rel = Heavy_Hole_Relative_Effective_Mass( Cd_composition, temperature_in_K );
 	// m_e = sc.electron_mass
@@ -361,6 +374,7 @@ arma::vec Auger1_Lifetime( const Real& Cd_composition, const Real2& temperature_
 	arma::vec n_i = Intrinsic_Carrier_Concentration( Cd_composition, temperature_in_K ) * 1E6;
 	arma::vec τ_A1_i = Auger_Intrinsic_Lifetimes( Cd_composition, temperature_in_K );
 	arma::vec τ_A1 = 2 * pow_( n_i, 2 ) % τ_A1_i / ((N_d + pow_( n_i, 2 ) / N_d) * N_d);
+	//return τ_A1_i;
 	return τ_A1;
 }
 
@@ -371,6 +385,7 @@ arma::vec Auger7_Lifetime( const Real& Cd_composition, const Real2& temperature_
 	arma::vec τ_A7_i = Auger_Intrinsic_Lifetimes( Cd_composition, temperature_in_K ) % Auger1_to_7_Lifetime_Ratio( Cd_composition, temperature_in_K );
 	arma::vec N_a = pow_( n_i, 2 ) / N_d;
 	arma::vec τ_A7 = 2 * pow_( n_i, 2 ) % τ_A7_i / ((N_d + N_a) % N_a);
+	//return τ_A7_i;
 	return τ_A7;
 }
 
@@ -379,7 +394,10 @@ arma::vec Radiative_Lifetime( const Real& Cd_composition, const Real2& temperatu
 {
 	arma::vec n_i = Intrinsic_Carrier_Concentration( Cd_composition, temperature_in_K ) * 1E6;
 	arma::vec G_R = Radiative_Recombination_Rate( Cd_composition, temperature_in_K );
-	arma::vec τ_R = 1E6 / ((N_d + pow_( n_i, 2 ) / N_d) % G_R);
+	arma::vec μ2 = temperature_in_K;
+	μ2.transform( [ Cd_composition ]( double T ){ double μ = Index_Of_Refraction(6E-6, Cd_composition, T); return μ * μ; } );
+	arma::vec τ_R = 2 * μ2 * 1E6 / ((N_d + pow_( n_i, 2 ) / N_d) % G_R);
+	//return n_i / (2 * G_R);
 	return τ_R;
 }
 
@@ -408,16 +426,25 @@ arma::vec SRH_Lifetimes( double Cd_composition, const Real & temperature_in_K, d
 	{
 		arma::vec τ_SRH_n = (τ_p0 * (n_0 + n_1) + τ_n0 * (p_0 + p_1) + τ_n0 * N_t / (1 + p_0 / p_1))
 			/ (n_0 + p_0 + N_t / (1 + p_0 / p_1) / (1 + p_1 / p_0));
+		//arma::vec tempout(τ_SRH_n.size());
+		//tempout.fill(τ_n0);
+		//return tempout;
 		return τ_SRH_n;
 	}
 	else
 	{
 		arma::vec τ_SRH_p = (τ_n0 * (p_0 + p_1) + τ_p0 * (n_0 + n_1) + τ_p0 * N_t / (1 + n_0 / n_1))
 			/ (n_0 + p_0 + N_t / (1 + n_0 / n_1) / (1 + n_1 / n_0));
+		//arma::vec tempout(τ_SRH_p.size());
+		//tempout.fill(τ_p0);
+		//return tempout;
 		return τ_SRH_p;
 	}
 }
 
+
+#if 0 // If I can get cppad to compile
+#include <cppad/ipopt/solve.hpp>
 using ADCVector = CPPAD_TESTVECTOR( CppAD::AD< std::complex<double> > );
 using ADVector = CPPAD_TESTVECTOR( CppAD::AD< double > );
 inline ADCVector Refractive_Index_AD( const arma::vec& wavelengths, Optional_Material_Parameters_AD optional_parameters )
@@ -523,5 +550,6 @@ inline ADCVector Refractive_Index_AD( const arma::vec& wavelengths, Optional_Mat
 	//	output[ i ] = CppAD::AD< std::complex<double> >(n[i], k[i]);
 	return output;
 }
+#endif
 
 } // End namespace HgCdTe

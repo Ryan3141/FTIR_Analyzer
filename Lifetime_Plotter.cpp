@@ -120,13 +120,19 @@ void Plotter::Initialize_SQL( QString config_filename )
 
 void Plotter::Graph_Data( const ID_To_Metadata & selected_data )
 {
+	int median_filter_kernel_width = 1;
+	if( ui.medianFilter_checkBox->isChecked() )
+		median_filter_kernel_width = ui.medianFilterKernelSize_spinBox->value();
+
+	bool invert_data = ui.invert_checkBox->isChecked();
+
 	for( auto[ measurement_id, metadata ] : selected_data )
 	{
 		auto labeled_metadata = Label_Metadata( metadata, config.what_to_collect );
 		sql_manager->Grab_SQL_XY_Blob_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this,
-															[ this, measurement_id, labeled_metadata ]( ID_To_XY_Data data )
+															[ this, measurement_id, labeled_metadata, median_filter_kernel_width, invert_data ]( ID_To_XY_Data data )
 		{
-			Graph_Measurement( std::move( data ), ui.customPlot, measurement_id, labeled_metadata );
+			Graph_Measurement( std::move( data ), ui.customPlot, measurement_id, labeled_metadata, "", median_filter_kernel_width, invert_data );
 		}, config.sorting_strategy );
 	}
 }
@@ -181,26 +187,41 @@ void Plotter::Initialize_Graph()
 		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "temperature_in_k", "" ) );
 		this->ui.selectedCutoff_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "gain", "" ) );
 
-		std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {Info_Or_Default<QString>( measurement.meta, "measurement_id", "Unknown" ), measurement} };
+		QString graph_name = Info_Or_Default<QString>( measurement.meta, "measurement_id", "Unknown" );
+		std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 		std::vector<Graph_Double_Adjustment> label_type_value_list = {
-			{ "Lower Fit", measurement.lower_x_fit, [this, &measurement, graphs_for_fit]( double new_value )
+			{ "Lower Fit", measurement.lower_x_fit * 1.0E6, [this, &measurement, graphs_for_fit]( double new_value )
 				{
-					measurement.lower_x_fit = new_value;
+					measurement.lower_x_fit = new_value * 1.0E-6;
 					ui.customPlot->Redo_Fits( graphs_for_fit );
 					ui.customPlot->replot();
 				} },
-			{ "Middle Of Fit", measurement.upper_x_fit, [this, &measurement, graphs_for_fit]( double new_value )
+			{ "Middle Of Fit", measurement.upper_x_fit * 1.0E6, [this, &measurement, graphs_for_fit]( double new_value )
 				{
-					measurement.upper_x_fit = new_value;
+					measurement.upper_x_fit = new_value * 1.0E-6;
 					ui.customPlot->Redo_Fits( graphs_for_fit );
 					ui.customPlot->replot();
 				} },
-			{ "Upper Fit", measurement.upper_x_fit2, [this, &measurement, graphs_for_fit]( double new_value )
+			{ "Upper Fit", measurement.upper_x_fit2 * 1.0E6, [this, &measurement, graphs_for_fit]( double new_value )
 				{
-					measurement.upper_x_fit2 = new_value;
+					measurement.upper_x_fit2 = new_value * 1.0E-6;
 					ui.customPlot->Redo_Fits( graphs_for_fit );
 					ui.customPlot->replot();
 				} },
+			{ "X Offset", measurement.x_offset * 1.0E6, [this, graph_name, &measurement, graphs_for_fit]( double new_value )
+				{
+					measurement.x_offset = new_value * 1.0E-6;
+					ui.customPlot->axes.Graph_XY_Data( graph_name, measurement );
+					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->replot();
+				}, -100.0, 100.0, 0.1 },
+			{ "Y Offset", measurement.y_offset, [this, graph_name, &measurement, graphs_for_fit]( double new_value )
+				{
+					measurement.y_offset = new_value;
+					ui.customPlot->axes.Graph_XY_Data( graph_name, measurement );
+					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->replot();
+				}, -5.0, 5.0, 0.05, " V" },
 		};
 		//std::vector<Graph_Adjustment> label_type_value_list = {
 		//	{ "Color", [this, &measurement]( const QColor & new_color )
@@ -225,6 +246,7 @@ void Plotter::Initialize_Graph()
 		//	}
 		//}
 	} );
+	// connect( ui.SRHnEnable_checkBox, &QCheckBox::stateChanged, [replot_simulation]( int ) { replot_simulation(); } );
 }
 
 void Plotter::Initialize_Theoretical_Plots()
@@ -279,7 +301,14 @@ void Plotter::Initialize_Theoretical_Plots()
 			ui.customPlot->Hide_Graph( "Auger1 Lifetime" );
 		if( ui.Auger7Enable_checkBox->isChecked() )
 		{
-			sum_of_one_overs += 1 / Graph_Theoretical_Lifetime<N>( &HgCdTe::Auger7_Lifetime<double, arma::vec, double>, ui.customPlot, Cd_Composition, doping, "Auger7 Lifetime", "Auger7 Lifetime" );
+			try {
+				auto Auger7_Lifetime = Graph_Theoretical_Lifetime<N>( &HgCdTe::Auger7_Lifetime<double, arma::vec, double>, ui.customPlot, Cd_Composition, doping, "Auger7 Lifetime", "Auger7 Lifetime" );
+				sum_of_one_overs += 1 / Auger7_Lifetime;
+			}
+			catch( std::exception& e )
+			{
+				std::cout << e.what() << std::endl;
+			}
 		}
 		else
 			ui.customPlot->Hide_Graph( "Auger7 Lifetime" );
@@ -362,7 +391,25 @@ QString lookup( const Labeled_Metadata & metadata, const QString & lookup_name, 
 		return run_if_exists( lookup->second );
 }
 
-void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label )
+void median_filter( QVector< double > & data, int window_size )
+{
+	if( window_size % 2 == 0 )
+		throw std::runtime_error( "Window size must be odd" );
+
+	const int half_window_size = window_size / 2;
+	QVector< double > filtered_data( data.size() );
+	for( int i = half_window_size; i < data.size() - half_window_size; ++i )
+	{
+		QVector< double > window( window_size );
+		for( int j = 0; j < window_size; ++j )
+			window[ j ] = data[ i + j - half_window_size ];
+		std::sort( window.begin(), window.end() );
+		filtered_data[ i ] = window[ half_window_size ];
+	}
+	data = filtered_data;
+}
+
+void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label, int median_filter_kernel_width, bool invert_data )
 {
 	const auto &[ x_data, y_data ] = data[ measurement_id ];
 	QString used_legend_label = legend_label;
@@ -377,7 +424,20 @@ void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString me
 		QString device_location = lookup( metadata, "device_location", "", to_string );
 		used_legend_label = QStringList{ sample_name, device_location, side_length_label, temperature_label, bias_label }.join( " " );
 	}
-	Single_Graph & single_graph = graph->Graph<X_Units::TIME_US, Y_Units::VOLTAGE_V>( x_data, y_data, measurement_id, used_legend_label, metadata );
+	auto copy_x_data = x_data;
+	auto copy_y_data = y_data;
+	if( median_filter_kernel_width != 1 )
+	{
+		// Overwrite copy_y_data with a 3 wide kernel median filtered version of y_data
+		median_filter( copy_y_data, median_filter_kernel_width );
+	}
+	if( invert_data )
+	{
+		for( auto & y : copy_y_data )
+			y = -y;
+	}		
+	
+	Single_Graph & single_graph = graph->Graph<X_Units::TIME_US, Y_Units::VOLTAGE_V>( x_data, copy_y_data, measurement_id + QString::number(median_filter_kernel_width), used_legend_label, metadata );
 	graph->Redo_Fits( { std::tuple<QString, Single_Graph&>{measurement_id, single_graph} } );
 	graph->replot();
 }

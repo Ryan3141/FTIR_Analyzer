@@ -387,6 +387,9 @@ constexpr int Recursive_Parse_Numbers()
 	return r1 + r2;
 }
 
+template <std::intmax_t num, std::intmax_t den = 1>
+using Rational = std::ratio<num, den>;
+
 template<char ...Numbers>
 auto operator "" _R()
 {

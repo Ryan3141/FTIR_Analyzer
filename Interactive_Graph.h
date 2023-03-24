@@ -52,10 +52,7 @@ signals:
 	void Y_Units_Changed();
 
 public:
-	Interactive_Graph_QObject_Adapter( QWidget* parent ) :
-		QCustomPlot( parent )
-	{
-	}
+	Interactive_Graph_QObject_Adapter( QWidget* parent );
 };
 
 template< typename Single_Graph, typename Axes_Scales >
@@ -83,7 +80,6 @@ public:
 	void saveCurrentGraph();
 	void Hide_Graph( QString graph_name, bool should_hide = true );
 	void RegraphAll();
-	void UpdateGraph( QCPGraph* existing_graph, QVector<double> x_data, QVector<double> y_data );
 	const Single_Graph & GetSelectedGraphData() const;
 	Single_Graph & FindDataFromGraphPointer( QCPGraph* graph_pointer );
 	const Single_Graph & FindDataFromGraphPointer( QCPGraph* graph_pointer ) const;

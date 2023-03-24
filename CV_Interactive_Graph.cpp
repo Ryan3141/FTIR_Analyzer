@@ -51,8 +51,8 @@ Axes::Axes( std::function<void()> regraph_function ) : graph_function( regraph_f
 
 Prepared_Data Axes::Prepare_XY_Data( const Single_Graph & graph )
 {
-	arma::vec x_data = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
-	arma::vec y_data = arma::conv_to<arma::vec>::from( graph.y_data.toStdVector() );
+	arma::vec x_data = fromQVec( graph.x_data );
+	arma::vec y_data = fromQVec( graph.y_data );
 	return { toQVec( x_data ), toQVec( y_data ) };
 }
 

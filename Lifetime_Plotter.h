@@ -45,5 +45,5 @@ private:
 	SQL_Configuration config;
 };
 
-void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label = "" );
+void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString measurement_id, Labeled_Metadata metadata, QString legend_label = "", int median_filter_kernel_width = 1, bool invert_data = false );
 }

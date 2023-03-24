@@ -40,7 +40,7 @@ void Graph_IV_By_Size_Raw_Data( IV_By_Size_Requestor* requestor, const SQL_Confi
 	int measurement_id_i = column_names.indexOf( "measurement_id" );
 	const std::vector<QString> measurement_ids_as_vec = metadata.data
 		% fn::transform( [ measurement_id_i ]( const auto & row_of_metadata ) { return row_of_metadata[ measurement_id_i ].toString(); } );
-	const QStringList measurement_ids = QStringList::fromVector( QVector<QString>::fromStdVector( measurement_ids_as_vec ) );
+	const QStringList measurement_ids = QStringList::fromVector( toQVec( measurement_ids_as_vec ) );
 
 	requestor->sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs(
 		config.raw_data_columns, config.raw_data_table, measurement_ids, requestor,

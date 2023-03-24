@@ -106,7 +106,7 @@ void FTIR_Analyzer::Graph_Blackbody( double temperature_in_k, double amplitude )
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
 	double upper_bound = std::max( 0.0, ui.customPlot->xAxis->range().upper );
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 );
-	x_data_meters.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_METERS, x ); } );
+	x_data_meters.transform( [ this ]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_METERS, x ); } );
 	arma::vec y_blackbody = Blackbody_Radiation( x_data_meters, temperature_in_k, amplitude );
 
 	ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( y_blackbody ), "Black Body", "Black Body" );
@@ -118,9 +118,12 @@ void FTIR_Analyzer::Graph_Refractive_Index( std::string material_name, Optional_
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
 	double upper_bound = std::max( 0.00000001, ui.customPlot->xAxis->range().upper );
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 );
-	x_data_meters.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_METERS, x ); } );
+	x_data_meters.transform( [ this ]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_METERS, x ); } );
 
-	arma::cx_vec refractive_index = Get_Refraction_Index( name_to_material[ material_name ], x_data_meters, parameters );
+	auto find_mat = name_to_material.find( material_name );
+	if( find_mat == name_to_material.end() )
+		return;
+	arma::cx_vec refractive_index = Get_Refraction_Index( find_mat->second, x_data_meters, parameters );
 	ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::real( refractive_index ) ), "Index (n)", "Index (n)" );
 	ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::imag( refractive_index ) ), "Index (k)", "Index (k)" );
 
@@ -133,7 +136,7 @@ void FTIR_Analyzer::Graph_Simulation( std::vector<Material_Layer> layers, std::t
 	double lower_bound = std::max( 0.0, ui.customPlot->xAxis->range().lower );
 	double upper_bound = std::max( 0.00000001, ui.customPlot->xAxis->range().upper );
 	arma::vec x_data_meters = arma::linspace( lower_bound, upper_bound, 2049 ).tail( 2048 ); // Remove zero x value (to avoid divide by zero type errors)
-	x_data_meters.transform( [=]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_MICRONS, x ) * 1E-6; } );
+	x_data_meters.transform( [ this ]( double x ) { return Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_MICRONS, x ) * 1E-6; } );
 
 	try
 	{
@@ -183,8 +186,8 @@ void FTIR_Analyzer::Run_Fit()
 		std::swap( bounds[ 0 ], bounds[ 1 ] );
 
 	auto[ x_data, y_data ] = ui.customPlot->axes.Prepare_XY_Data( selected_graph );
-	arma::vec wavelength_data   = arma::conv_to< arma::vec >::from( x_data.toStdVector() );
-	arma::vec transmission_data = arma::conv_to< arma::vec >::from( y_data.toStdVector() );
+	arma::vec wavelength_data   = fromQVec( x_data );
+	arma::vec transmission_data = fromQVec( y_data );
 	wavelength_data = Convert_Units( ui.customPlot->axes.x_units, FTIR::X_Units::WAVELENGTH_MICRONS, wavelength_data ) * 1E-6;
 	double temperature_in_k = Info_Or_Default( selected_graph.meta, "Temperature (K)", 300.0 );
 	if( temperature_in_k == 0.0 )
@@ -225,12 +228,13 @@ void FTIR_Analyzer::Run_Fit()
 		connect( thread, &QThread::finished, thread, &QObject::deleteLater );
 		connect( ui.stopFitting_pushButton, &QPushButton::pressed, this->thin_film_manager, &Thin_Film_Interference::Quit_Early );
 		//qRegisterMetaType< std::tuple<bool,bool,bool> >();
-		auto test = connect( this->thin_film_manager, &Thin_Film_Interference::Updated_Guess, this, [ = ]( std::vector<Material_Layer> updated_layers )
+		auto test = connect( this->thin_film_manager, &Thin_Film_Interference::Updated_Guess, this, [ this, backside_material ]( std::vector<Material_Layer> updated_layers )
 		{
 			ui.simulated_listWidget->Make_From_Material_List( updated_layers );
 			this->Graph_Simulation( updated_layers, { true, false, false }, 100.0, backside_material );
 		} );
-		auto test2 = connect( thread, &QThread::started, this->thin_film_manager, [ = ] { this->thin_film_manager->Get_Best_Fit( copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material ); } );
+		auto test2 = connect( thread, &QThread::started, this->thin_film_manager, [ this, copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material ]
+			{ this->thin_film_manager->Get_Best_Fit( copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material ); } );
 		auto test3 = connect( this->thin_film_manager, &Thin_Film_Interference::Debug_Plot, [ this ]( arma::vec wavelengths_m, arma::vec y_data )
 		{
 			ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( std::move( wavelengths_m ) ), toQVec( std::move( y_data ) ), "Debug", "Debug" );
@@ -427,7 +431,7 @@ void FTIR_Analyzer::Initialize_Simulation()
 		if( current_text == "" )
 			dialog.selectFile( "." );
 		else
-			dialog.selectFile( QFileInfo( current_text ).baseName() );
+			dialog.selectFile( QFileInfo( current_text ).filePath() );
 
 		auto result = dialog.exec();
 		if( result != QDialog::Accepted )

@@ -81,7 +81,7 @@ void Layer_Builder::Add_New_Material( std::string material_name,
 											 composition,
 											 tauts_gap,
 											 urbach_energy );
-	Add_New_Material( std::move( parameters ) );
+	Add_New_Material( parameters );
 }
 
 void Layer_Builder::Add_New_Material( Optional_Material_Parameters parameters )

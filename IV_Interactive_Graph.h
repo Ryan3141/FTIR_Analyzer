@@ -36,8 +36,8 @@ struct Axes
 {
 	inline Prepared_Data Prepare_XY_Data( const Single_Graph & graph )
 	{
-		arma::vec x_data = arma::conv_to<arma::vec>::from( graph.x_data.toStdVector() );
-		arma::vec y_data = arma::conv_to<arma::vec>::from( graph.y_data.toStdVector() );
+		arma::vec x_data = fromQVec( graph.x_data );
+		arma::vec y_data = fromQVec( graph.y_data );
 		switch( this->y_units )
 		{
 			case Y_Units::CURRENT_A:

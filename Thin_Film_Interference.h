@@ -50,6 +50,28 @@ struct Optional_Material_Parameters
 	Optional_Material_Parameters() : all()
 	{
 	}
+	Optional_Material_Parameters( const Optional_Material_Parameters& rhs )
+	{
+		this->material_name = rhs.material_name;
+		this->temperature =   rhs.temperature;
+		this->all =           rhs.all;
+		this->thickness        = this->all[ 0 ];
+		this->composition      = this->all[ 1 ];
+		this->tauts_gap_eV     = this->all[ 2 ];
+		this->urbach_energy_eV = this->all[ 3 ];
+	}
+	Optional_Material_Parameters & operator=( const Optional_Material_Parameters & rhs )
+	{
+		this->material_name = rhs.material_name;
+		this->temperature =   rhs.temperature;
+		this->all =           rhs.all;
+		this->thickness        = this->all[ 0 ];
+		this->composition      = this->all[ 1 ];
+		this->tauts_gap_eV     = this->all[ 2 ];
+		this->urbach_energy_eV = this->all[ 3 ];
+		return *this;
+	}
+
 
 	Optional_Material_Parameters( std::string material_name,
 								  std::optional< double > temperature = {},
@@ -58,44 +80,44 @@ struct Optional_Material_Parameters
 								  std::optional< double > tauts_gap_eV = {},
 								  std::optional< double > urbach_energy_eV = {} )
 	{
-		this->material_name = material_name;
-		this->temperature = temperature;
-		this->thickness = thickness;
-		this->composition = composition;
-		this->tauts_gap_eV = tauts_gap_eV;
+		this->material_name =    material_name;
+		this->temperature =      temperature;
+		this->thickness =        thickness;
+		this->composition =      composition;
+		this->tauts_gap_eV =     tauts_gap_eV;
 		this->urbach_energy_eV = urbach_energy_eV;
 	}
 
 	std::string material_name;
 	std::optional< double > temperature;
-	union
-	{
-		struct
-		{
-			std::optional< double > thickness;
-			std::optional< double > composition;
-			std::optional< double > tauts_gap_eV;
-			std::optional< double > urbach_energy_eV;
-		};
 
-		std::optional< double > all[ 4 ];
-	};
+	std::optional< double > & thickness        = all[ 0 ];
+	std::optional< double > & composition      = all[ 1 ];
+	std::optional< double > & tauts_gap_eV     = all[ 2 ];
+	std::optional< double > & urbach_energy_eV = all[ 3 ];
+
+	std::array< std::optional< double >, 4 > all;
 };
 
+#if 0
 struct Optional_Material_Parameters_AD
 {
 	using Real = std::optional< CppAD::AD<double> >;
 
 	std::string material_name;
 	Real temperature;
-	struct
-	{
-		Real thickness;
-		Real composition;
-		Real tauts_gap_eV;
-		Real urbach_energy_eV;
-	};
+	const std::optional< double > & thickness() const        { return all[ 0 ]; }
+	const std::optional< double > & composition() const      { return all[ 1 ]; }
+	const std::optional< double > & tauts_gap_eV() const     { return all[ 2 ]; }
+	const std::optional< double > & urbach_energy_eV() const { return all[ 3 ]; }
+	std::optional< double > & thickness()        { return all[ 0 ]; }
+	std::optional< double > & composition()      { return all[ 1 ]; }
+	std::optional< double > & tauts_gap_eV()     { return all[ 2 ]; }
+	std::optional< double > & urbach_energy_eV() { return all[ 3 ]; }
+
+	std::optional< double > all[ 4 ];
 };
+#endif
 
 template< typename Real >
 inline std::ostream& operator<<( std::ostream& os, const Optional_Material_Parameters& params )

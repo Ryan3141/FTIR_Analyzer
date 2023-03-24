@@ -2,7 +2,7 @@
 
 #include "Interactive_Graph_Toolbar.h"
 #include "yaml-cpp/yaml.h"
-#include "yaml-cpp/qtyaml.h"
+#include "qtyaml.h"
 
 #include "IV_By_Size_Plotter.h"
 #include "FTIR_Analyzer.h"
@@ -12,7 +12,7 @@
 namespace Report
 {
 
-Report_Plots::Report_Plots( QWidget *parent )
+Report_Plots::Report_Plots( QWidget *parent, QString initial_configuration )
 	: QWidget( parent )
 {
 	this->ui.setupUi( this );
@@ -20,6 +20,17 @@ Report_Plots::Report_Plots( QWidget *parent )
 	Initialize_SQL( config_filename );
 	Initialize_Graph();
 	//ui.customPlot->refitGraphs();
+
+	if( initial_configuration != "" )
+	{
+		this->temporary_connection = connect( sql_manager, &SQL_Manager_With_Local_Cache::Database_Opened, [this, initial_configuration]
+		{
+			QObject::disconnect( this->temporary_connection );
+			QFileInfo file = "../Reports/" + initial_configuration;
+			std::string debug = file.absoluteFilePath().toStdString();
+			Load_Report( file );
+		} );
+	}
 }
 
 void Report_Plots::Initialize_SQL( QString config_filename )
@@ -82,7 +93,7 @@ void Report_Plots::Initialize_Graph()
 	//connect( ui.customPlot->xAxis, qOverload<const QCPRange &>( &QCPAxis::rangeChanged ), [ this ]( const QCPRange & ) { this->Update_Preview_Graph(); } );
 	connect( ui.loadReport_pushButton, &QPushButton::pressed, [ this ]
 	{
-		QFileDialog dialog( this, tr( "Load Report File" ), QString(), tr( "Report File (*.yaml;*.yml)" ) );
+		QFileDialog dialog( this, tr( "Load Report File" ), QString(), tr( "Report File (*.yaml *.yml);;All Files (*)" ) );
 		dialog.setAcceptMode( QFileDialog::AcceptOpen );
 		//QString current_text = ui.layersFile_lineEdit->text();
 		//if( current_text == "" )
@@ -101,8 +112,8 @@ void Report_Plots::Initialize_Graph()
 
 }
 
-template< typename Node, typename ReturnType >
-ReturnType lookup( const Node & thing, ReturnType the_default )
+template< typename ReturnType >
+ReturnType lookup( const YAML::Node & thing, ReturnType the_default )
 {
 	if( thing )
 		return thing.as< ReturnType >();
@@ -110,8 +121,8 @@ ReturnType lookup( const Node & thing, ReturnType the_default )
 		return the_default;
 }
 
-template< typename Node, typename Plot_Type >
-void set_graph_limits( const Node & node, Plot_Type* plot )
+template< typename Plot_Type >
+void set_graph_limits( const YAML::Node & node, Plot_Type* plot )
 {
 	if( node[ "x_units" ] )
 		plot->Change_X_Axis( node[ "x_units" ].as< int >() );
@@ -130,8 +141,8 @@ void set_graph_limits( const Node & node, Plot_Type* plot )
 	plot->replot();
 }
 
-template< typename Node, typename Plot_Type >
-void set_graph_title( const Node & node, Plot_Type* plot )
+template< typename Plot_Type >
+void set_graph_title( const YAML::Node & node, Plot_Type* plot )
 {
 	if( !node[ "title" ] )
 		return;
@@ -152,6 +163,10 @@ QWidget* By_Device_Size( YAML::Node main_plot_node, Request_Data_Func get_the_da
 	if( !plots || !plots.IsSequence() )
 		return interactive_graph;
 	auto data_remaining = plots.size(); // Workaround to async sequencing
+
+	bool legend_on = lookup(main_plot_node["legend_on"], false);
+	interactive_graph->legend->setVisible(legend_on);
+
 	for( const auto & one_plot : plots )
 	{
 		data_remaining--;
@@ -189,13 +204,16 @@ QWidget* Dark_Current( YAML::Node main_plot_node, Request_Data_Func get_the_data
 	if( !plots || !plots.IsSequence() )
 		return interactive_graph;
 
+	bool legend_on = lookup(main_plot_node["legend_on"], false);
+	interactive_graph->legend->setVisible(legend_on);
+
 	auto data_remaining = plots.size(); // Workaround to async sequencing
 	for( const auto & one_plot : plots )
 	{
 		data_remaining--;
 		if( !one_plot[ "measurement_id" ] )
 			continue;
-		QString legend_label = lookup( one_plot[ "title" ], QString{} );
+		QString legend_label = lookup( one_plot[ "legend_label" ], QString{} );
 		QString measurement_id = one_plot[ "measurement_id" ].as<QString>();
 
 		get_the_data( { measurement_id },
@@ -224,13 +242,16 @@ QWidget* Spectral_Response( YAML::Node main_plot_node, Request_Data_Func get_the
 	if( !plots || !plots.IsSequence() )
 		return interactive_graph;
 
+	bool legend_on = lookup(main_plot_node["legend_on"], false);
+	interactive_graph->legend->setVisible( legend_on );
+
 	auto data_remaining = plots.size(); // Workaround to async sequencing
 	for( const auto & one_plot : plots )
 	{
 		data_remaining--;
 		if( !one_plot[ "measurement_id" ] )
 			continue;
-		QString legend_label = lookup( one_plot[ "background_id" ], QString{} );
+		QString legend_label = lookup( one_plot[ "legend_label" ], QString{} );
 		QString measurement_id = one_plot[ "measurement_id" ].as<QString>();
 		QString background_id = lookup( one_plot[ "background_id" ], QString{} );
 		QStringList ids = { measurement_id };
@@ -308,6 +329,9 @@ void Report_Plots::Load_Report( QFileInfo file )
 
 	if( report_outline[ "title" ] )
 		ui.report_label->setText( QString::fromStdString( report_outline[ "title" ].as<std::string>() ) );
+
+	if( report_outline[ "tab_title" ] )
+		emit Change_Tab_Name( QString::fromStdString( report_outline[ "tab_title" ].as<std::string>() ) );
 
 	YAML::Node list_of_devices = report_outline[ "windows" ];
 	if( !list_of_devices || !list_of_devices.IsSequence() )
