@@ -9,6 +9,7 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Net/ServerSocket.h>
 
+
 #include <QSettings>
 
 using namespace Poco::Net;
@@ -91,8 +92,8 @@ void Web_Listener::Start_Thread()
 
 void Web_Listener::Initialize_Listening_Server()
 {
-	this->server_socket = std::make_unique<ServerSocket>( port );
-	this->http_server = std::make_unique<HTTPServer>(
+	this->server_socket = new ServerSocket( port );
+	this->http_server = new HTTPServer(
 		new GetCommandRequestHandlerFactory(
 			[this]( QString command ){ this->Got_New_Command( command ); }),
 			*server_socket, new HTTPServerParams);

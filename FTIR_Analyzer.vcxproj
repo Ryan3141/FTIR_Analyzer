@@ -21,10 +21,10 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8903B6BE-FBBF-4C9B-A827-A74F8F18CBCE}</ProjectGuid>
     <Keyword>QtVS_v304</Keyword>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0.19041.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0.19041.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">10.0.19041.0</WindowsTargetPlatformVersion>
-    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">10.0.17763.0</WindowsTargetPlatformVersion>
     <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -100,7 +100,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Code\Ipopt\include;D:\Code\Boost\boost_1_74_0;C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\ucrt;C:\Code\armadillo-10.1.2\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Code\Ipopt\include;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt;C:\Code\armadillo-10.1.2\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -110,7 +110,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Code\Ipopt\include;D:\Code\Boost\boost_1_74_0;C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\ucrt;C:\Code\armadillo-10.1.2\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Code\Ipopt\include;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt;C:\Code\armadillo-10.1.2\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -120,7 +120,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Code\Ipopt_Debug\include;D:\Code\Boost\boost_1_74_0;C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\ucrt;C:\Code\armadillo-10.1.2\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Code\Ipopt_Debug\include;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt;C:\Code\armadillo-10.1.2\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -130,7 +130,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Code\Ipopt_Debug\include;D:\Code\Boost\boost_1_74_0;C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\ucrt;C:\Code\armadillo-10.1.2\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Code\Ipopt_Debug\include;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt;C:\Code\armadillo-10.1.2\include;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -194,6 +194,7 @@
     <ClCompile Include="Ceres_Curve_Fitting.cpp" />
     <ClCompile Include="CppAD_Curve_Fitting.cpp" />
     <ClCompile Include="HgCdTe.cpp" />
+    <ClCompile Include="Interactive_Graph.cpp" />
     <ClCompile Include="Material_Layer_Widget.cpp" />
     <ClCompile Include="Optimize.cpp" />
     <ClCompile Include="qcustomplot.cpp" />
@@ -202,6 +203,7 @@
     <ClCompile Include="SQL_Manager.cpp" />
     <ClCompile Include="SQL_Tree_Widget.cpp" />
     <ClCompile Include="Thin_Film_Interference.cpp" />
+    <ClCompile Include="Web_Listener.cpp" />
     <QtRcc Include="FTIR_Analyzer.qrc" />
     <QtUic Include="CV_Plotter.ui" />
     <QtUic Include="FTIR_Analyzer.ui" />
@@ -252,6 +254,7 @@
     <ClInclude Include="Optimize.h" />
     <ClInclude Include="SPA_File.h" />
     <ClInclude Include="Units.h" />
+    <QtMoc Include="Web_Listener.h" />
     <QtMoc Include="Thin_Film_Interference.h" />
     <QtMoc Include="SQL_Tree_Widget.h" />
     <QtMoc Include="SQL_Manager.h" />

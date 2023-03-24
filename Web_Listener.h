@@ -5,16 +5,21 @@
 #include <QThread>
 #include <QFileInfo>
 #include <QString>
+#include <QObject>
+//#include <Poco/Net/HTTPServer.h>
+//#include <Poco/Net/ServerSocket.h>
 
+namespace Poco {
+namespace Net{
+	class ServerSocket;
+	class HTTPServer;
+}
+}
 
-#include <Poco/Net/ServerSocket.h>
-#include <Poco/Net/HTTPServer.h>
-
-class Web_Listener : public QObject
+class Web_Listener :
+	public QObject
 {
 	Q_OBJECT
-
-public:
 
 signals:
 	void Command_Recieved( QString command );
@@ -29,8 +34,8 @@ public:
 private:
 	QThread* worker_thread = nullptr;
 	unsigned short port = 8080;
-	std::unique_ptr<Poco::Net::ServerSocket> server_socket;
-	std::unique_ptr<Poco::Net::HTTPServer> http_server;
+	Poco::Net::ServerSocket* server_socket = nullptr;
+	Poco::Net::HTTPServer* http_server = nullptr;
 
 	void Got_New_Command( QString command );
 };
