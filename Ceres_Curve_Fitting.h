@@ -32,17 +32,13 @@ private:
 
 
 template< typename Single_Graph, typename Fit_Results >
-std::array<Fit_Results, 2> Ceres_Fit_Lifetime( const arma::vec& initial_guess, const arma::vec& lower_limits, const arma::vec& upper_limits, const Single_Graph& graph )
+std::array<Fit_Results, 2> Ceres_Fit_Lifetime( const arma::vec& initial_guess, const arma::vec& lower_limits, const arma::vec& upper_limits,
+												arma::vec x, arma::vec y, double lower_x_fit, double upper_x_fit2 )
 {
-	if( graph.x_data.empty() || graph.y_data.empty() || (graph.x_data.size() != graph.y_data.size()) )
+	if( x.empty() || y.empty() || (x.size() != y.size()) )
 		return { Fit_Results{ arma::datum::nan, arma::datum::nan, arma::datum::nan }, Fit_Results{ arma::datum::nan, arma::datum::nan, arma::datum::nan } };
-	arma::vec x = fromQVec( graph.x_data );
-	arma::vec y = fromQVec( graph.y_data );
 
-	double x_offset = x( y.index_max() ); // Align all of the peaks
-	x = x - x_offset;
-	y = y - y.min() + 1E-9;
-	arma::uvec selection_region = arma::find( x > graph.lower_x_fit && x < graph.upper_x_fit2 );
+	arma::uvec selection_region = arma::find( x > lower_x_fit && x < upper_x_fit2 );
 	if( selection_region.size() < 2 )
 		return { Fit_Results{ arma::datum::nan, arma::datum::nan, arma::datum::nan }, Fit_Results{ arma::datum::nan, arma::datum::nan, arma::datum::nan } };
 	//return { Fit_Results{ (initial_guess[ 0 ]), initial_guess[ 1 ], initial_guess[ 2 ] }, Fit_Results{ (initial_guess[ 3 ]), initial_guess[ 4 ], initial_guess[ 5 ] } };

@@ -188,40 +188,58 @@ void Plotter::Initialize_Graph()
 		this->ui.selectedCutoff_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "gain", "" ) );
 
 		QString graph_name = Info_Or_Default<QString>( measurement.meta, "measurement_id", "Unknown" );
-		std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 		std::vector<Graph_Double_Adjustment> label_type_value_list = {
-			{ "Lower Fit", measurement.lower_x_fit * 1.0E6, [this, &measurement, graphs_for_fit]( double new_value )
+			{ "Lower Fit", measurement.lower_x_fit * 1.0E6, [this, &measurement, graph_name, selected_graph]( double new_value )
 				{
+					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 					measurement.lower_x_fit = new_value * 1.0E-6;
 					ui.customPlot->Redo_Fits( graphs_for_fit );
 					ui.customPlot->replot();
 				} },
-			{ "Middle Of Fit", measurement.upper_x_fit * 1.0E6, [this, &measurement, graphs_for_fit]( double new_value )
+			// { "Middle Of Fit", measurement.upper_x_fit * 1.0E6, [this, &measurement, graph_name, selected_graph]( double new_value )
+			// 	{
+			// 		Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+			// 		std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
+			// 		measurement.upper_x_fit = new_value * 1.0E-6;
+			// 		ui.customPlot->Redo_Fits( graphs_for_fit );
+			// 		ui.customPlot->replot();
+			// 	} },
+			{ "Upper Fit", measurement.upper_x_fit2 * 1.0E6, [this, &measurement, graph_name, selected_graph]( double new_value )
 				{
-					measurement.upper_x_fit = new_value * 1.0E-6;
-					ui.customPlot->Redo_Fits( graphs_for_fit );
-					ui.customPlot->replot();
-				} },
-			{ "Upper Fit", measurement.upper_x_fit2 * 1.0E6, [this, &measurement, graphs_for_fit]( double new_value )
-				{
+					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 					measurement.upper_x_fit2 = new_value * 1.0E-6;
 					ui.customPlot->Redo_Fits( graphs_for_fit );
 					ui.customPlot->replot();
 				} },
-			{ "X Offset", measurement.x_offset * 1.0E6, [this, graph_name, &measurement, graphs_for_fit]( double new_value )
+			{ "X Offset", measurement.x_offset * 1.0E6, [this, graph_name, selected_graph]( double new_value )
 				{
+					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 					measurement.x_offset = new_value * 1.0E-6;
 					ui.customPlot->axes.Graph_XY_Data( graph_name, measurement );
 					ui.customPlot->Redo_Fits( graphs_for_fit );
 					ui.customPlot->replot();
 				}, -100.0, 100.0, 0.1 },
-			{ "Y Offset", measurement.y_offset, [this, graph_name, &measurement, graphs_for_fit]( double new_value )
+			{ "Y Offset", measurement.y_offset, [this, graph_name, selected_graph]( double new_value )
 				{
+					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 					measurement.y_offset = new_value;
 					ui.customPlot->axes.Graph_XY_Data( graph_name, measurement );
 					ui.customPlot->Redo_Fits( graphs_for_fit );
 					ui.customPlot->replot();
-				}, -5.0, 5.0, 0.05, " V" },
+				}, -5.0, 5.0, 0.02, " V" },
+			{ "Lowpass Filter", measurement.lowpass_MHz, [this, graph_name, selected_graph]( double new_value )
+				{
+					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
+					measurement.lowpass_MHz = new_value;
+					ui.customPlot->axes.Graph_XY_Data( graph_name, measurement );
+					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->replot();
+				}, -1.0, 1000.0, 1.0, " MHz" },
 		};
 		//std::vector<Graph_Adjustment> label_type_value_list = {
 		//	{ "Color", [this, &measurement]( const QColor & new_color )
@@ -235,7 +253,7 @@ void Plotter::Initialize_Graph()
 		//		} },
 		//};
 
-		ui.graphCustomizer->New_Graph_Selected( label_type_value_list );
+		ui.graphCustomizer->New_Graph_Selected<Single_Graph>( label_type_value_list, measurement );
 		//	QVector<double> cutoffs = Find_Zero_Crossings( x_data, y_data, *std::max_element( y_data.constBegin(), y_data.constEnd() ) / 2 );
 		//	if( !cutoffs.isEmpty() )
 		//	{
@@ -394,7 +412,8 @@ QString lookup( const Labeled_Metadata & metadata, const QString & lookup_name, 
 void median_filter( QVector< double > & data, int window_size )
 {
 	if( window_size % 2 == 0 )
-		throw std::runtime_error( "Window size must be odd" );
+		return;
+		// throw std::runtime_error( "Window size must be odd" );
 
 	const int half_window_size = window_size / 2;
 	QVector< double > filtered_data( data.size() );

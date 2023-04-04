@@ -3,6 +3,7 @@
 #include <tuple>
 #include <QVector>
 #include <functional>
+#include <optional>
 
 #include "Interactive_Graph.h"
 
@@ -49,6 +50,7 @@ struct Single_Graph : public Default_Single_Graph<X_Units, Y_Units>
 	double upper_x_fit2 = 20.0E-6;
 	double x_offset = 0.0;
 	double y_offset = 0.0;
+	double lowpass_MHz = -1.0;
 	std::vector<QCPGraph*> Get_Graphs() const
 	{
 		return { graph_pointer, early_fit_graph };
@@ -85,7 +87,9 @@ struct Axes
 	void Set_X_Units( X_Units units );
 	void Set_Y_Units( Y_Units units );
 
-	Prepared_Data Prepare_Any_Data( const arma::vec& x, const arma::vec& y, X_Units x_units, double x_offset = 0, double y_offset = 0 ) const;
+	Prepared_Data Prepare_Any_Data( arma::vec x, arma::vec y, X_Units x_units, double x_offset = 0, double y_offset = 0,
+									std::optional<double> lowpass_Hz = std::nullopt,
+									std::optional<double> sampling_frequency = std::nullopt ) const;
 	Prepared_Data Prepare_Fit_Data( const arma::vec& x, const arma::vec& y ) const;
 	Prepared_Data Prepare_XY_Data( const Single_Graph & graph_data ) const;
 	void Graph_XY_Data( QString measurement_name, const Single_Graph & graph );

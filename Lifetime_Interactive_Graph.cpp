@@ -24,27 +24,53 @@ void Axes::Set_Y_Units( Y_Units units )
 }
 
 
-Prepared_Data Axes::Prepare_Any_Data( const arma::vec & x, const arma::vec & y, X_Units datas_x_units, double x_offset, double y_offset ) const
+arma::vec Lowpass_Filter( arma::vec data, double sampling_frequency, double lowpass_Hz )
+{
+	arma::cx_vec data_fft = arma::fft( data );
+	arma::vec lowpass_filter = arma::vec( data_fft.size(), arma::fill::ones );
+	int something = (lowpass_Hz / sampling_frequency) * data_fft.size() / 2;
+	int something2 = data_fft.size() - something - 1;
+	// qDebug() << "something: " << something << " something2: " << something2;
+	lowpass_filter.subvec( something, something2 ).fill( 0.0 );
+
+	arma::vec filtered = arma::real( arma::ifft( data_fft % lowpass_filter ) );
+
+	return filtered;
+}
+
+std::tuple< arma::vec, arma::vec > Modify_XY_Data( arma::vec x, arma::vec y, double x_offset, double y_offset, std::optional<double> lowpass_Hz, std::optional<double> sampling_frequency )
+{
+	x += x_offset;
+	y += y_offset;
+	if( lowpass_Hz )
+		y = Lowpass_Filter( y, *sampling_frequency, *lowpass_Hz );
+
+	return { x, y };
+}
+
+Prepared_Data Axes::Prepare_Any_Data( arma::vec x, arma::vec y, X_Units datas_x_units, double x_offset, double y_offset, std::optional<double> lowpass_Hz, std::optional<double> sampling_frequency ) const
 {
 	if( x.empty() || y.empty() )
 		return { {}, {} };
 	//if( x_units == X_Units::TEMPERATURE_K )
 	//	return { toQVec( 1E6 * x ), graph_data.y_data };
 
-	if( this->x_units == X_Units::FIT_TIME_US || this->x_units == X_Units::FIT_TIME_US2 )
+	if( datas_x_units == X_Units::FIT_TIME_US ) // Original data was in fit units so don't modify it
 	{
-		if( datas_x_units == X_Units::FIT_TIME_US ) // Original data was in fit units so don't modify it
-			return { toQVec( 1E6 * x ), toQVec( y ) };
-		else if( datas_x_units == X_Units::TIME_US ) // Original data was in time units, so adjust it to be centered on the peak
+		return { toQVec( 1E6 * x ), toQVec( y ) };
+	}
+	else if( this->x_units == X_Units::FIT_TIME_US || this->x_units == X_Units::FIT_TIME_US2 )
+	{
+		if( datas_x_units == X_Units::TIME_US ) // Original data was in time units, so adjust it to be centered on the peak
 		{
+			auto [modified_x, modified_y] = Modify_XY_Data( x, y, x_offset, y_offset, lowpass_Hz, sampling_frequency );
 			double x_loc_of_max = x( y.index_max() ); // Align all of the peaks
-			arma::vec x_adjusted = 1E6 * (x - x_loc_of_max + x_offset);
-			arma::vec y_adjusted;
+			x = 1E6 * (modified_x - x_loc_of_max);
 			// if( this->x_units == X_Units::FIT_TIME_US2 )
-				y_adjusted = y - y.min() + y_offset;
+				y = modified_y - y.min();
 			// else
 			// 	y_adjusted = y;
-			return { toQVec( x_adjusted ), toQVec( y_adjusted ) };
+			return { toQVec( x ), toQVec( y ) };
 		}
 	}
 	else if( this->x_units == X_Units::TEMPERATURE_K )
@@ -56,11 +82,15 @@ Prepared_Data Axes::Prepare_Any_Data( const arma::vec & x, const arma::vec & y, 
 		return { toQVec( 1000 / x ), toQVec( y ) };
 	}
 	else if( this->x_units == X_Units::TIME_US && datas_x_units == X_Units::TIME_US )
-	{ // Center the original data
-		return { toQVec( 1E6 * (x - (x.max() - x.min()) / 2 + x_offset) ), toQVec( (y + y_offset) ) };
+	{
+		auto [modified_x, modified_y] = Modify_XY_Data( x, y, x_offset, y_offset, lowpass_Hz, sampling_frequency );
+
+		// Center the original data
+		return { toQVec( 1E6 * (modified_x - (x.max() - x.min()) / 2) ), toQVec( modified_y ) };
 	}
 
-	return { toQVec( 1E6 * (x + x_offset) ), toQVec( (y + y_offset) ) };
+	auto [modified_x, modified_y] = Modify_XY_Data( x, y, x_offset, y_offset, lowpass_Hz, sampling_frequency );
+	return { toQVec( 1E6 * modified_x ), toQVec( modified_y ) };
 }
 
 Prepared_Data Axes::Prepare_Fit_Data( const arma::vec & x, const arma::vec & y ) const
@@ -72,7 +102,10 @@ Prepared_Data Axes::Prepare_XY_Data( const Single_Graph & graph_data ) const
 {
 	arma::vec x = fromQVec( graph_data.x_data );
 	arma::vec y = fromQVec( graph_data.y_data );
-	return Prepare_Any_Data( x, y, graph_data.x_units, graph_data.x_offset, graph_data.y_offset );
+	double sampling_frequency = 1 / (graph_data.x_data[1] - graph_data.x_data[0]);
+	std::optional<double> lowpass_Hz = (graph_data.lowpass_MHz < 0.0) ? std::nullopt : std::optional<double>(graph_data.lowpass_MHz * 1E6);
+	
+	return Prepare_Any_Data( x, y, graph_data.x_units, graph_data.x_offset, graph_data.y_offset, lowpass_Hz, sampling_frequency );
 }
 
 void Axes::Graph_XY_Data( QString measurement_name, const Single_Graph & graph )
@@ -132,16 +165,11 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 	} );
 }
 
-std::array<Fit_Results, 2> Fit_Lifetime_Piecewise( const arma::vec& initial_guess, const arma::vec& lower_limits, const arma::vec& upper_limits, const Single_Graph& graph )
+std::array<Fit_Results, 2> Fit_Lifetime_Piecewise( const arma::vec& initial_guess, const arma::vec& lower_limits, const arma::vec& upper_limits,
+													const arma::vec & x, const arma::vec & y, double lower_x_fit, double upper_x_fit, double upper_x_fit2  )
 {
-	if( graph.x_data.empty() || graph.y_data.empty() )
+	if( x.empty() || y.empty() )
 		return { arma::datum::nan, arma::datum::nan, arma::datum::nan };
-	arma::vec x = fromQVec( graph.x_data );
-	arma::vec y = fromQVec( graph.y_data );
-
-	double x_offset = x( y.index_max() ); // Align all of the peaks
-	x = x - x_offset;
-	y = y - y.min() + 1E-9;
 
 	//auto exponential_function = []( const arma::vec& fit_params, const arma::vec& time ) -> arma::vec
 	//{
@@ -163,9 +191,9 @@ std::array<Fit_Results, 2> Fit_Lifetime_Piecewise( const arma::vec& initial_gues
 	arma::vec up_bound = upper_limits;
 	up_bound[ 0 ] = std::log( up_bound[ 0 ] );
 
-	arma::uvec selection_region = arma::find( x > graph.lower_x_fit && x < graph.upper_x_fit );
+	arma::uvec selection_region = arma::find( x > lower_x_fit && x < upper_x_fit );
 	arma::vec fit_params = Fit_Data_To_Function( exponential_function, x( selection_region ), arma::log( y( selection_region ) ), low_bound, up_bound );
-	arma::uvec selection_region2 = arma::find( x > graph.upper_x_fit && x < graph.upper_x_fit2 );
+	arma::uvec selection_region2 = arma::find( x > upper_x_fit && x < upper_x_fit2 );
 	arma::vec fit_params2 = Fit_Data_To_Function( exponential_function, x( selection_region2 ), arma::log( y( selection_region2 ) ), low_bound, up_bound );
 
 	//arma::vec fit_params = Fit_Data_To_Function( sum_of_exponential_functions, x( selection_region ), arma::log( y( selection_region ) ), lower_limits, upper_limits );
@@ -198,15 +226,22 @@ void Interactive_Graph::Redo_Fits( std::vector<std::tuple<QString, Single_Graph 
 
 	for( const auto & [name, graph] : graphs_for_fit )
 	{
-		arma::vec x = fromQVec( graph.x_data );
 		const arma::vec initial_guess = {  1.0,   0E-6,  1E-6, 1.0,   0E-6,  1E-6 };
 		const arma::vec lower_limits = { 1E-12, -20E-6,  5E-9, 0.0, -20E-6, 50E-9 };
 		const arma::vec upper_limits = {   +10, +20E-6, 100E-6, +10, +20E-6, 100E-6 };
+
+		arma::vec x = fromQVec( graph.x_data );
+		arma::vec y = fromQVec( graph.y_data );
+		double sampling_frequency = 1 / (graph.x_data[1] - graph.x_data[0]);
+		std::optional<double> lowpass_Hz = (graph.lowpass_MHz < 0.0) ? std::nullopt : std::optional<double>(graph.lowpass_MHz * 1E6);
+		auto [modified_x, modified_y] = this->axes.Prepare_Any_Data( x, y, graph.x_units, graph.x_offset, graph.y_offset, lowpass_Hz, sampling_frequency );
+		x = 1E-6 * fromQVec( modified_x );
+		y = fromQVec( modified_y );
 		//arma::vec fit_params = Fit_Data_To_Function( sum_of_exponential_functions, x( selection_region ), arma::log( y( selection_region ) ), lower_limits, upper_limits );
 		auto [early_fit, late_fit] = [&] { switch( fit_technique ) {
 			// case Fit_Technique::CPPAD: return CppAD_Fit_Lifetime< Single_Graph, Fit_Results >( initial_guess, lower_limits, upper_limits, graph );
-			case Fit_Technique::CERES: return Ceres_Fit_Lifetime< Single_Graph, Fit_Results >( initial_guess, lower_limits, upper_limits, graph );
-			default:  return Fit_Lifetime_Piecewise( initial_guess, lower_limits, upper_limits, graph );
+			case Fit_Technique::CERES: return Ceres_Fit_Lifetime< Single_Graph, Fit_Results >( initial_guess, lower_limits, upper_limits, x, y, graph.lower_x_fit, graph.upper_x_fit2 );
+			default:  return Fit_Lifetime_Piecewise( initial_guess, lower_limits, upper_limits, x, y, graph.lower_x_fit, graph.upper_x_fit, graph.upper_x_fit2 );
 		} }();
 		auto [amplitude, x_offset, lifetime] = early_fit;
 		auto [amplitude2, x_offset2, lifetime2] = late_fit;
@@ -351,7 +386,7 @@ void Interactive_Graph::Change_Axes( int index )
 			else
 			{
 				this->Hide_Graph( name, false );
-				this->Hide_Fit_Graphs( graph, true );
+				this->Hide_Fit_Graphs( graph, false );
 			}
 		}
 		//this->Hide_Graph( "Vs_Temperature", true );
