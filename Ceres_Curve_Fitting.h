@@ -224,8 +224,13 @@ inline ceres::ResidualBlockId Dynamic_Fit_Parameters(
 }
 
 #include "Thin_Film_Interference.h"
-inline arma::vec Ceres_Thin_Film_Fit(
-	const std::vector<std::optional<double>*> & initial_guess,
+struct Fit_Results
+{
+	arma::vec fit_parameters;
+	double cost;
+};
+inline Fit_Results Ceres_Thin_Film_Fit(
+	arma::vec initial_guess,
 	const std::vector<Material_Layer>& layers,
 	const arma::vec& wavelengths, // in meters
 	const arma::vec& transmissions, // Scaled to between 0.0 and 1.0
@@ -233,17 +238,15 @@ inline arma::vec Ceres_Thin_Film_Fit(
 {
 	//if( fit_parameters.empty() )
 	//	return {};
-	arma::vec fit_vars = arma::vec( initial_guess.size() );
-	for( int i = 0; std::optional< double >* parameter : initial_guess )
-		fit_vars[ i++ ] = parameter->value();
+	arma::vec & fit_vars = initial_guess;
 	//arma::vec initial_guess_vec = fit_vars;
 	ceres::Problem problem;
 	Dynamic_Fit_Parameters( problem, layers, backside_material,
 				wavelengths, transmissions, fit_vars );
 	for( int i = 0; i < fit_vars.size(); i++ )
 	{
-		problem.SetParameterLowerBound( fit_vars.memptr(), i, fit_vars[ i ] * 0.5 );
-		problem.SetParameterUpperBound( fit_vars.memptr(), i, fit_vars[ i ] * 1.5 );
+		problem.SetParameterLowerBound( fit_vars.memptr(), i, fit_vars[ i ] * 0.2 );
+		problem.SetParameterUpperBound( fit_vars.memptr(), i, fit_vars[ i ] * 2.0 );
 	}
 	ceres::Solver::Options options;
 	options.max_num_iterations = 100;
@@ -256,5 +259,28 @@ inline arma::vec Ceres_Thin_Film_Fit(
 	//std::cout << "Initial x: " << initial_guess << "\n";
 	//std::cout << "Final   x: " << fit_vars << "\n";
 
-	return fit_vars;
+	return {fit_vars, summary.final_cost};
+}
+
+inline Fit_Results Ceres_Thin_Film_Fit_Many_Starts(
+	arma::vec initial_guess,
+	const std::vector<Material_Layer>& layers,
+	const arma::vec& wavelengths, // in meters
+	const arma::vec& transmissions, // Scaled to between 0.0 and 1.0
+	Material_Layer backside_material )
+{
+	// Add a random scale to the initial guess between 0.2 and 5
+	auto [best_solution, lowest_cost] = Ceres_Thin_Film_Fit( initial_guess, layers, wavelengths, transmissions, backside_material );
+	for( int i = 0; i < 4; i++ )
+	{
+		arma::vec moved_guess = initial_guess % (0.2 + 4.8 * arma::randu( initial_guess.size() ));
+		auto [solution, cost] = Ceres_Thin_Film_Fit( moved_guess, layers, wavelengths, transmissions, backside_material );
+		if( cost < lowest_cost )
+		{
+			lowest_cost = cost;
+			best_solution = solution;
+		}
+	}
+
+	return {best_solution, lowest_cost};
 }

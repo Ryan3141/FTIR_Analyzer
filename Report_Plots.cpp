@@ -362,12 +362,11 @@ void Report_Plots::Load_Report( QFileInfo file )
 		old_widget->close();
 	}
 
-	int i = 0;
-	for( const auto & this_plot_node : list_of_devices )
+	for( int i = 0; const auto & this_plot_node : list_of_devices )
 	{
-		if( i >= 4 )
-			continue;
-		auto replace_widget = replace_functions[ i++ ];
+		auto replace_widget = replace_functions[ i ];
+		i = (i + 1) % 4;
+
 		if( !this_plot_node[ "plot_type" ] )
 			continue;
 		QString plot_type = this_plot_node[ "plot_type" ].as<QString>();

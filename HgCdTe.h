@@ -105,7 +105,7 @@ arma::vec E_g_Laurenti( const Real& x, const Real2& T )
 }
 
 template< typename Real = double >
-typename arma::cx_vec Refractive_Index( const arma::vec& wavelengths, Optional_Material_Parameters optional_parameters )
+typename arma::cx_vec Refractive_Index( const arma::vec & wavelengths, Optional_Material_Parameters optional_parameters )
 {
 	Real x = optional_parameters.composition.value();
 	Real temperature_k = optional_parameters.temperature.value();
@@ -151,7 +151,7 @@ typename arma::cx_vec Refractive_Index( const arma::vec& wavelengths, Optional_M
 					return alpha * wavelengths * 1E6 / (4 * arma::datum::pi);
 				} );
 		}
-		else if constexpr( true )
+		else if constexpr( false )
 		{ // Before double checking sources
 			typename arma::vec E = 1.23984198406E-6 / wavelengths;
 
@@ -188,6 +188,41 @@ typename arma::cx_vec Refractive_Index( const arma::vec& wavelengths, Optional_M
 
 			alpha_kane.replace( arma::datum::nan, arma::datum::inf );
 			return arma::min( alpha_urbach, alpha_kane ) % wavelengths * 1E2 / (4 * arma::datum::pi); // Convert wavelengths from m to cm because alphas are per cm
+		}
+		else if constexpr( true )
+		{
+			typename arma::vec E_all = 1.23984198406E-6 / wavelengths;
+			Real T = temperature_k;
+			Real Eg = -0.302 + 1.93 * x - 0.81 * x * x + 0.832 * x * x * x + 5.35E-4 * T * (1 - 2 * x);
+
+			Real curvature = optional_parameters.tauts_gap_eV.value_or( 0.1 );
+			Real b = curvature;
+			Real B = 0.15 * 2.109E5 * std::sqrt((1 + x) / (81.9 + T)) / curvature; // Ryan added 15 factor
+			Real W = optional_parameters.urbach_energy_eV.value_or( 0.001 );
+			// B = 3E4 / width;
+			// if E <= Eg + W / 2:
+			auto alpha_urbach = [&]() -> typename arma::vec
+			{
+				Real frac  = (W / 2.0 + b);
+				Real frac2 = (W / 2.0 + 2 * b);
+				return B / (Eg + W / 2.0) * ( frac * std::sqrt( frac * frac - b * b ) \
+					+ 1 / 8.0 * frac2 * std::sqrt( frac2 * frac2 - 4 * b * b ) ) \
+					* arma::exp( (E_all - Eg) / W - 1 / 2.0 );
+			};
+			// else: # E > Eg + W / 2
+			auto alpha_kane = [&]( arma::uvec locations ) -> arma::vec
+			{
+				arma::vec E = E_all.elem( locations );
+				arma::vec frac  = (E - Eg + b);
+				arma::vec frac2 = (E - Eg + 2 * b);
+				return B / E % ( frac % arma::sqrt( frac % frac - b * b ) \
+					+ 1 / 8.0 * frac2 % arma::sqrt( frac2 % frac2 - 4 * b * b ) );
+			};
+			arma::uvec locations = arma::find( E_all > Eg + W / 2.0 );
+			arma::vec smooth_function = alpha_urbach();
+			smooth_function( locations ) = alpha_kane( locations );
+			return smooth_function % wavelengths * 1E2 / (4 * arma::datum::pi); // Convert wavelengths from m to cm because alphas are per cm
+			// return arma::log10( smooth_function ); // Convert wavelengths from m to cm because alphas are per cm
 		}
 		//else if constexpr( false )
 		//{

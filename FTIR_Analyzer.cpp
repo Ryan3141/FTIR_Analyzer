@@ -124,8 +124,10 @@ void FTIR_Analyzer::Graph_Refractive_Index( std::string material_name, Optional_
 	if( find_mat == name_to_material.end() )
 		return;
 	arma::cx_vec refractive_index = Get_Refraction_Index( find_mat->second, x_data_meters, parameters );
+	arma::vec absorption_coefficient_cm = (4 * arma::datum::pi) * arma::imag( refractive_index ) / (x_data_meters * 1E2);
 	ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::real( refractive_index ) ), "Index (n)", "Index (n)" );
 	ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::imag( refractive_index ) ), "Index (k)", "Index (k)" );
+	ui.customPlot->Graph<FTIR::X_Units::WAVELENGTH_METERS, FTIR::Y_Units::DONT_CHANGE>( toQVec( x_data_meters ), toQVec( arma::log10(absorption_coefficient_cm) ), "Log10(Absorption Coefficient (cm^-1))", "Log10(Absorption Coefficient (cm^-1))" );
 
 	ui.customPlot->replot();
 
@@ -212,7 +214,13 @@ void FTIR_Analyzer::Run_Fit()
 	std::optional< double > scaled_height = transmission_scale;
 	auto fit_parameters = Get_Things_To_Fit( copy_layers );
 	fit_parameters.push_back( &scaled_height );
-	arma::vec solution = Ceres_Thin_Film_Fit( fit_parameters, copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material );
+
+	arma::vec initial_guess = arma::vec( fit_parameters.size() );
+	for( int i = 0; std::optional< double >* parameter : fit_parameters )
+		initial_guess[ i++ ] = parameter->value();
+
+	auto [solution, cost] = Ceres_Thin_Film_Fit_Many_Starts( initial_guess, copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material );
+	// arma::vec solution = Ceres_Thin_Film_Fit( fit_parameters, copy_layers, filtered_wavelength_data, filtered_transmission_data, backside_material );
 	for( int i = 0; std::optional< double >*parameter : fit_parameters )
 		*parameter = solution[ i++ ];
 	ui.simulated_listWidget->Make_From_Material_List( copy_layers );
@@ -354,7 +362,10 @@ void FTIR_Analyzer::Initialize_Simulation()
 		{
 			std::string material_name = ui.plotMaterialIndex_comboBox->currentText().toStdString();
 			double temperature_in_k = ui.simulationTemperature_doubleSpinBox->value();
-			Optional_Material_Parameters parameters( material_name, temperature_in_k, std::nullopt, 0.221 );
+			double composition = ui.plotMaterialComposition_doubleSpinBox->value();
+			double tauts_gap = ui.plotTautsGap_doubleSpinBox->value() * 1E-3;
+			double urbach_energy = ui.plotUrbachEnergy_doubleSpinBox->value() * 1E-3;
+			Optional_Material_Parameters parameters( material_name, temperature_in_k, std::nullopt, composition, tauts_gap, urbach_energy );
 
 			this->Graph_Refractive_Index( material_name, parameters );
 		}
@@ -362,6 +373,7 @@ void FTIR_Analyzer::Initialize_Simulation()
 		{
 			ui.customPlot->Hide_Graph( "Index (n)" );
 			ui.customPlot->Hide_Graph( "Index (k)" );
+			ui.customPlot->Hide_Graph( "Log10(Absorption Coefficient (cm^-1))" );
 		}
 	};
 
@@ -380,6 +392,9 @@ void FTIR_Analyzer::Initialize_Simulation()
 
 	connect( ui.plotMaterialIndex_comboBox, qOverload<int>( &QComboBox::currentIndexChanged ), [replot_refractive_index]( int ) { replot_refractive_index(); } );
 	connect( ui.plotMaterialIndex_checkBox, &QCheckBox::stateChanged, [replot_refractive_index]( int ) { replot_refractive_index(); } );
+	connect( ui.plotMaterialComposition_doubleSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_refractive_index]( double ) { replot_refractive_index(); } );
+	connect( ui.plotTautsGap_doubleSpinBox,            qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_refractive_index]( double ) { replot_refractive_index(); } );
+	connect( ui.plotUrbachEnergy_doubleSpinBox,        qOverload<double>( &QDoubleSpinBox::valueChanged ), [replot_refractive_index]( double ) { replot_refractive_index(); } );
 
 	connect( ui.blackbodyAmplitude_horizontalSlider, &QSlider::valueChanged, [this, Avoid_Resignalling_setValue, replot_blackbody]( int )
 	{

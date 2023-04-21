@@ -45,9 +45,9 @@ struct Single_Graph : public Default_Single_Graph<X_Units, Y_Units>
 	QCPGraph* early_fit_graph = nullptr;
 	QCPGraph* late_fit_graph = nullptr;
 
-	double lower_x_fit = 1.0E-6;
+	double lower_x_fit = 0.1E-6;
 	double upper_x_fit = 4.0E-6;
-	double upper_x_fit2 = 20.0E-6;
+	double upper_x_fit2 = 4.0E-6;
 	double x_offset = 0.0;
 	double y_offset = 0.0;
 	double lowpass_MHz = -1.0;

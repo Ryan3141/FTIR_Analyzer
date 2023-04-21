@@ -19,6 +19,9 @@
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
+     <property name="handleWidth">
+      <number>12</number>
+     </property>
      <widget class="QWidget" name="layoutWidget">
       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
        <property name="sizeConstraint">
@@ -94,7 +97,7 @@
        <item>
         <widget class="SQL_Tree_Widget" name="treeWidget">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>1</verstretch>
           </sizepolicy>
@@ -121,10 +124,10 @@
           <bool>false</bool>
          </property>
          <attribute name="headerCascadingSectionResizes">
-          <bool>false</bool>
+          <bool>true</bool>
          </attribute>
          <attribute name="headerMinimumSectionSize">
-          <number>20</number>
+          <number>50</number>
          </attribute>
          <attribute name="headerShowSortIndicator" stdset="0">
           <bool>true</bool>
@@ -159,7 +162,7 @@
          </column>
          <item>
           <property name="text">
-           <string>Sample1</string>
+           <string>Loading</string>
           </property>
           <property name="text">
            <string/>
@@ -178,7 +181,7 @@
             <string/>
            </property>
            <property name="text">
-            <string>First</string>
+            <string>Grabbing SQL Data</string>
            </property>
            <property name="text">
             <string/>
@@ -195,7 +198,7 @@
             <string/>
            </property>
            <property name="text">
-            <string>Second</string>
+            <string>One Sec</string>
            </property>
            <property name="text">
             <string/>
@@ -252,6 +255,12 @@
        </property>
        <item>
         <widget class="QTabWidget" name="settings_tabWidget">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Ignored">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="currentIndex">
           <number>1</number>
          </property>

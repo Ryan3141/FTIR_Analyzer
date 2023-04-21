@@ -163,6 +163,22 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 			this->replot();
 		} );
 	} );
+
+	this->general_menu_functions.emplace_back( [ this ]( QMenu* menu, QPoint pos ) mutable
+	{
+		menu->addAction( "Zero Graphs Here Vertically", [ this, pos ]
+		{
+			for( auto & [name, graph] : this->remembered_graphs )
+			{
+				if( graph.x_data.size() == 0 || graph.y_data.size() == 0 )
+					continue;
+				auto [x_data, y_data] = this->axes.Prepare_XY_Data( graph );
+				arma::uword index = arma::index_min(arma::abs( fromQVec(x_data) - pos.x() ));
+				graph.y_offset -= y_data[ index ];
+			}
+			this->RegraphAll();
+		} );
+	} );
 }
 
 std::array<Fit_Results, 2> Fit_Lifetime_Piecewise( const arma::vec& initial_guess, const arma::vec& lower_limits, const arma::vec& upper_limits,
