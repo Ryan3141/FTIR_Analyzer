@@ -11,7 +11,7 @@
 //#include <boost/units/systems/si.hpp>
 #include <QObject>
 #include <qmetatype.h>
-#include <cppad/ipopt/solve.hpp>
+// #include <cppad/ipopt/solve.hpp>
 
 #include "rangeless_helper.hpp"
 

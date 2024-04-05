@@ -30,6 +30,7 @@ enum class Y_Units
 	CURRENT_A_PER_AREA_CM = 1,
 	LOG_CURRENT_A = 2,
 	LOG_CURRENT_A_PER_AREA_CM = 3,
+	RESISTANCE_OHM = 4,
 };
 
 struct IV_Scatter_Plot
@@ -142,6 +143,11 @@ struct Axes
 				currents_a = arma::abs( currents_a / ( side_lengths_um % side_lengths_um * 1E-8 ) ); // A / um^2 * 1E8 = A / cm^2
 			}
 			break;
+			case Y_Units::RESISTANCE_OHM:
+			{
+				currents_a = this->set_voltage / currents_a;
+			}
+			break;
 		}
 
 		switch( this->x_units )
@@ -225,9 +231,9 @@ struct Axes
 	double set_voltage = -0.1;
 
 	const static QString X_Unit_Names[ 3 ];
-	const static QString Y_Unit_Names[ 4 ];
+	const static QString Y_Unit_Names[ 5 ];
 	const static QString Change_To_X_Unit_Names[ 3 ];
-	const static QString Change_To_Y_Unit_Names[ 4 ];
+	const static QString Change_To_Y_Unit_Names[ 5 ];
 };
 
 using Single_Graph = IV_Scatter_Plot;

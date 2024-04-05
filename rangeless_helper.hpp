@@ -465,7 +465,7 @@ using fn::operators::operator%;   // arg % f % g % h; // h(g(f(std::forward<Arg>
 
 
 #include "boost/algorithm/string.hpp"
-inline std::tuple< std::vector<double>, std::vector<double> > Load_XY_CSV_Data( const std::string & data_to_parse, const char* delimiter = "," )
+inline std::tuple< std::vector<double>, std::vector<double> > Load_XY_CSV_Data( const std::string & data_to_parse, const char* delimiter = ",", int skip_lines = 0, bool allow_extra_columns = false )
 {
 	//if constexpr (false)
 	{
@@ -478,15 +478,22 @@ inline std::tuple< std::vector<double>, std::vector<double> > Load_XY_CSV_Data( 
 		unsorted.reserve( split_by_line.size() );
 		for( const auto &[ line_number, one_line ] : split_by_line % fn::transform( fn::get::enumerated{} ) )
 		{
-			if( one_line.size() == 0 )
+			if( one_line.size() == 0 || line_number < skip_lines )
 				continue; // Ignore blank lines
 
 			std::vector< std::string > split_by_commas;
 			split( split_by_commas, one_line, is_any_of( delimiter ) );
 			if( split_by_commas.size() != 2 )
 			{
-				std::cerr << "Invalid formatting in data at line " + std::to_string( line_number + 1 ); // Line numbers usually start at 1 not zero
-				continue;
+				if( allow_extra_columns && split_by_commas.size() > 2 )
+				{
+					split_by_commas.resize( 2 );
+				}
+				else
+				{
+					std::cerr << "Invalid formatting in data at line " + std::to_string( line_number + 1 ); // Line numbers usually start at 1 not zero
+					continue;
+				}
 			}
 
 			unsorted.emplace_back( stod( split_by_commas[ 0 ] ), stod( split_by_commas[ 1 ] ) );

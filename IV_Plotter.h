@@ -27,7 +27,6 @@ private:
 	void Graph_Rule07( double dark_current_a_cm2, double temperature_in_k );
 	void Save_To_CSV( const ID_To_Metadata & things_to_save );
 
-
 	void Update_Preview_Graph();
 
 	int simulated_graph_number = 0;

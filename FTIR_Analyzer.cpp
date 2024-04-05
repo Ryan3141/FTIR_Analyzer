@@ -36,7 +36,7 @@ static QVector<double> Find_Zero_Crossings( QVector<double> x_data, QVector<doub
 	return output;
 }
 
-FTIR_Analyzer::FTIR_Analyzer( QWidget *parent )
+FTIR_Analyzer::FTIR_Analyzer( QWidget *parent, bool ftir_only )
 	: QWidget( parent )
 {
 	ui.setupUi( this );
@@ -54,7 +54,7 @@ FTIR_Analyzer::FTIR_Analyzer( QWidget *parent )
 	//} );
 
 	Initialize_SQL( config_filename );
-	Initialize_Tree_Table();
+	Initialize_Tree_Table( ftir_only );
 	Initialize_Graph();
 	Initialize_Simulation();
 	for( auto[ name, material ] : name_to_material )
@@ -72,6 +72,8 @@ void FTIR_Analyzer::Initialize_SQL( QString config_filename )
 
 	sql_manager = new SQL_Manager_With_Local_Cache( this, config_filename, "FTIR" );
 	connect( sql_manager, &SQL_Manager_With_Local_Cache::Error_Connecting_To_SQL, this, [ config_filename ]( QSqlError error_message )
+	// sql_manager = new SQL_Manager( this, config_filename, "FTIR" );
+	// connect( sql_manager, &SQL_Manager::Error_Connecting_To_SQL, this, [ config_filename ]( QSqlError error_message )
 	{
 		QMessageBox msgBox;
 		msgBox.setText( "Error Opening SQL" );
@@ -254,28 +256,37 @@ void FTIR_Analyzer::Run_Fit()
 	//QMetaObject::invokeMethod( this->thin_film_manager, [=] { this->thin_film_manager->Get_Best_Fit( temperature, copy_layers, wavelength_data, transmission_data, backside_material ); } );
 }
 
-void FTIR_Analyzer::Initialize_Tree_Table()
+void FTIR_Analyzer::Initialize_Tree_Table( bool ftir_only )
 {
-	config.header_titles    = QStringList{ "Date", "Sample Name", "Temperature (K)", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Location", "Bias (V)", "Time of Day", "T Gain", "Gain", "Dewar Temp (C)", "measurement_id" };
-	config.what_to_collect  = QStringList{ "date(time)", "sample_name", "temperature_in_k", "device_side_length_in_um", "device_location", "bias_in_v", "time(time)", "transimpedance_gain", "gain", "dewar_temp_in_c", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
 	config.sql_table        = "ftir_measurements";
 	config.raw_data_columns = QStringList{ "measurement_id","wavenumber","intensity" };
 	config.raw_data_table   = "ftir_raw_data";
 	config.sorting_strategy = "ORDER BY measurement_id, wavenumber ASC";
+	config.header_titles    = QStringList{ "Date", "Sample Name", "Temperature (K)", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Location", "Bias (V)", "Time of Day", "T Gain", "Gain", "Dewar Temp (C)", "measurement_id" };
+	config.what_to_collect  = QStringList{ "date(time)", "sample_name", "temperature_in_k", "device_side_length_in_um", "device_location", "bias_in_v", "time(time)", "transimpedance_gain", "gain", "dewar_temp_in_c", "measurement_id" }; // DATE_FORMAT(time, '%b %e %Y') DATE_FORMAT(time, '%H:%i:%s')
 	config.columns_to_show  = 8;
+	if( ftir_only )
+	{
+		config.header_titles.removeOne( "Bias (V)" );
+		config.what_to_collect.removeOne( "bias_in_v" );
+		config.columns_to_show -= 1;
+	}
 
 	ui.treeWidget->Set_Column_Info( config.header_titles, config.what_to_collect, config.columns_to_show );
 
-	auto repoll_sql = [ this ]
+	auto repoll_sql = [ this, ftir_only ]
 	{
 		QString user = ui.sqlUser_lineEdit->text();
 		QString filter = ui.filter_lineEdit->text();
 
+		QString extra_filter = QString( " WHERE user=\"%1\"" ).arg( user );
+		if( ftir_only )
+			extra_filter += " AND bias_in_v IS NULL";
 		sql_manager->Grab_All_SQL_Metadata( config.what_to_collect, config.sql_table, this, [ this, filter ]( Structured_Metadata data )
 		{
 			ui.treeWidget->current_meta_data = std::move( data );
 			ui.treeWidget->Refilter( filter );
-		}, QString( " WHERE user=\"%1\"" ).arg( user ) );
+		}, extra_filter );
 	};
 
 	connect( ui.treeWidget, &SQL_Tree_Widget::Data_Double_Clicked, [this]( ID_To_Metadata id_and_metadata )
@@ -297,13 +308,19 @@ void FTIR_Analyzer::Initialize_Tree_Table()
 void FTIR_Analyzer::Initialize_Graph()
 {
 	ui.interactiveGraphToolbar->Connect_To_Graph( ui.customPlot );
-	connect( ui.customPlot, &FTIR::Interactive_Graph::Graph_Selected, [this]( QCPGraph* selected_graph )
+	connect( ui.customPlot, &Interactive_Graph::Graph_Selected, [this]( QCPGraph* selected_graph )
 	{
-		const auto & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+		Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
 		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "sample_name", "" ) );
 		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "temperature_in_k", "" ) );
 		this->ui.selectedCutoff_lineEdit->setText(      Info_Or_Default<QString>( measurement.meta, "gain", "" ) );
 
+		if( selected_graph == nullptr )
+		{
+			ui.graphCustomizer->clearLayout();
+			return;
+		}
+		ui.graphCustomizer->New_Graph_Selected<Single_Graph>( {}, measurement );
 		//	QVector<double> cutoffs = Find_Zero_Crossings( x_data, y_data, *std::max_element( y_data.constBegin(), y_data.constEnd() ) / 2 );
 		//	if( !cutoffs.isEmpty() )
 		//	{

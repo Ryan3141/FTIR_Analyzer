@@ -160,7 +160,7 @@ void SQL_Manager::Grab_SQL_XY_Data_From_Measurement_IDs( const QStringList & wha
 			return;
 
 		QSqlQuery query( sql_db );
-		query.prepare( QString( "SELECT %1 FROM %2 WHERE measurement_id=\"%3\" %4" )
+		query.prepare( QString( "SELECT %1 FROM %2 WHERE (measurement_id=\"%3\") %4" )
 					   .arg( what_to_collect.join( ',' ), table_name, measurement_ids.join( "\" OR measurement_id=\"" ), Sanitize_SQL(extra_filtering) ) );
 		if( !query.exec() )
 		{
@@ -196,7 +196,7 @@ void SQL_Manager::Grab_SQL_Metadata_From_Measurement_IDs( const QStringList & wh
 
 		QSqlQuery query( this->sql_db );
 		//QStringList what_to_collect{ "sample_name", "time", "temperature_in_k", "bias_in_v" };
-		query.prepare( QString( "SELECT %1 FROM %2 WHERE measurement_id=\"%3\" %4" )
+		query.prepare( QString( "SELECT %1 FROM %2 WHERE (measurement_id=\"%3\") %4" )
 						.arg( what_to_collect.join( ',' ), table_name, measurement_ids.join( "\" OR measurement_id=\"" ), Sanitize_SQL(extra_filtering) ) );
 		if( !query.exec() )
 		{
@@ -228,7 +228,7 @@ void SQL_Manager::Grab_All_SQL_Metadata( const QStringList & what_to_collect, co
 	QTimer::singleShot( 0, this, [ this, what_to_collect, table_name, callback_context, callback, extra_filtering ]
 	{
 		QSqlQuery query( this->sql_db );
-		QString query_string = QString( "SELECT %1 FROM %2" ).arg( what_to_collect.join( "," ), table_name );
+		QString query_string = QString( "SELECT %1 FROM %2 " ).arg( what_to_collect.join( "," ), table_name );
 		if( !extra_filtering.isEmpty() )
 			query_string += Sanitize_SQL( extra_filtering );
 

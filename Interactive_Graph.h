@@ -19,9 +19,8 @@ struct Default_Single_Graph
 	Y_Types y_units;
 	QVector<double> x_data;
 	QVector<double> y_data;
-	QCPGraph* graph_pointer;
+	QCPGraph* graph_pointer = nullptr;
 	Labeled_Metadata meta;
-	std::optional<double> x_location_for_y_alignment;
 
 	void SetColor( const QColor & color ) const
 	{
@@ -92,6 +91,9 @@ public:
 
 	template< decltype(Single_Graph::x_units) X, decltype( Single_Graph::y_units ) Y >
 	Single_Graph & Graph( QVector<double> x_data, QVector<double> y_data, QString measurement_name, QString graph_title = QString(), Labeled_Metadata meta = Labeled_Metadata{} );
+
+	void dragEnterEvent(QDragEnterEvent *event) override;
+	void keyPressEvent( QKeyEvent *event ) override;
 
 	Axes_Scales axes;
 

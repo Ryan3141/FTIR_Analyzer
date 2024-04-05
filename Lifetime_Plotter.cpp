@@ -180,8 +180,13 @@ void Plotter::Initialize_Tree_Table()
 void Plotter::Initialize_Graph()
 {
 	ui.interactiveGraphToolbar->Connect_To_Graph( ui.customPlot );
-	connect( ui.customPlot, &Lifetime::Interactive_Graph::Graph_Selected, [ this ]( QCPGraph* selected_graph )
+	connect( ui.customPlot, &Interactive_Graph::Graph_Selected, [ this ]( QCPGraph* selected_graph )
 	{
+		if( selected_graph == nullptr )
+		{
+			ui.graphCustomizer->clearLayout();
+			return;
+		}
 		Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
 		this->ui.selectedName_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "sample_name", "" ) );
 		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "temperature_in_k", "" ) );
@@ -191,10 +196,8 @@ void Plotter::Initialize_Graph()
 		std::vector<Graph_Double_Adjustment> label_type_value_list = {
 			{ "Lower Fit", measurement.lower_x_fit * 1.0E6, [this, &measurement, graph_name, selected_graph]( double new_value )
 				{
-					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
-					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 					measurement.lower_x_fit = new_value * 1.0E-6;
-					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->Redo_Fits( { &measurement } );
 					ui.customPlot->replot();
 				} },
 			// { "Middle Of Fit", measurement.upper_x_fit * 1.0E6, [this, &measurement, graph_name, selected_graph]( double new_value )
@@ -207,37 +210,29 @@ void Plotter::Initialize_Graph()
 			// 	} },
 			{ "Upper Fit", measurement.upper_x_fit2 * 1.0E6, [this, &measurement, graph_name, selected_graph]( double new_value )
 				{
-					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
-					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 					measurement.upper_x_fit2 = new_value * 1.0E-6;
-					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->Redo_Fits( { &measurement } );
 					ui.customPlot->replot();
 				} },
-			{ "X Offset", measurement.x_offset * 1.0E6, [this, graph_name, selected_graph]( double new_value )
+			{ "X Offset", measurement.x_offset * 1.0E6, [this, &measurement, graph_name, selected_graph]( double new_value )
 				{
-					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
-					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 					measurement.x_offset = new_value * 1.0E-6;
 					ui.customPlot->axes.Graph_XY_Data( graph_name, measurement );
-					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->Redo_Fits( { &measurement } );
 					ui.customPlot->replot();
 				}, -100.0, 100.0, 0.1 },
-			{ "Y Offset", measurement.y_offset, [this, graph_name, selected_graph]( double new_value )
+			{ "Y Offset", measurement.y_offset, [this, &measurement, graph_name, selected_graph]( double new_value )
 				{
-					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
-					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 					measurement.y_offset = new_value;
 					ui.customPlot->axes.Graph_XY_Data( graph_name, measurement );
-					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->Redo_Fits( { &measurement } );
 					ui.customPlot->replot();
 				}, -5.0, 5.0, 0.02, " V" },
-			{ "Lowpass Filter", measurement.lowpass_MHz, [this, graph_name, selected_graph]( double new_value )
+			{ "Lowpass Filter", measurement.lowpass_MHz, [this, &measurement, graph_name, selected_graph]( double new_value )
 				{
-					Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
-					std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit = { {graph_name, measurement} };
 					measurement.lowpass_MHz = new_value;
 					ui.customPlot->axes.Graph_XY_Data( graph_name, measurement );
-					ui.customPlot->Redo_Fits( graphs_for_fit );
+					ui.customPlot->Redo_Fits( { &measurement } );
 					ui.customPlot->replot();
 				}, -1.0, 1000.0, 1.0, " MHz" },
 		};
@@ -457,7 +452,7 @@ void Graph_Measurement( ID_To_XY_Data data, Interactive_Graph* graph, QString me
 	}		
 	
 	Single_Graph & single_graph = graph->Graph<X_Units::TIME_US, Y_Units::VOLTAGE_V>( x_data, copy_y_data, measurement_id + QString::number(median_filter_kernel_width), used_legend_label, metadata );
-	graph->Redo_Fits( { std::tuple<QString, Single_Graph&>{measurement_id, single_graph} } );
+	graph->Redo_Fits( { &single_graph } );
 	graph->replot();
 }
 

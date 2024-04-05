@@ -21,6 +21,7 @@ enum class X_Units
 enum class Y_Units
 {
 	CAPACITANCE_F = 0,
+	CAPACITANCE_F_PER_AREA_CM,
 };
 }
 

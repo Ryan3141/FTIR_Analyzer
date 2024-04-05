@@ -29,11 +29,12 @@ class Graph_Customizer  : public QWidget
 
 private:
 	QGridLayout layout;
-	void clearLayout();
 
 public:
 	Graph_Customizer(QWidget *parent);
 
+	void clearLayout();
+	
 	template< typename SingleGraph >
 	void New_Graph_Selected( const std::vector<Graph_Double_Adjustment>& label_type_value_list, SingleGraph & g )
 	{
@@ -49,6 +50,7 @@ public:
 			spinbox->setMaximum( max );
 			spinbox->setSingleStep( step );
 			spinbox->setSuffix( suffix );
+			spinbox->setDecimals( 3 );
 			spinbox->setValue( initial_value );
 			layout.addWidget( spinbox, i++, 1);
 			connect( spinbox, qOverload<double>( &QDoubleSpinBox::valueChanged ), [ action ]( double new_value ){ action( new_value ); } );

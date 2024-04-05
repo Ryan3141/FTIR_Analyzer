@@ -65,7 +65,7 @@ void Interactive_Graph<Single_Graph, Axes>::Initialize_Graph()
 	connect( this, &QCustomPlot::axisDoubleClick,   this, &Interactive_Graph<Single_Graph, Axes>::axisLabelDoubleClick );
 	connect( this, &QCustomPlot::legendDoubleClick, this, &Interactive_Graph<Single_Graph, Axes>::legendDoubleClick );
 	//connect( title, &QCPTextElement::doubleClicked, this, &Interactive_Graph<Single_Graph, Axes>::titleDoubleClick );
-
+	
 	//// connect slot that shows a message in the status bar when a graph is clicked:
 	//connect( this, SIGNAL( plottableClick( QCPAbstractPlottable*, int, QMouseEvent* ) ), this, SLOT( graphClicked( QCPAbstractPlottable*, int ) ) );
 
@@ -81,6 +81,15 @@ void Interactive_Graph<Single_Graph, Axes>::Initialize_Graph()
 //	//if( !event->isAccepted() )
 //	//	this->refitGraphs( event );
 //}
+
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::keyPressEvent( QKeyEvent *event )
+{
+	if( event->key() == Qt::Key_Delete )
+		this->removeSelectedGraph();
+	else
+		QCustomPlot::keyPressEvent( event );
+}
 
 template<typename Single_Graph, typename Axes>
 void Interactive_Graph<Single_Graph, Axes>::titleDoubleClick( QMouseEvent* event )
@@ -224,6 +233,8 @@ void Interactive_Graph<Single_Graph, Axes>::removeSelectedGraph()
 	if( this->selectedGraphs().size() == 0 )
 		return;
 
+	emit Graph_Selected( nullptr ); // Prevents stale references
+
 	auto in = []( const auto& does_this_contain, auto this_thing ) {return std::find( does_this_contain.begin(), does_this_contain.end(), this_thing ) != does_this_contain.end(); };
 	QCPGraph* selected_graph = this->selectedGraphs().first();
 	graphs_in_order.erase( std::remove_if( graphs_in_order.begin(), graphs_in_order.end(),
@@ -249,6 +260,7 @@ void Interactive_Graph<Single_Graph, Axes>::removeSelectedGraph()
 template<typename Single_Graph, typename Axes>
 void Interactive_Graph<Single_Graph, Axes>::removeAllGraphs()
 {
+	emit Graph_Selected( nullptr ); // Prevents stale references
 	this->clearGraphs();
 	this->remembered_graphs.clear();
 	this->graphs_in_order.clear();
@@ -684,7 +696,7 @@ Single_Graph & Interactive_Graph<Single_Graph, Axes>::Graph( QVector<double> x_d
 			current_graph->setName( graph_title );
 
 		// Remember data before changing it at all
-		remembered_graphs[ measurement_name ] = Single_Graph{ X, Y, std::move( x_data ), std::move( y_data ), current_graph, meta, std::nullopt };
+		remembered_graphs[ measurement_name ] = Single_Graph{ X, Y, std::move( x_data ), std::move( y_data ), current_graph, meta };
 		const Single_Graph & the_graph = remembered_graphs[ measurement_name ];
 		graphs_in_order.push_back( &the_graph );
 		auto[ adjusted_x_data, adjusted_y_data ] = axes.Prepare_XY_Data( the_graph );
@@ -731,4 +743,10 @@ Single_Graph & Interactive_Graph<Single_Graph, Axes>::Graph( QVector<double> x_d
 
 		return remembered_graphs[ measurement_name ];
 	}
+}
+
+template<typename Single_Graph, typename Axes>
+void Interactive_Graph<Single_Graph, Axes>::dragEnterEvent(QDragEnterEvent *event)
+{
+    event->acceptProposedAction();
 }

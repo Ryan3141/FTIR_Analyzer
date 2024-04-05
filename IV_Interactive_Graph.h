@@ -30,7 +30,10 @@ enum class Y_Units
 	RESISTANCE_OHM_PER_AREA_CM = 6
 };
 
-using Single_Graph = Default_Single_Graph<X_Units, Y_Units>;
+struct Single_Graph : public Default_Single_Graph<X_Units, Y_Units>
+{
+	std::optional<double> resistance;
+};
 
 struct Axes
 {
@@ -46,6 +49,7 @@ struct Axes
 			{
 				double side_cm = graph.meta.find( "device_side_length_in_um" )->second.toDouble() * 1E-4;
 				y_data /= side_cm * side_cm;
+				y_data += x_data * graph.resistance.value_or( 0.0 ) * 1E-6;
 			}
 			break;
 			case Y_Units::LOG_CURRENT_A:
@@ -58,7 +62,11 @@ struct Axes
 			{
 				double side_cm = graph.meta.find( "device_side_length_in_um" )->second.toDouble() * 1E-4;
 				//y_data = arma::log10( arma::abs( y_data / ( side_cm * side_cm ) ) ); // Plotting on log scale now so taking log is unnecessary
-				y_data = arma::abs( y_data / ( side_cm * side_cm ) );
+				y_data /= side_cm * side_cm;
+				y_data += x_data * graph.resistance.value_or( 0.0 ) * 1E-6;
+				y_data = arma::abs( y_data );
+				// y_data = arma::abs( y_data / (side_cm * side_cm) );
+				// y_data += arma::abs( x_data * graph.resistance.value_or( 0.0 ) * 1E-6 );
 			}
 			break;
 			case Y_Units::ONE_SIDE_LOG_CURRENT_A_PER_AREA_CM:
@@ -123,7 +131,11 @@ public:
 	Interactive_Graph( QWidget *parent = nullptr );
 	void Change_X_Axis( int index );
 	void Change_Y_Axis( int index );
-
+	QCPColorScale *colorScale = nullptr;
+	void Add_Raw_Text_Data( const std::string & text_data, std::optional<QString> title = std::nullopt, Labeled_Metadata metadata = { {"device_side_length_in_um", 10000.0} } );
+	void Add_Color_Bar();
+	void Remove_Color_Bar();
+	void dropEvent( QDropEvent *event ) override;
 private:
 	QSharedPointer<QCPAxisTicker> linearTicker;
 	QSharedPointer<QCPAxisTickerLog> logTicker;

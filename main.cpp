@@ -95,12 +95,13 @@ void Main_Widget::Prepare_New_Tab( QLabel* statusLabel )
 		ui.main_tabWidget->insertTab( index, new_tab, title );
 		ui.main_tabWidget->setCurrentIndex( index );
 	};
-	connect( ui.startFTIR_pushButton,     &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new FTIR::FTIR_Analyzer( this ), "&FTIR" ); } );
-	connect( ui.startIV_pushButton,       &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new IV::Plotter( this ), "&IV" ); } );
-	connect( ui.startLifetime_pushButton, &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new Lifetime::Plotter( this ), "&Lifetime" ); } );
-	connect( ui.startReport_pushButton,   &QPushButton::clicked, [ this, prepare_new_tab2 ]( bool checked ) { prepare_new_tab2( new Report::Report_Plots( this ), "&Report" ); } );
-	connect( ui.startIVBySize_pushButton, &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new IV_By_Size::Plotter( this ), "IV By &Size" ); } );
-	connect( ui.startCV_pushButton,       &QPushButton::clicked, [ this, prepare_new_tab ]( bool checked ) { prepare_new_tab( new CV::Plotter( this ), "&CV" ); } );
+	connect( ui.startFTIR_pushButton,             &QPushButton::clicked, [ this, prepare_new_tab  ]( bool checked ) { prepare_new_tab( new FTIR::FTIR_Analyzer( this, true ), "&FTIR" ); } );
+	connect( ui.startSpectralResponse_pushButton, &QPushButton::clicked, [ this, prepare_new_tab  ]( bool checked ) { prepare_new_tab( new FTIR::FTIR_Analyzer( this, false ), "S&pectral Response" ); } );
+	connect( ui.startIV_pushButton,               &QPushButton::clicked, [ this, prepare_new_tab  ]( bool checked ) { prepare_new_tab( new IV::Plotter( this ), "&IV" ); } );
+	connect( ui.startLifetime_pushButton,         &QPushButton::clicked, [ this, prepare_new_tab  ]( bool checked ) { prepare_new_tab( new Lifetime::Plotter( this ), "&Lifetime" ); } );
+	connect( ui.startReport_pushButton,           &QPushButton::clicked, [ this, prepare_new_tab2 ]( bool checked ) { prepare_new_tab2( new Report::Report_Plots( this ), "&Report" ); } );
+	connect( ui.startIVBySize_pushButton,         &QPushButton::clicked, [ this, prepare_new_tab  ]( bool checked ) { prepare_new_tab( new IV_By_Size::Plotter( this ), "IV By &Size" ); } );
+	connect( ui.startCV_pushButton,               &QPushButton::clicked, [ this, prepare_new_tab  ]( bool checked ) { prepare_new_tab( new CV::Plotter( this ), "&CV" ); } );
 
 	ui.main_tabWidget->tabBar()->tabButton( 0, QTabBar::RightSide )->resize( 0, 0 );
 }

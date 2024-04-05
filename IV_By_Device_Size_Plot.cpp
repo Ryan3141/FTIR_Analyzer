@@ -271,18 +271,20 @@ const QString Axes::X_Unit_Names[ 3 ] = {
 								QString::fromWCharArray( L"Side Length (\u03BCm)" ),
 								QString::fromWCharArray( L"Area / Perimeter (\u03BCm)" ),
 								QString::fromWCharArray( L"Perimeter / Area (\u03BCm\u207B\u00B9)" ) };
-const QString Axes::Y_Unit_Names[ 4 ] = { "Current (A)",
+const QString Axes::Y_Unit_Names[ 5 ] = { "Current (A)",
 								QString::fromWCharArray( L"Current (A/cm\u00B2)" ),
 								QString::fromWCharArray( L"Current (log\u2081\u2080(|A|))" ),
-								QString::fromWCharArray( L"Current (log\u2081\u2080(|A|/cm\u00B2))" ) };
+								QString::fromWCharArray( L"Current (log\u2081\u2080(|A|/cm\u00B2))" ),
+								QString::fromWCharArray( L"Resistance (\u03A9)" ) };
 
 const QString Axes::Change_To_X_Unit_Names[ 3 ] = { "Change to Side Length",
 								"Change to Area / Perimeter",
 								"Change to Perimeter / Area" };
 
-const QString Axes::Change_To_Y_Unit_Names[ 4 ] = { "Change to current",
+const QString Axes::Change_To_Y_Unit_Names[ 5 ] = { "Change to current",
 								"Change to current per area",
 								QString::fromWCharArray( L"Change to log\u2081\u2080( Current )" ),
-								QString::fromWCharArray( L"Change to log\u2081\u2080( Current per area )" ) };
+								QString::fromWCharArray( L"Change to log\u2081\u2080( Current per area )" ),
+								QString::fromWCharArray( L"Change to resistance" ) };
 
 }

@@ -259,15 +259,28 @@ void Plotter::Graph_Measurement( QString measurement_id, Labeled_Metadata metada
 	sql_manager->Grab_SQL_XY_Data_From_Measurement_IDs( config.raw_data_columns, config.raw_data_table, { measurement_id }, this, [ this, measurement_id, metadata ]( ID_To_XY_Data data )
 	{
 		auto[ x_data, y_data ] = data[ measurement_id ];
-		const auto q = [ &metadata ]( const auto & i ) { return metadata.find( i )->second.toString(); };
+		const auto q = [ &metadata ]( const auto & i ) -> QString {
+			auto find_value = metadata.find( i );
+			if( find_value == metadata.end() || find_value->second.isNull() )
+				return "";
+			else
+				return find_value->second.toString();
+			};
+		const auto qn = [ &metadata ]( const auto & i ) -> QString {
+			auto find_value = metadata.find( i );
+			if( find_value == metadata.end() || find_value->second.isNull() )
+				return "";
+			else
+				return QString::number( find_value->second.toDouble(), 'g', 4 );
+			};
 		ui.customPlot->Graph<X_Units::VOLTAGE_V, Y_Units::CAPACITANCE_F>(
 			x_data, y_data, measurement_id,
 			//QString("%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3").arg( row[0].toString(), row[2].toString(), row[3].toString(), QString::number(int(std::sqrt(row[4].toInt()))) ) );
 			QString( "%1 %2 K %4" + QString( QChar( 0x03BC ) ) + "m: %3" ).arg(
-				q( "Sample Name" ),
-				q( "Temperature (K)" ),
-				q( "Location" ),
-				q( "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)" ) ),
+				q( "sample_name" ),
+				qn( "temperature_in_k" ),
+				q( "device_location" ),
+				qn( "device_side_length_in_um" ) ),
 			metadata );
 		ui.customPlot->replot();
 	}, config.sorting_strategy );

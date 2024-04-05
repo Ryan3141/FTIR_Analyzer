@@ -244,6 +244,9 @@
         <height>300</height>
        </size>
       </property>
+      <property name="acceptDrops">
+       <bool>true</bool>
+      </property>
       <property name="toolTipDuration">
        <number>10</number>
       </property>

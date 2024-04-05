@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1279</width>
-    <height>716</height>
+    <width>1172</width>
+    <height>689</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -39,11 +39,11 @@
        <attribute name="title">
         <string>+</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_3">
+       <layout class="QGridLayout" name="gridLayout_3" rowstretch="1,1" columnstretch="1,1,1,1" rowminimumheight="0,0">
         <item row="0" column="0">
          <widget class="QPushButton" name="startFTIR_pushButton">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -61,7 +61,7 @@
         <item row="0" column="1">
          <widget class="QPushButton" name="startIV_pushButton">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -79,7 +79,7 @@
         <item row="0" column="2">
          <widget class="QPushButton" name="startLifetime_pushButton">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -97,7 +97,7 @@
         <item row="0" column="3">
          <widget class="QPushButton" name="startReport_pushButton">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -115,7 +115,7 @@
         <item row="1" column="1">
          <widget class="QPushButton" name="startIVBySize_pushButton">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -133,7 +133,7 @@
         <item row="1" column="2">
          <widget class="QPushButton" name="startCV_pushButton">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -148,6 +148,25 @@
           </property>
          </widget>
         </item>
+        <item row="1" column="0">
+         <widget class="QPushButton" name="startSpectralResponse_pushButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>24</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Spectral
+Response</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </widget>
@@ -159,8 +178,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1279</width>
-     <height>21</height>
+     <width>1172</width>
+     <height>30</height>
     </rect>
    </property>
   </widget>

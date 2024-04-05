@@ -2,6 +2,8 @@
 // #include "CppAD_Curve_Fitting.h"
 #include "Optimize.h"
 
+#include "boost/algorithm/string.hpp"
+
 #include "Lifetime_Interactive_Graph.h"
 
 namespace Lifetime
@@ -156,10 +158,21 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 
 			if( !mimeData->hasText() )
 				return;
-			auto[ x_data, y_data ] = Load_XY_CSV_Data( mimeData->text().toStdString(), ",\t" );
+
+			std::string clipboard_text = mimeData->text().toStdString();
+			
+			// Check if there is a label in the first line
+			std::vector< std::string > split_by_line;
+			boost::split( split_by_line, clipboard_text, boost::is_any_of( "\n\r" ), boost::algorithm::token_compress_on );
+			std::vector< std::string > split_by_delimeter;
+			boost::split( split_by_delimeter, split_by_line[0], boost::is_any_of( ",\t" ) );
+			QString label = split_by_delimeter.size() > 1 ? QString("Clipboard Data") : QString::fromStdString( split_by_delimeter[0] );
+			int skip_header = split_by_delimeter.size() > 1 ? 0 : 1;
+			
+			auto[ x_data, y_data ] = Load_XY_CSV_Data( clipboard_text, ",\t", skip_header );
 			static int clipboard_index = 0;
 			this->Graph<X_Units::TIME_US, Y_Units::DONT_CHANGE>( toQVec( x_data ), toQVec( y_data ),
-																	QString("Clipboard Data %1").arg( clipboard_index++ ), "Clipboard Data");
+																	QString("Clipboard Data %1").arg( clipboard_index++ ), label );
 			this->replot();
 		} );
 	} );
@@ -168,14 +181,21 @@ Interactive_Graph::Interactive_Graph( QWidget* parent ) :
 	{
 		menu->addAction( "Zero Graphs Here Vertically", [ this, pos ]
 		{
+			// Convert to position in graph coordinates
+			double x = this->xAxis->pixelToCoord( pos.x() );
+			double y = this->yAxis->pixelToCoord( pos.y() );
 			for( auto & [name, graph] : this->remembered_graphs )
 			{
 				if( graph.x_data.size() == 0 || graph.y_data.size() == 0 )
 					continue;
 				auto [x_data, y_data] = this->axes.Prepare_XY_Data( graph );
-				arma::uword index = arma::index_min(arma::abs( fromQVec(x_data) - pos.x() ));
+				auto index = arma::index_min(arma::abs( fromQVec(x_data) - x ));
 				graph.y_offset -= y_data[ index ];
 			}
+			std::vector<Single_Graph*> graphs;
+			for( auto & [name, graph] : this->remembered_graphs )
+				graphs.emplace_back( &graph );
+			this->Redo_Fits( graphs );
 			this->RegraphAll();
 		} );
 	} );
@@ -217,7 +237,8 @@ std::array<Fit_Results, 2> Fit_Lifetime_Piecewise( const arma::vec& initial_gues
 	return { Fit_Results{ std::exp(fit_params[ 0 ]), fit_params[ 1 ], fit_params[ 2 ] }, Fit_Results{ std::exp(fit_params2[ 0 ]), fit_params2[ 1 ], fit_params2[ 2 ] } };
 }
 
-void Interactive_Graph::Redo_Fits( std::vector<std::tuple<QString, Single_Graph &>> graphs_for_fit )
+
+void Interactive_Graph::Redo_Fits( std::vector<Single_Graph*> graphs_for_fit )
 {
 	auto exponential_function = [](const arma::vec& fit_params, const arma::vec& time) -> arma::vec
 	{
@@ -239,11 +260,11 @@ void Interactive_Graph::Redo_Fits( std::vector<std::tuple<QString, Single_Graph 
 		return A * arma::exp( x1 ) + B * arma::exp( x2 );
 	};
 
-
-	for( const auto & [name, graph] : graphs_for_fit )
+	for( Single_Graph* graph_ptr : graphs_for_fit )
 	{
-		const arma::vec initial_guess = {  1.0,   0E-6,  1E-6, 1.0,   0E-6,  1E-6 };
-		const arma::vec lower_limits = { 1E-12, -20E-6,  5E-9, 0.0, -20E-6, 50E-9 };
+		Single_Graph & graph = *graph_ptr;
+		const arma::vec initial_guess = {  1.0,   0E-6,   1E-6, 1.0,   0E-6,   1E-6 };
+		const arma::vec lower_limits = { 1E-12, -20E-6,   5E-9, 0.0, -20E-6,  50E-9 };
 		const arma::vec upper_limits = {   +10, +20E-6, 100E-6, +10, +20E-6, 100E-6 };
 
 		arma::vec x = fromQVec( graph.x_data );
@@ -391,7 +412,8 @@ void Interactive_Graph::Change_Axes( int index )
 			return lifetime * 1E6;
 		} ) % fn::to( QVector<double>{} );
 
-		Graph<X_Units::TEMPERATURE_K, Y_Units::TIME_US>( temperatures, lifetimes_us, "Vs_Temperature", "Lifetime vs Temperature", {} );
+		if( lifetimes_us.size() != 0 && lifetimes_us.size() == temperatures.size() )
+			Graph<X_Units::TEMPERATURE_K, Y_Units::TIME_US>( temperatures, lifetimes_us, "Vs_Temperature", "Lifetime vs Temperature", {} );
 	}
 	else if( x_units == X_Units::TIME_US )
 	{

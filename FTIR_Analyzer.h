@@ -25,7 +25,7 @@ signals:
 public slots:
 
 public:
-	FTIR_Analyzer( QWidget *parent = Q_NULLPTR );
+	FTIR_Analyzer( QWidget *parent = Q_NULLPTR, bool ftir_only = true );
 	Ui::FTIR_Analyzer ui;
 
 private:
@@ -36,7 +36,7 @@ private:
 
 	Material_Layer Get_Backside_Material( double temperature_in_k );
 
-	void Initialize_Tree_Table();
+	void Initialize_Tree_Table( bool ftir_only );
 	void Initialize_Graph();
 	void Initialize_Simulation();
 	void Initialize_SQL( QString config_filename );
@@ -56,6 +56,7 @@ private:
 	QLabel* statusLabel;
 	Thin_Film_Interference* thin_film_manager;
 	SQL_Manager_With_Local_Cache* sql_manager;
+	// SQL_Manager* sql_manager;
 	SQL_Configuration config;
 };
 

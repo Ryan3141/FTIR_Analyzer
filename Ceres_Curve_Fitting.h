@@ -80,6 +80,107 @@ std::array<Fit_Results, 2> Ceres_Fit_Lifetime( const arma::vec& initial_guess, c
 		return { Fit_Results{ (fit_vars[ 3 ]), fit_vars[ 4 ], fit_vars[ 5 ] }, Fit_Results{ (fit_vars[ 0 ]), fit_vars[ 1 ], fit_vars[ 2 ] } };
 }
 
+struct SlopeResidual {
+	SlopeResidual( double x, double y1, double y2 ) : x_( x ), y1_( y1 ), y2_( y2 ) {}
+	template <typename T>
+	bool operator()( const T* const m, T* residual ) const {
+		residual[ 0 ] = y1_ - ( y2_ - m[ 0 ] * 1E-6 * x_ );
+		// residual[ 0 ] = log10( abs(y1_) ) - log10( abs( y2_ + m[ 0 ] * x_) );
+		return true;
+	}
+private:
+	const double x_;
+	const double y1_;
+	const double y2_;
+};
+
+inline arma::vec Resample( const arma::vec& x, const arma::vec& y, const arma::vec & resample_x )
+{
+	arma::vec resample_y( resample_x.size() );
+	for( int i = 0; i < resample_x.size(); i++ )
+	{
+		auto lower = std::lower_bound( x.begin(), x.end(), resample_x[ i ] );
+		if( lower == x.end() )
+			resample_y[ i ] = y[ y.size() - 1 ];
+		else if( lower == x.begin() )
+			resample_y[ i ] = y[ 0 ];
+		else
+		{
+			auto upper = lower;
+			--lower;
+			auto lower_index = std::distance( x.begin(), lower );
+			auto upper_index = std::distance( x.begin(), upper );
+			auto lower_x = x[ lower_index ];
+			auto upper_x = x[ upper_index ];
+			auto lower_y = y[ lower_index ];
+			auto upper_y = y[ upper_index ];
+			resample_y[ i ] = lower_y + (resample_x[ i ] - lower_x) * (upper_y - lower_y) / (upper_x - lower_x);
+		}
+	}
+	return resample_y;
+}
+
+template< typename Single_Graph >
+double Ceres_Fit_Resistor( const Single_Graph & fit_to_me, const Single_Graph & adjust_me )
+{
+	using ceres::AutoDiffCostFunction;
+	using ceres::CostFunction;
+	using ceres::Problem;
+	using ceres::Solve;
+	using ceres::Solver;
+	arma::vec fit_vars     = {0};
+	arma::vec lower_limits = {-1E6};
+	arma::vec upper_limits = {+1E6};
+	Problem problem;
+	arma::vec x_simulated = fromQVec( adjust_me.x_data );
+	arma::vec y_simulated = fromQVec( adjust_me.y_data );
+	arma::vec x_experiment = fromQVec( fit_to_me.x_data );
+	arma::vec y_experiment = fromQVec( fit_to_me.y_data );
+	
+	// std::cout << "x_simulated:"  << x_simulated  << "\n";
+	// std::cout << "y_simulated:"  << y_simulated  << "\n";
+	// std::cout << "x_experiment:" << x_experiment << "\n";
+	// std::cout << "y_experiment:" << y_experiment << "\n";
+	
+	double lower = std::max( x_simulated.min(), x_experiment.min() );
+	double upper = std::min( x_simulated.max(), x_experiment.max() );
+	arma::uvec selection_region = arma::find( x_simulated >= lower && x_simulated <= upper );
+	x_simulated = x_simulated( selection_region );
+	y_simulated = y_simulated( selection_region );
+	y_experiment = Resample( x_experiment, y_experiment, x_simulated );
+
+	// std::cout << "Resampled x_simulated:"  << x_simulated  << "\n";
+	// std::cout << "Resampled y_simulated:"  << y_simulated  << "\n";
+	// std::cout << "Resampled x_experiment:" << x_experiment << "\n";
+	// std::cout << "Resampled y_experiment:" << y_experiment << "\n";
+
+	for( int i = 0; i < y_experiment.size(); ++i ) {
+		problem.AddResidualBlock(
+			new AutoDiffCostFunction<SlopeResidual, 1, 1>(
+				new SlopeResidual( x_simulated[ i ], y_experiment[ i ], y_simulated[ i ] ) ),
+			nullptr,
+			fit_vars.memptr() );
+	}
+	for( int i = 0; i < lower_limits.size(); i++ )
+	{
+		problem.SetParameterLowerBound( fit_vars.memptr(), i, lower_limits[ i ] );
+		problem.SetParameterUpperBound( fit_vars.memptr(), i, upper_limits[ i ] );
+	}
+	Solver::Options options;
+	options.max_num_iterations = 100;
+	options.linear_solver_type = ceres::DENSE_QR;
+	options.function_tolerance = 1E-12;
+	options.gradient_tolerance = 1E-12;
+	//options.minimizer_progress_to_stdout = true;
+	//options.parameter_tolerance = 1E-12;
+	Solver::Summary summary;
+	Solve( options, &problem, &summary );
+	std::cout << summary.FullReport() << "\n";
+	// std::cout << "Initial m: " << initial_guess << "\n";
+	std::cout << "Final   m: " << fit_vars << "\n";
+	return fit_vars[ 0 ];
+}
+
 
 #include "Thin_Film_Interference.h"
 struct ThinFilmAllResiduals {
@@ -271,16 +372,16 @@ inline Fit_Results Ceres_Thin_Film_Fit_Many_Starts(
 {
 	// Add a random scale to the initial guess between 0.2 and 5
 	auto [best_solution, lowest_cost] = Ceres_Thin_Film_Fit( initial_guess, layers, wavelengths, transmissions, backside_material );
-	for( int i = 0; i < 4; i++ )
-	{
-		arma::vec moved_guess = initial_guess % (0.2 + 4.8 * arma::randu( initial_guess.size() ));
-		auto [solution, cost] = Ceres_Thin_Film_Fit( moved_guess, layers, wavelengths, transmissions, backside_material );
-		if( cost < lowest_cost )
-		{
-			lowest_cost = cost;
-			best_solution = solution;
-		}
-	}
+	// for( int i = 0; i < 4; i++ )
+	// {
+	// 	arma::vec moved_guess = initial_guess % (0.2 + 4.8 * arma::randu( initial_guess.size() ));
+	// 	auto [solution, cost] = Ceres_Thin_Film_Fit( moved_guess, layers, wavelengths, transmissions, backside_material );
+	// 	if( cost < lowest_cost )
+	// 	{
+	// 		lowest_cost = cost;
+	// 		best_solution = solution;
+	// 	}
+	// }
 
 	return {best_solution, lowest_cost};
 }

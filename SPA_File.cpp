@@ -1,5 +1,5 @@
 #include "SPA_File.h"
-
+#include <stdint.h>
 #include <fstream>
 
 std::tuple<std_XY_Data, std_Metadata> Load_From_SPA( std::string file_name )
@@ -7,11 +7,11 @@ std::tuple<std_XY_Data, std_Metadata> Load_From_SPA( std::string file_name )
 	using namespace std;
 	std::ifstream in_file( file_name, ios::binary | ios::in );
 
-	std::uint32_t data_location_in_file;
+	uint32_t data_location_in_file;
 	in_file.seekg( 0x172, ios::beg );
 	in_file.read( (char*)&data_location_in_file, sizeof( data_location_in_file ) );
 
-	std::uint32_t amount_of_data;
+	uint32_t amount_of_data;
 	in_file.seekg( 0x176, ios::beg );
 	in_file.read( (char*)&amount_of_data, sizeof( amount_of_data ) );
 

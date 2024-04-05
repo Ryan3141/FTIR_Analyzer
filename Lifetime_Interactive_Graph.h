@@ -121,7 +121,7 @@ private:
 	};
 public:
 	Interactive_Graph( QWidget* parent = nullptr );
-	void Redo_Fits( std::vector<std::tuple<QString, Single_Graph&>> graphs_for_fit );
+	void Redo_Fits( std::vector<Single_Graph*> graphs_for_fit );
 	void Hide_Fit_Graphs( Single_Graph & single_graph, bool should_hide );
 
 	void Change_Axes( int index );

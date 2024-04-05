@@ -31,7 +31,7 @@ struct Axes
 	std::function<void()> graph_function;
 
 	const static QString X_Unit_Names[ 1 ];
-	const static QString Y_Unit_Names[ 5 ];
+	const static QString Y_Unit_Names[ 2 ];
 };
 
 using Graph_Base = ::Interactive_Graph<Single_Graph, Axes>;
@@ -41,6 +41,8 @@ class Interactive_Graph :
 {
 public:
 	Interactive_Graph( QWidget *parent = nullptr );
+	void dropEvent( QDropEvent *event ) override;
+	void Add_Raw_Text_Data( const std::string & text_data, std::optional<QString> title = std::nullopt, Labeled_Metadata metadata = { {"device_side_length_in_um", 10000.0} } );
 };
 
 }

@@ -1,5 +1,6 @@
 ﻿#include "IV_Plotter.h"
 #include "Interactive_Graph_Toolbar.h"
+#include "Graph_Customizer.h"
 
 using namespace std;
 
@@ -76,13 +77,13 @@ void Plotter::Initialize_SQL( QString config_filename )
 
 void Plotter::Initialize_Tree_Table()
 {
-	config.header_titles    = QStringList{ "Sample Name", "Location", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Temperature (K)", "Date", "Time of Day", "measurement_id" };
-	config.what_to_collect  = QStringList{ "sample_name", "device_location", "device_side_length_in_um", "temperature_in_k", "date(time)", "time(time)", "measurement_id" };
+	config.header_titles    = QStringList{ "Sample Name", "Location", "Device Side Length (" + QString( QChar( 0x03BC ) ) + "m)", "Temperature (K)", "Date", "Time of Day", "Aperture", "Blackbody", "measurement_id" };
+	config.what_to_collect  = QStringList{ "sample_name", "device_location", "device_side_length_in_um", "temperature_in_k", "date(time)", "time(time)", "aperture_radius_in_m", "blackbody_temperature_in_c", "measurement_id" };
 	config.sql_table        = "iv_measurements";
 	config.raw_data_columns = QStringList{ "measurement_id","voltage_v","current_a" };
 	config.raw_data_table   = "iv_raw_data";
 	config.sorting_strategy = "ORDER BY measurement_id, voltage_v ASC";
-	config.columns_to_show  = 6;
+	config.columns_to_show  = 8;
 
 	ui.treeWidget->Set_Column_Info( config.header_titles, config.what_to_collect, config.columns_to_show );
 
@@ -117,12 +118,49 @@ void Plotter::Initialize_Tree_Table()
 void Plotter::Initialize_Graph()
 {
 	ui.interactiveGraphToolbar->Connect_To_Graph( ui.customPlot );
+	connect( ui.toggleColorBar_checkBox, &QCheckBox::stateChanged, [ this ]( int state )
+	{
+		// ui.customPlot->colorScale->setVisible( state == Qt::Checked );
+
+		if( state == Qt::Checked )
+			ui.customPlot->Add_Color_Bar();
+		else
+			ui.customPlot->Remove_Color_Bar();
+		// if( state == Qt::Checked )
+		// 	ui.customPlot->colorScale->setMaximumSize( QSize( 16777215, 16777215 ) );
+		// else
+		// 	ui.customPlot->colorScale->setMaximumSize( QSize( 0, 16777215 ) );
+		// if( state == Qt::Checked )
+		// 	ui.customPlot->plotLayout()->addElement(0, 1, ui.customPlot->colorScale);
+		// else
+		// 	ui.customPlot->removeItem( static_cast<QCPAbstractItem*>(ui.customPlot->colorScale) );
+		ui.customPlot->replot();
+	} );
 
 	connect( ui.customPlot, &Interactive_Graph::Graph_Selected, [ this ]( QCPGraph* selected_graph )
 	{
-		const auto & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
+		Single_Graph & measurement = ui.customPlot->FindDataFromGraphPointer( selected_graph );
 		this->ui.selectedName_lineEdit->setText(        Info_Or_Default<QString>( measurement.meta, "Sample Name", "" ) );
 		this->ui.selectedTemperature_lineEdit->setText( Info_Or_Default<QString>( measurement.meta, "Temperature (K)", "" ) );
+
+		if( selected_graph == nullptr )
+		{
+			ui.graphCustomizer->clearLayout();
+			return;
+		}
+		QString current_per_area_suffix = " " + QString( QChar( 0x03A9 ) ) + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B9 ) ) + " mm" + QString( QChar( 0x207B ) ) + QString( QChar( 0x00B2 ) );
+		QString graph_name = Info_Or_Default<QString>( measurement.meta, "measurement_id", "Unknown" );
+		std::vector<Graph_Double_Adjustment> label_type_value_list = {
+			{ "Shunt Resistor", measurement.resistance.value_or( 0.0 ),
+				[this, &measurement, graph_name]( double new_value )
+				{
+					measurement.resistance = new_value;
+					ui.customPlot->axes.Graph_XY_Data( graph_name, measurement );
+					ui.customPlot->replot();
+				}, -1000000.0, 1000000.0, 100.0, current_per_area_suffix }
+		};
+
+		ui.graphCustomizer->New_Graph_Selected<Single_Graph>( label_type_value_list, measurement );
 	} );
 }
 
@@ -333,10 +371,10 @@ void Graph_Measurement( ID_To_XY_Data data, Graph_Base* graph, QString measureme
 	{
 		auto to_string = []( QVariant value ) { return value.toString(); };
 		QString sample_name = lookup( metadata, "sample_name", "", to_string );
-		QString temperature_label = lookup( metadata, "temperature_in_k", "", []( QVariant value ) { return value.toString() + " K"; } );
-		QString bias_label = lookup( metadata, "bias_in_v", "", []( QVariant value ) { return QString::number( std::round( value.toFloat() * 1.0E3 ) ) + " mV ";  } );
+		QString temperature_label = lookup( metadata, "temperature_in_k", "", []( QVariant value ) { return QString::number( value.toDouble(), 'g', 4 ) + " K"; } );
+		QString bias_label = lookup( metadata, "bias_in_v", "", []( QVariant value ) { return QString::number( value.toDouble() * 1E3, 'g', 4 ) + " mV ";  } );
 		QString side_length_label = lookup( metadata, "device_side_length_in_um", "",
-											[]( QVariant value ) { return QString::number( std::round( value.toFloat() ) ) + " " + QString( QChar( 0x03BC ) ) + "m";  } );
+											[]( QVariant value ) { return QString::number( value.toDouble(), 'g', 4 ) + " " + QString( QChar( 0x03BC ) ) + "m";  } );
 		QString device_location = lookup( metadata, "device_location", "", to_string );
 		used_legend_label = QStringList{ sample_name, device_location, side_length_label, temperature_label, bias_label }.join( " " );
 	}
